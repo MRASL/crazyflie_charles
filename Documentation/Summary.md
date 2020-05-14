@@ -53,3 +53,8 @@ platform for the Crazyflie 2.0 nano-quadcopter](crazyS.pdf)
 - [Gazebo - ROS - Simulink Framework for Hover
 Control and Trajectory Tracking of Crazyflie 2.0 ](Gazebo_ROS_Crazyflie.pdf)
   - ROS and Gazebo simulation with Simulink of CF
+
+- [Flying Multiple UAVs Using ROS](Hoenig_Springer_ROS2017.pdf)
+  - Using ROS to control multiple CF
+
+- [Swarm Guide](SwarmGuide.pdf)
