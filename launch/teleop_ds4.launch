@@ -1,43 +1,47 @@
 <?xml version="1.0"?>
 
 <launch>
-  <arg name="uri" default="radio://0/80/2M/0xE7E7E7E701" />
   <arg name="joy_dev" default="/dev/input/js0" />
-  <arg name="frame" default="crazyflie/crazyflie" />
+  
+  <!-- Crazyflie 1 args -->
+  <arg name="uri1" default="radio://0/80/2M/0xE7E7E7E701" />
+  <arg name="frame1" default="crazyflie1/crazyflie1" />
 
   <!-- Launch server -->
   <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
   </include>
 
+
   <!-- Create crazyflie -->
-  <group ns="crazyflie">
-    <!--<param name="crazyflie/pid_rate/yaw_kp" value="200"/>-->
+  <group ns="crazyflie1">
+    <!-- Initiate joystick -->
+    <node name="joy" pkg="joy" type="joy_node" output="screen" >
+    <param name="dev" value="$(arg joy_dev)" />
+    </node>
 
     <!-- Add it to the server -->
     <include file="$(find crazyflie_driver)/launch/crazyflie_add.launch">
-      <arg name="uri" value="$(arg uri)" />
-      <arg name="tf_prefix" value="crazyflie" />
+      <arg name="uri" value="$(arg uri1)" />
+      <arg name="tf_prefix" value="crazyflie1" />
       <arg name="enable_logging" value="True" />
     </include>
 
-    <!-- Initiate joystick -->
-    <node name="joy" pkg="joy" type="joy_node" output="screen" >
-      <param name="dev" value="$(arg joy_dev)" />
-    </node>
-
     <!-- Map controller buttons to services -->
     <node name="crazyflie_demo_controller" pkg="crazyflie_charles" type="controller.py" output="screen">
+      <param name="use_crazyflie_controller" value="False" />
+      <!-- <param name="joy_topic" value="/joy" /> -->
     </node>
 
+    <!-- Start quadrotor_teleop -->
     <include file="$(find crazyflie_charles)/launch/ds4.launch">
     </include>
 
     <!-- Position frame -->
-    <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /crazyflie/base_link 100" />
+    <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame1) /crazyflie1/base_link 100" />
   
     <node name="crazyflie_broadcaster" pkg="crazyflie_charles" type="crazyflie_tf.py" output="screen">
-      <param name="cf_name" value="crazyflie" />
-      <param name="frame" value="$(arg frame)" />
+      <param name="cf_name" value="crazyflie1" />
+      <param name="frame" value="$(arg frame1)" />
     </node>
 
   </group>

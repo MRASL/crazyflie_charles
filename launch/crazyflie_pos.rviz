@@ -5,11 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Grid1
-        - /RobotModel1/Links1
         - /TF1
-        - /TF1/Tree1
-        - /TF1/Tree1/world1
-        - /TF1/Tree1/world1/crazyflie/crazyflie1
       Splitter Ratio: 0.6172410249710083
     Tree Height: 695
   - Class: rviz/Selection
@@ -73,7 +69,7 @@ Visualization Manager:
           Value: true
       Name: RobotModel
       Robot Description: robot_description
-      TF Prefix: crazyflie
+      TF Prefix: crazyflie1
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -97,9 +93,9 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        crazyflie/base_link:
+        crazyflie1/base_link:
           Value: false
-        crazyflie/crazyflie:
+        crazyflie1/crazyflie1:
           Value: false
         world:
           Value: true
@@ -110,8 +106,8 @@ Visualization Manager:
       Show Names: false
       Tree:
         world:
-          crazyflie/crazyflie:
-            crazyflie/base_link:
+          crazyflie1/crazyflie1:
+            crazyflie1/base_link:
               {}
       Update Interval: 0
       Value: true
@@ -143,16 +139,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 7.91150426864624
+      Distance: 8.860884666442871
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.7292630672454834
-        Y: 0.07459190487861633
-        Z: -2.5890772342681885
+        X: 1.8989797830581665
+        Y: 0.16839838027954102
+        Z: -2.5167016983032227
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
