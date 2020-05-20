@@ -7,6 +7,14 @@ from std_srvs.srv import Empty
 
 class Controller():
     def __init__(self, use_controller, joy_topic):
+        # Map buttons to ds4
+        self._square = 0
+        self._cross = 1
+        self._circle = 2
+        self._triangle = 3 
+
+
+
         rospy.wait_for_service('update_params')
         rospy.loginfo("found update_params service")
         self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
@@ -32,7 +40,7 @@ class Controller():
 
         # subscribe to the joystick at the end to make sure that all required
         # services were found
-        self._buttons = None
+        self._buttons = None   # Store last buttons
         rospy.Subscriber(joy_topic, Joy, self._joyChanged)
 
     def _joyChanged(self, data):
@@ -43,20 +51,20 @@ class Controller():
                               3 -> triangle
 
         Circle: Emergency
-        Triangle: TakeOff 
-        Square:
+        Triangle:  
+        Square: TakeOff
         Cross: Land
 
         """
         for i in range(0, len(data.buttons)):
-            if self._buttons == None or data.buttons[i] != self._buttons[i]:
-                if i == 1 and data.buttons[i] == 1 and self._land != None:
+            if self._buttons == None or data.buttons[i] != self._buttons[i]: # If button changed
+                if i == self._cross and data.buttons[i] == 1 and self._land != None:
                     print("Landing")
                     self._land()
-                if i == 2 and data.buttons[i] == 1:
+                if i == self._circle and data.buttons[i] == 1:
                     print("Emergency")
                     self._emergency()
-                if i == 3 and data.buttons[i] == 1 and self._takeoff != None:
+                if i == self._square and data.buttons[i] == 1 and self._takeoff != None:
                     print("Take off")
                     self._takeoff()
                 if i == 4 and data.buttons[i] == 1:
