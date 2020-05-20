@@ -37,7 +37,7 @@
   
     <node name="crazyflie_broadcaster" pkg="crazyflie_charles" type="crazyflie_tf.py" output="screen">
       <param name="cf_name" value="crazyflie" />
-      
+      <param name="frame" value="$(arg frame)" />
     </node>
 
   </group>
