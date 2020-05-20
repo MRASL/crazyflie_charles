@@ -36,7 +36,8 @@
     <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /crazyflie/base_link 100" />
   
     <node name="crazyflie_broadcaster" pkg="crazyflie_charles" type="crazyflie_tf.py" output="screen">
-      <param name="name" value="crazyflie" />
+      <param name="cf_name" value="crazyflie" />
+      
     </node>
 
   </group>
