@@ -29,7 +29,7 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
   - [Controler types](https://www.bitcraze.io/2020/02/out-of-control/)
   - [Drone Dynamics](https://www.bitcraze.io/2018/11/demystifying-drone-dynamics/)
   - [Position Control Architecture](https://www.bitcraze.io/2016/05/position-control-moved-into-the-firmware/)
-  - 
+  
 - [Getting started](https://www.bitcraze.io/documentation/start/)
   - [First setup](https://www.bitcraze.io/documentation/tutorials/getting-started-with-crazyflie-2-x/)
   - [LPS System](https://www.bitcraze.io/documentation/tutorials/getting-started-with-loco-positioning-system/)

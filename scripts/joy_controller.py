@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+"""
+Script to map inputs of the controller to services
+"""
+
 import rospy
 from sensor_msgs.msg import Joy
 from crazyflie_driver.srv import UpdateParams

@@ -1,5 +1,9 @@
 #!/usr/bin/env python  
 
+"""
+Script to create a frame from the crazyflie current position
+"""
+
 import rospy
 import tf
 from geometry_msgs.msg import PoseStamped

@@ -1,11 +1,15 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="uri" default="radio://0/80/2M/0xE7E7E7E701" />
-  <arg name="frame" default="crazyflie/crazyflie" />
   <arg name="joy_dev" default="/dev/input/js0" />
-  <arg name="x" default="0" />
-  <arg name="y" default="0" />
-  <arg name="z" default="0.5" />
+  
+  <!-- Crazyflie 1 args -->
+  <arg name="uri" default="radio://0/105/2M/0xE7E7E7E701" />
+  <arg name="frame" default="crazyflie/crazyflie" />
+  
+  <!-- Goal -->
+  <arg name="x" default="1.7" />
+  <arg name="y" default="-1.1" />
+  <arg name="z" default="1" />
 
   <!-- Launch server -->
   <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
@@ -57,7 +61,8 @@
     <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /crazyflie/base_link 100" />
   
     <node name="crazyflie_broadcaster" pkg="crazyflie_charles" type="crazyflie_tf.py" output="screen">
-      <param name="name" value="crazyflie" />
+      <param name="cf_name" value="crazyflie" />
+      <param name="frame" value="$(arg frame)" />
     </node>
     
   </group>
