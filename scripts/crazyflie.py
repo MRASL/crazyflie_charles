@@ -2,6 +2,8 @@
 
 """
 Class that represents a single crazyflie
+
+voir les commandes possibles: https://github.com/bitcraze/crazyflie-firmware/blob/master/src/modules/src/crtp_commander_generic.c
 """
 
 import rospy
@@ -28,6 +30,8 @@ class Crazyflie:
 
         # Declare services
         rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self.thrust_test)
+        rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
+        rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffHandler)
 
         # Set parameters
         self.setParam("kalman/resetEstimation", 1)
@@ -35,46 +39,58 @@ class Crazyflie:
         # Set publishers
         self.cmdVelPublisher = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
 
-        # self.pub = rospy.Publisher(cf_id + "/cmd_hover", Hover, queue_size=1)
-        # self.msg = Hover()
-        # self.msg.header.seq = 0
-        # self.msg.header.stamp = rospy.Time.now()
-        # self.msg.header.frame_id = worldFrame
-        # self.msg.yawrate = 0
+        self.cmdHoverPusblisher = rospy.Publisher(self.cf_id + "/cmd_hover", Hover, queue_size=1)
+        self.cmdHovermsg = Hover()
+        self.cmdHovermsg.header.seq = 0
+        self.cmdHovermsg.header.stamp = rospy.Time.now()
+        self.cmdHovermsg.header.frame_id = worldFrame
+        self.cmdHovermsg.yawrate = 0
+        self.cmdHovermsg.vx = 0
+        self.cmdHovermsg.vy = 0
 
         self.stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.stop_msg = Empty_msg()
 
 
         self.thrust = 0
-
+        self.to_hover = False
     
     def setParam(self, name, value):
         rospy.set_param(self.cf_id + "/" + name, value)
         self.update_params([name])
 
+    def stop(self, req):
+        self.thrust = 0
+        self.to_hover = False
+        return EmptyResponse_srv()
+
+    def takeOffHandler(self, req):
+        self.to_hover = True
+        return EmptyResponse_srv()
+
     # Take off to z distance
     def takeOff(self, zDistance):
         time_range = 1 + int(10*zDistance/0.4)
         while not rospy.is_shutdown():
+            rospy.loginfo("Taking off, duration %i" % time_range)
             for y in range(time_range):
-                self.msg.vx = 0.0
-                self.msg.vy = 0.0
-                self.msg.yawrate = 0.0
-                self.msg.zDistance = y / 25.0
-                self.msg.header.seq += 1
-                self.msg.header.stamp = rospy.Time.now()
-                self.pub.publish(self.msg)
+                if not self.to_hover: break
+                z = y / 25.0
+                self.cmdHovermsg.header.seq += 1
+                self.cmdHovermsg.header.stamp = rospy.Time.now()
+                self.cmdHover(z)
                 self.rate.sleep()
-            for y in range(20):
-                self.msg.vx = 0.0
-                self.msg.vy = 0.0
-                self.msg.yawrate = 0.0
-                self.msg.zDistance = zDistance
-                self.msg.header.seq += 1
-                self.msg.header.stamp = rospy.Time.now()
-                self.pub.publish(self.msg)
+
+            rospy.loginfo("Hovering")
+            for y in range(50):
+                if not self.to_hover: break
+                
+                self.cmdHovermsg.header.seq += 1
+                self.cmdHovermsg.header.stamp = rospy.Time.now()
+                self.cmdHover(zDistance)
                 self.rate.sleep()
+            
+            rospy.loginfo("Done")
             break
 
     # land from last zDistance
@@ -129,10 +145,28 @@ class Crazyflie:
         msg.linear.z = thrust
         self.cmdVelPublisher.publish(msg)
 
+    def cmdHover(self, zDistance):
+        self.cmdHovermsg.zDistance = zDistance
+        self.cmdHoverPusblisher.publish(self.cmdHovermsg)
+
+    def testHover(self):
+        rate = rospy.Rate(100)
+        self.cmdHover(0, 0, self.hover_height)
+        rate.sleep
+
     def testThrust(self):
         rate = rospy.Rate(100)
         self.cmdVel(0, 0, 0, self.thrust)
         rate.sleep()
+
+    def run(self):
+        if not self.to_hover:
+            self.testThrust()
+
+        else:
+            self.takeOff(1)
+            self.to_hover = False
+
 
 if __name__ == '__main__':
     cf_id = "crazyflie1"
@@ -142,11 +176,6 @@ if __name__ == '__main__':
     
     # rospy.spin()
     start_time = rospy.get_rostime()
+    toggled = False
     while not rospy.is_shutdown():
-        cf1.testThrust()
-
-        if rospy.get_rostime().secs - start_time.secs > 1:
-            cf1.thrust = 12000
-
-        if rospy.get_rostime().secs - start_time.secs > 3:
-            cf1.thrust = 0
+        cf1.run()
