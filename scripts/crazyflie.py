@@ -8,12 +8,15 @@ voir les commandes possibles: https://github.com/bitcraze/crazyflie-firmware/blo
 
 import rospy
 import tf
+import numpy as np
+
 from crazyflie_driver.msg import Hover
 from std_msgs.msg import Empty as Empty_msg
 from std_srvs.srv import Empty as Empty_srv
 from std_srvs.srv import EmptyResponse as EmptyResponse_srv
 from crazyflie_driver.srv import UpdateParams
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseStamped
 
 
 class Crazyflie:
@@ -31,12 +34,9 @@ class Crazyflie:
         # Declare services
         rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self.thrust_test)
         rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
-        rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffHandler)
+        rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffHandler)        
 
-        # Set parameters
-        self.setParam("kalman/resetEstimation", 1)
-
-        # Set publishers
+        # Declare publishers
         self.cmdVelPublisher = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
 
         self.cmdHoverPusblisher = rospy.Publisher(self.cf_id + "/cmd_hover", Hover, queue_size=1)
@@ -51,9 +51,50 @@ class Crazyflie:
         self.stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.stop_msg = Empty_msg()
 
+        # Declare subscriptions
+        rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self.poseHandler)
+
+        # Set parameters
+        self.setParam("kalman/resetEstimation", 1)
 
         self.thrust = 0
         self.to_hover = False
+
+        self.poseX = 0
+        self.poseY = 0
+        self.poseZ = 0
+
+        self.initialX = 0
+        self.initialY = 0
+        self.initialZ = 0
+
+        self.findInitialPose()
+
+
+    def poseHandler(self, data):
+        self.poseX = data.pose.position.x
+        self.poseY = data.pose.position.y
+        self.poseZ = data.pose.position.z
+
+        # rospy.loginfo("CF position: %.2f, %.2f, %.2f" % (self.poseX, self.poseY, self.poseZ))
+
+    def findInitialPose(self):
+        rospy.loginfo("Estimating inital pos...")
+        r = rospy.Rate(100)
+        initialPose = {'x': [], 'y':[], 'z':[] } 
+        while len(initialPose['x']) < 200:
+            initialPose['x'].append(self.poseX)
+            initialPose['y'].append(self.poseY)
+            initialPose['z'].append(self.poseZ)
+            r.sleep()
+        
+        self.initialX = np.mean(initialPose['x'])
+        self.initialY = np.mean(initialPose['y'])
+        self.initialZ = np.mean(initialPose['z'])
+        rospy.loginfo("Initial position found at: %.2f, %.2f, %.2f" % (self.initialX, self.initialY, self.initialZ))
+
+
+
     
     def setParam(self, name, value):
         rospy.set_param(self.cf_id + "/" + name, value)

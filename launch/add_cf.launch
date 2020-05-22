@@ -14,7 +14,18 @@
     <include file="$(find crazyflie_driver)/launch/crazyflie_add.launch">
       <arg name="uri" value="$(arg uri)" />
       <arg name="tf_prefix" value="$(arg cf_name)" />
-      <arg name="enable_logging" value="True" />
+      <arg name="roll_trim" default="0" />
+      <arg name="pitch_trim" default="0" />
+
+      <arg name="enable_logging" default="True" />
+      <arg name="use_ros_time" default="True" />
+      <arg name="enable_logging_imu" default="True" />
+      <arg name="enable_logging_temperature" default="True" />
+      <arg name="enable_logging_magnetic_field" default="True" />
+      <arg name="enable_logging_pressure" default="True" />
+      <arg name="enable_logging_battery" default="True" />
+      <arg name="enable_logging_pose" default="True" />
+      <arg name="enable_logging_packets" default="True" />
     </include>
 
     <!-- Map controller buttons to services -->

@@ -34,7 +34,7 @@ if __name__ == '__main__':
     to_teleop = args.teleop
 
     # Laumch server
-    rospy.init_node('init_server', anonymous=True)
+    rospy.init_node('launchSwarm', anonymous=True)
     
     rospy.loginfo("Initializing server for %i crazyflies" % n_cf)
     uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
