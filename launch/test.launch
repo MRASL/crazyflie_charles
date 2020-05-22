@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 
-<launch>
-  <arg name="joy_dev" default="/dev/input/js0" />
-  
+<launch>  
   <!-- Crazyflie 1 args -->
   <arg name="uri1" default="radio://0/105/2M/0xE7E7E7E701" />
   <arg name="frame1" default="crazyflie1/crazyflie1" />
@@ -14,28 +12,11 @@
   <!-- Create crazyflie -->
   <group ns="crazyflie1">
 
-    <param name="TEST_CF" value="50" />
-
-    <!-- Initiate joystick -->
-    <node name="joy" pkg="joy" type="joy_node" output="screen" >
-    <param name="dev" value="$(arg joy_dev)" />
-    </node>
-
     <!-- Add it to the server -->
     <include file="$(find crazyflie_driver)/launch/crazyflie_add.launch">
       <arg name="uri" value="$(arg uri1)" />
       <arg name="tf_prefix" value="crazyflie1" />
       <arg name="enable_logging" value="True" />
-    </include>
-
-    <!-- Map controller buttons to services -->
-    <node name="crazyflie_joystick_controller" pkg="crazyflie_charles" type="joy_controller.py" output="screen">
-      <param name="use_crazyflie_controller" value="False" />
-      <!-- <param name="joy_topic" value="/joy" /> -->
-    </node>
-
-    <!-- Start quadrotor_teleop -->
-    <include file="$(find crazyflie_charles)/launch/ds4.launch">
     </include>
 
     <!-- Position frame -->
@@ -52,7 +33,4 @@
   <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find crazyflie_charles)/launch/crazyflie_pos.rviz" required="true" />
 
-  <!-- <node pkg="rqt_plot" type="rqt_plot" name="rqt_plot" args="/crazyflie/temperature/temperature"/>
-  <node pkg="rqt_plot" type="rqt_plot" name="rqt_plot2" args="/crazyflie/battery"/>
-  <node pkg="rqt_plot" type="rqt_plot" name="rqt_plot3" args="/crazyflie/rssi"/> -->
 </launch>

@@ -27,15 +27,13 @@ class Crazyflie:
         self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
         # Declare services
-        rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self._thrust_test)
+        rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self.thrust_test)
 
         # Set parameters
-        self._setParam("kalman/resetEstimation", 1)
+        self.setParam("kalman/resetEstimation", 1)
 
-        # Set control
-        self.p = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
-        self.twist = Twist()
-
+        # Set publishers
+        self.cmdVelPublisher = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
 
         # self.pub = rospy.Publisher(cf_id + "/cmd_hover", Hover, queue_size=1)
         # self.msg = Hover()
@@ -47,17 +45,16 @@ class Crazyflie:
         self.stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.stop_msg = Empty_msg()
 
-        self.twist.linear.z = 0
-        for _ in range(0, 500):
-               self.p.publish(self.twist)
-               self.rate.sleep()
+
+        self.thrust = 0
+
     
-    def _setParam(self, name, value):
+    def setParam(self, name, value):
         rospy.set_param(self.cf_id + "/" + name, value)
         self.update_params([name])
 
     # Take off to z distance
-    def _takeOff(self, zDistance):
+    def takeOff(self, zDistance):
         time_range = 1 + int(10*zDistance/0.4)
         while not rospy.is_shutdown():
             for y in range(time_range):
@@ -81,7 +78,7 @@ class Crazyflie:
             break
 
     # land from last zDistance
-    def _land (self):
+    def land (self):
         # get last height
         zDistance = self.msg.zDistance
 
@@ -98,22 +95,44 @@ class Crazyflie:
                 zDistance -= 0.2
         self.stop_pub.publish(self.stop_msg)
 
-    def _thrust_test(self, req):
+    def thrust_test(self, req):
         r = rospy.Rate(100)
         rospy.loginfo("Starting thrust test")
-        self.twist.linear.z = 15000
+        self.cmd_vel.linear.z = 15000
 
-        for _ in range(0, 100):
-               self.p.publish(self.twist)
-               self.rate.sleep()
+        for _ in range(0, 500):
+               self.p.publish(self.cmd_vel)
+               r.sleep()
 
-        self.twist.linear.z = 0
-        self.p.publish(self.twist)
+        self.cmd_vel.linear.z = 0
+        self.p.publish(self.cmd_vel)
         self.rate.sleep()
-        
 
         rospy.loginfo("Thrust test over")
         return EmptyResponse_srv()
+
+    def cmdVel(self, roll, pitch, yawrate, thrust):
+        """
+        Args:
+            roll (float): Roll angle. Degrees. Positive values == roll right.
+            pitch (float): Pitch angle. Degrees. Positive values == pitch
+                forward/down.
+            yawrate (float): Yaw angular velocity. Degrees / second. Positive
+                values == turn counterclockwise.
+            thrust (float): Thrust magnitude. Non-meaningful units in [0, 2^16),
+                where the maximum value corresponds to maximum thrust.
+        """
+        msg = Twist()
+        msg.linear.x = pitch
+        msg.linear.y = roll
+        msg.angular.z = yawrate
+        msg.linear.z = thrust
+        self.cmdVelPublisher.publish(msg)
+
+    def testThrust(self):
+        rate = rospy.Rate(100)
+        self.cmdVel(0, 0, 0, self.thrust)
+        rate.sleep()
 
 if __name__ == '__main__':
     cf_id = "crazyflie1"
@@ -121,4 +140,13 @@ if __name__ == '__main__':
     rospy.loginfo('Initialisation de ' + cf_id)
     cf1 = Crazyflie(cf_id)
     
-    rospy.spin()
+    # rospy.spin()
+    start_time = rospy.get_rostime()
+    while not rospy.is_shutdown():
+        cf1.testThrust()
+
+        if rospy.get_rostime().secs - start_time.secs > 1:
+            cf1.thrust = 12000
+
+        if rospy.get_rostime().secs - start_time.secs > 3:
+            cf1.thrust = 0
