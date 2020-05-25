@@ -23,6 +23,7 @@ def add_args(arg_list):
     for each_arg in arg_list:
         sys.argv.append(each_arg)
 
+
 if __name__ == '__main__':
     # Check arguments
     parser = argparse.ArgumentParser(description='Start crazyflie swarm')
@@ -50,6 +51,7 @@ if __name__ == '__main__':
     
     launch_file(cli_server)
     launch_file(cli_add_cf)
+
 
     rospy.spin()
 

@@ -12,4 +12,8 @@
     <param name="dev" value="$(arg joy_dev)" />
   </node>
 
+  <!-- Rviz markers -->
+  <node name="rviz_markers" pkg="crazyflie_charles" type="rviz_markers.py" output="screen" >
+  </node>
+
 </launch>
