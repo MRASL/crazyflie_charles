@@ -45,7 +45,7 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
 ### ROS
 - [Livre ROS](https://books.google.ca/books?id=skFPDwAAQBAJ&pg=PA339&lpg=PA339&dq=crazyflie+lib+scan&source=bl&ots=fgtFKHcJSd&sig=ACfU3U0iAfU0DtVE7Bun8h29GCLQc0aXOg&hl=fr&sa=X&ved=2ahUKEwiz3O-5grTpAhUBU98KHVRLDw4Q6AEwAnoECAoQAQ#v=onepage&q&f=false)
 - [Tutoriels](http://wiki.ros.org/ROS/Tutorials)
-
+- [Autre live](https://www.scribd.com/document/360234366/Robot-Operating-System-ROS-The-Complete-Reference-Volume-2)
 
 
 ## Structure des fichiers

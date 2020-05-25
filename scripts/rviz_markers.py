@@ -31,9 +31,9 @@ if __name__ == '__main__':
     markerMsg.scale.z = 0.2
 
     markerMsg.color.a = 0.75
-    markerMsg.color.r = 0.0
-    markerMsg.color.g = 0.0
-    markerMsg.color.b = 1.0
+    markerMsg.color.r = 0.55
+    markerMsg.color.g = 0.56
+    markerMsg.color.b = 0.57
 
     r = rospy.Rate(10)
     while not rospy.is_shutdown():

@@ -47,7 +47,7 @@ if __name__ == '__main__':
     #TODO: Add input for # of cf
     #TODO: Add input for control methode (man or auto)
     cf_name = 'crazyflie1'
-    cli_add_cf = ['crazyflie_charles', 'add_cf.launch', 'to_teleop:=%s' % to_teleop, 'cf_name:='+cf_name, 'uri:=radio://0/105/2M/0xE7E7E7E701', 'frame:='+cf_name+'/'+cf_name]
+    cli_add_cf = ['crazyflie_charles', 'add_cf.launch', 'to_teleop:=%s' % to_teleop, 'cf_name:='+cf_name, 'uri:=radio://0/105/2M/0xE7E7E7E702', 'frame:='+cf_name+'/'+cf_name]
     
     launch_file(cli_server)
     launch_file(cli_add_cf)

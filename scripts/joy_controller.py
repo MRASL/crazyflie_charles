@@ -82,17 +82,17 @@ class Controller():
         for i in range(0, len(data.buttons)):
             if self._buttons == None or data.buttons[i] != self._buttons[i]: # If button changed
                 if i == self._cross and data.buttons[i] == 1 and self._land != None:
-                    print("Landing")
+                    # print("Landing")
                     self._land()
                 if i == self._circle and data.buttons[i] == 1:
-                    print("Emergency")
+                    # print("Emergency")
                     self._emergency()
                 if i == self._square and data.buttons[i] == 1 and self._takeoff != None:
-                    print("Take off")
+                    # print("Take off")
                     self._takeoff()
 
                 if i == self._R2 and data.buttons[i] == 1 and self._stop != None:
-                    print("Stop")
+                    # print("Stop")
                     self._stop()
 
                 if i == self._L2 and data.buttons[i] == 1:

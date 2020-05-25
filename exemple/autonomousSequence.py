@@ -42,11 +42,14 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 
 # URI to the Crazyflie to connect to
-uri = 'radio://0/80/2M/E7E7E7E702'
+uri = 'radio://0/105/2M/E7E7E7E702'
 
 # Sequence, variation from starting position
 sequence = [
-    (0, 0, 0.5, 0),
+    (0, 0, 0.1, 0),
+    (0, 0, 0.2, 0),
+    (0, 0, 0.3, 0),
+    (0, 0, 0.4, 0),
     (0, 0, 0.5, 0),
     (0, 0, 0, 0),
 ]
@@ -138,8 +141,11 @@ def start_position_printing(scf):
 def run_sequence(scf, start_pos, sequence):
     cf = scf.cf
 
+    print("Start pos: (%.2f, %.2f, %.2f)" % (start_pos[0], start_pos[1], start_pos[2]))
+
     for position in sequence:
-        print('Setting position {}'.format(position))
+        goal  = [start_pos[i] + position[i] for i in range(len(start_pos))]
+        print('Setting position {}'.format(goal))
         for _ in range(50):
             cf.commander.send_position_setpoint(position[0] + start_pos[0],
                                                 position[1] + start_pos[1],
@@ -148,6 +154,7 @@ def run_sequence(scf, start_pos, sequence):
             time.sleep(0.1)
 
     cf.commander.send_stop_setpoint()
+
     # Make sure that the last packet leaves before the link is closed
     # since the message queue is not flushed before closing
     time.sleep(0.1)
