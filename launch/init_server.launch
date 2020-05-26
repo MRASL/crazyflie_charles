@@ -13,6 +13,12 @@
     <param name="dev" value="$(arg joy_dev)" />
   </node>
 
+  <!-- Map controller buttons to services -->
+  <node name="crazyflie_joystick_controller" pkg="crazyflie_charles" type="joy_controller.py" output="screen">
+    <param name="use_crazyflie_controller" value="True" />
+    <param name="joy_topic" value="/joy" />
+  </node>
+
   <!-- Launch swarm manager-->
   <node name="swarmManager" pkg="crazyflie_charles" type="swarmManager.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>

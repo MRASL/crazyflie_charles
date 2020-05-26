@@ -29,10 +29,10 @@
     </include>
 
     <!-- Map controller buttons to services -->
-    <node name="crazyflie_joystick_controller" pkg="crazyflie_charles" type="joy_controller.py" output="screen">
+    <!-- <node name="crazyflie_joystick_controller" pkg="crazyflie_charles" type="joy_controller.py" output="screen">
       <param name="use_crazyflie_controller" value="True" />
       <param name="joy_topic" value="/joy" />
-    </node>
+    </node> -->
 
     <!-- Position frame -->
     <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /$(arg cf_name)/base_link 100" />
