@@ -9,6 +9,7 @@ voir les commandes possibles: https://github.com/bitcraze/crazyflie-firmware/blo
 import rospy
 import tf
 import numpy as np
+from transitions import Machine
 
 from crazyflie_driver.msg import Hover, Position
 from std_msgs.msg import Empty as Empty_msg
@@ -26,16 +27,16 @@ class Crazyflie:
         self.world_frame = rospy.get_param("~worldFrame", "/world")
         self.rate = rospy.Rate(10)
 
+        # Declare services
         rospy.loginfo("waiting for update_params service...")
         rospy.wait_for_service(self.cf_id + '/update_params')
         rospy.loginfo("found update_params service")
         self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
-        # Declare services
         rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self.thrust_test)
-        rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
-        rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffHandler)   
-        rospy.Service(self.cf_id + '/land', Empty_srv, self.landHandler)        
+        rospy.Service(self.cf_id + '/stop', Empty_srv, self.stopServ)
+        rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffServ)   
+        rospy.Service(self.cf_id + '/land', Empty_srv, self.landServ)        
 
         # Declare publishers
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
@@ -78,7 +79,18 @@ class Crazyflie:
         self.initialY = 0
         self.initialZ = 0
 
-        # self.findInitialPose()
+        # Define state machine
+        self.states = ['pos_ctl', 'take_off', 'hover', 'land']
+        self.transitions = [
+            {'trigger': 'take_off_trig', 'source': 'pos_ctl', 'dest':'take_off'},
+            {'trigger': 'hover_trig', 'source': 'take_off', 'dest':'hover'},
+            {'trigger': 'land_trig', 'source': ['hover', 'take_off'], 'dest':'land'},
+            {'trigger': 'stop_trig', 'source': '*', 'dest':'pos_ctl'},
+        ]
+
+        self.sm = Machine(model=self, states=self.states, transitions=self.transitions, initial='pos_ctl')
+        # machine: Manages transitions and states
+        # sm: instance of the State Machine
 
     def pose_handler(self, data):
         """ Update crazyflie position in world
@@ -90,9 +102,8 @@ class Crazyflie:
         # rospy.loginfo("CF position: %.2f, %.2f, %.2f" % (self.poseX, self.poseY, self.poseZ))
 
     def findInitialPose(self):
-        """ Find the initial position of the crazyflie
+        """ Find the initial position of the crazyflie by calculating the mean during a time interval
         """
-        # rospy.sleep(3)
         rospy.loginfo("Estimating inital pos...")
         r = rospy.Rate(100)
         initialPose = {'x': [], 'y':[], 'z':[] } 
@@ -105,7 +116,7 @@ class Crazyflie:
         self.initialX = np.mean(initialPose['x'])
         self.initialY = np.mean(initialPose['y'])
         self.initialZ = np.mean(initialPose['z'])
-        rospy.loginfo("Initial position found at: %.2f, %.2f, %.2f" % (self.initialX, self.initialY, self.initialZ))
+        rospy.loginfo("Initial position: %.2f, %.2f, %.2f" % (self.initialX, self.initialY, self.initialZ))
 
     def setParam(self, name, value):
         """Changes the value of the given parameter.
@@ -118,23 +129,20 @@ class Crazyflie:
         rospy.set_param(self.cf_id + "/" + name, value)
         self.update_params([name])
 
-    def stop(self, req):
-        self.thrust = 0
-        self.to_hover = False
-        self.to_land = False
+    # Services handler
+    def stopServ(self, req):
+        self.stop_trig()
         return EmptyResponse_srv()
 
-    def takeOffHandler(self, req):
-        self.to_hover = True
-        self.to_land = False
+    def takeOffServ(self, req):
+        self.take_off_trig()
         return EmptyResponse_srv()
 
-    def landHandler(self, req):
-        self.to_hover = False
-        self.to_land = True
+    def landServ(self, req):
+        self.land_trig()
         return EmptyResponse_srv()
 
-    # Take off to z distance
+    # Methods depending on state
     def takeOff(self, zDistance):
         time_range = 1 + int(10*zDistance/0.4)
         while not rospy.is_shutdown():
@@ -204,35 +212,6 @@ class Crazyflie:
         rospy.loginfo("Thrust test over")
         return EmptyResponse_srv()
 
-    def cmd_vel(self, roll, pitch, yawrate, thrust):
-        """
-        Publish pose in cmd_vel topic
-        Args:
-            roll (float): Roll angle. Degrees. Positive values == roll right.
-            pitch (float): Pitch angle. Degrees. Positive values == pitch
-                forward/down.
-            yawrate (float): Yaw angular velocity. Degrees / second. Positive
-                values == turn counterclockwise.
-            thrust (float): Thrust magnitude. Non-meaningful units in [0, 2^16),
-                where the maximum value corresponds to maximum thrust.
-        """
-        msg = Twist()
-        msg.linear.x = pitch
-        msg.linear.y = roll
-        msg.angular.z = yawrate
-        msg.linear.z = thrust
-        self.cmd_vel_pub.publish(msg)
-
-    def cmd_hover(self, zDistance):
-        self.cmd_hover_msg.zDistance = zDistance
-        self.cmd_hover_pub.publish(self.cmd_hover_msg)
-
-    def cmd_pos(self, x, y, z):
-        self.cmd_pos_msg.x = x
-        self.cmd_pos_msg.y = y
-        self.cmd_pos_msg.z = z
-        self.cmd_pos_pub.publish(self.cmd_pos_msg)
-
     def testThrust(self):
         rate = rospy.Rate(100)
         self.cmd_vel(0, 0, 0, self.thrust)
@@ -272,18 +251,51 @@ class Crazyflie:
             self.cmd_pos(x_goal, y_goal, z_goal)
             self.rate.sleep()
 
+    # PUblishing methods
+    def cmd_vel(self, roll, pitch, yawrate, thrust):
+        """
+        Publish pose in cmd_vel topic
+        Args:
+            roll (float): Roll angle. Degrees. Positive values == roll right.
+            pitch (float): Pitch angle. Degrees. Positive values == pitch
+                forward/down.
+            yawrate (float): Yaw angular velocity. Degrees / second. Positive
+                values == turn counterclockwise.
+            thrust (float): Thrust magnitude. Non-meaningful units in [0, 2^16),
+                where the maximum value corresponds to maximum thrust.
+        """
+        msg = Twist()
+        msg.linear.x = pitch
+        msg.linear.y = roll
+        msg.angular.z = yawrate
+        msg.linear.z = thrust
+        self.cmd_vel_pub.publish(msg)
+
+    def cmd_hover(self, zDistance):
+        self.cmd_hover_msg.zDistance = zDistance
+        self.cmd_hover_pub.publish(self.cmd_hover_msg)
+
+    def cmd_pos(self, x, y, z):
+        self.cmd_pos_msg.x = x
+        self.cmd_pos_msg.y = y
+        self.cmd_pos_msg.z = z
+        self.cmd_pos_pub.publish(self.cmd_pos_msg)
+
+    # Main method
     def run(self):
-        if not self.to_hover and not self.to_land:
-            self.testThrust()
+        rospy.loginfo(self.state)
 
-        elif self.to_hover:
-            # self.takeOff(0.6)
-            self.posTest()
-            self.to_hover = False
+        # if not self.to_hover and not self.to_land:
+        #     self.testThrust()
 
-        elif self.to_land:
-            self.land()
-            self.to_land = False
+        # elif self.to_hover:
+        #     # self.takeOff(0.6)
+        #     self.posTest()
+        #     self.to_hover = False
+
+        # elif self.to_land:
+        #     self.land()
+        #     self.to_land = False
 
 
 if __name__ == '__main__':
