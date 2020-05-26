@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+
+<launch>  
+  <!-- Crazyflie args -->
+  <arg name="cf_name" default="crazyflie" />
+  <arg name="uri" default="radio://0/105/2M/0xE7E7E7E702" />
+  <arg name="frame" default="crazyflie/crazyflie" />
+  <arg name="to_teleop" default="true"/>
+  
+  <!-- Create crazyflie -->
+  <group ns="$(arg cf_name)">
+
+    <!-- Add CF to server -->
+    <include file="$(find crazyflie_driver)/launch/crazyflie_add.launch">
+      <arg name="uri" value="$(arg uri)" />
+      <arg name="tf_prefix" value="$(arg cf_name)" />
+      <arg name="roll_trim" default="0" />
+      <arg name="pitch_trim" default="0" />
+
+      <arg name="enable_logging" default="True" />
+      <arg name="use_ros_time" default="True" />
+      <arg name="enable_logging_imu" default="True" />
+      <arg name="enable_logging_temperature" default="True" />
+      <arg name="enable_logging_magnetic_field" default="True" />
+      <arg name="enable_logging_pressure" default="True" />
+      <arg name="enable_logging_battery" default="True" />
+      <arg name="enable_logging_pose" default="True" />
+      <arg name="enable_logging_packets" default="True" />
+    </include>
+
+    <!-- Map controller buttons to services -->
+    <node name="crazyflie_joystick_controller" pkg="crazyflie_charles" type="joy_controller.py" output="screen">
+      <param name="use_crazyflie_controller" value="True" />
+      <param name="joy_topic" value="/joy" />
+    </node>
+
+    <!-- Position frame -->
+    <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /$(arg cf_name)/base_link 100" />
+  
+    <node name="crazyflie_broadcaster" pkg="crazyflie_charles" type="crazyflie_tf.py" output="screen">
+      <param name="cf_name" value="$(arg cf_name)" />
+      <param name="frame" value="$(arg frame)" />
+    </node>
+
+    <!-- Start quadrotor_teleop -->
+    <group if="$(arg to_teleop)">
+      <remap from="/$(arg cf_name)/joy" to="/joy"/>
+      <include file="$(find crazyflie_charles)/launch/ds4.launch">
+      </include>
+    </group>
+
+    <node name="crazyflie_hover" pkg="crazyflie_charles" type="crazyflie.py" output="screen">
+    </node>
+
+  </group>
+
+  <!-- run rviz -->
+  <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find crazyflie_charles)/launch/crazyflie_pos.rviz" required="true" />
+
+</launch>

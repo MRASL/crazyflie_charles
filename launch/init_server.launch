@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="joy_dev" default="/dev/input/js0" />
+
+  <!-- Launch server -->
+  <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
+  </include>
+
+  <!-- Initiate joystick -->
+  <node name="joy" pkg="joy" type="joy_node" output="screen" >
+    <param name="dev" value="$(arg joy_dev)" />
+  </node>
+
+  <!-- Rviz markers -->
+  <node name="rviz_markers" pkg="crazyflie_charles" type="rviz_markers.py" output="screen" >
+  </node>
+
+</launch>
