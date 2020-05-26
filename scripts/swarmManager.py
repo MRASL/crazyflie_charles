@@ -39,19 +39,22 @@ class Swarm:
         rospy.logerr("EMERGENCY")
         for each_emergency in self._emergency_list:
             each_emergency()
-            
+
         return srv.EmptyResponse()
 
     def stop(self, req):
         print("STOP")
+        for cf in self.crazyflies: cf.stop_trig()
         return srv.EmptyResponse()
     
     def takeOff(self, req):
         print("TAKE OFF")
+        for cf in self.crazyflies: cf.take_off_trig()
         return srv.EmptyResponse()
     
     def land(self, req):
         print("LAND")
+        for cf in self.crazyflies: cf.land_trig()
         return srv.EmptyResponse()
         
 if __name__ == '__main__':
