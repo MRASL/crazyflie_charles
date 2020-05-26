@@ -2,6 +2,7 @@
 
 <launch>
   <arg name="joy_dev" default="/dev/input/js0" />
+  <arg name="cf_list" default="['cf1']" />
 
   <!-- Launch server -->
   <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
@@ -11,6 +12,12 @@
   <node name="joy" pkg="joy" type="joy_node" output="screen" >
     <param name="dev" value="$(arg joy_dev)" />
   </node>
+
+  <!-- Launch swarm manager-->
+  <node name="swarmManager" pkg="crazyflie_charles" type="swarmManager.py" output="screen">
+    <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
+  </node>
+ 
 
   <!-- Rviz markers -->
   <node name="rviz_markers" pkg="crazyflie_charles" type="rviz_markers.py" output="screen" >

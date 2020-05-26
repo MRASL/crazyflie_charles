@@ -33,10 +33,10 @@ class Crazyflie:
         rospy.loginfo("found update_params service")
         self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
-        rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self.thrust_test)
-        rospy.Service(self.cf_id + '/stop', Empty_srv, self.stopServ)
-        rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffServ)   
-        rospy.Service(self.cf_id + '/land', Empty_srv, self.landServ)        
+        # rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self.thrust_test)
+        # rospy.Service(self.cf_id + '/stop', Empty_srv, self.stopServ)
+        # rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffServ)   
+        # rospy.Service(self.cf_id + '/land', Empty_srv, self.landServ)        
 
         # Declare publishers
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
@@ -129,6 +129,9 @@ class Crazyflie:
         rospy.set_param(self.cf_id + "/" + name, value)
         self.update_params([name])
 
+    def getId(self):
+        return self.cf_id
+
     # Services handler
     def stopServ(self, req):
         self.stop_trig()
@@ -143,30 +146,45 @@ class Crazyflie:
         return EmptyResponse_srv()
 
     # Methods depending on state
-    def takeOff(self, zDistance):
-        time_range = 1 + int(10*zDistance/0.4)
-        while not rospy.is_shutdown():
-            rospy.loginfo("Taking off, duration %i" % time_range)
-            for y in range(time_range):
-                if not self.to_hover: break
-                z = y / 25.0
-                self.cmd_hover_msg.header.seq += 1
-                self.cmd_hover_msg.header.stamp = rospy.Time.now()
-                self.cmd_hover(z)
-                self.rate.sleep()
+    def on_enter_take_off(self):
+        self.findInitialPose()
 
-            rospy.loginfo("Hovering")
-            for y in range(50):
-                if not self.to_hover: break
-                self.cmd_hover_msg.header.seq += 1
-                self.cmd_hover_msg.header.stamp = rospy.Time.now()
-                self.cmd_hover(zDistance)
-                self.rate.sleep()
-            
-            rospy.loginfo("Done")
-            break
+        dZ = 0.5
+        x_goal = self.initialX
+        y_goal = self.initialY
+        z_goal = self.initialZ + dZ
 
-    def land (self):
+        rospy.loginfo("Going to (%.2f, %.2f, %.2f)" % (x_goal, y_goal, z_goal))
+
+        time_range = 1*10
+        z_inc = dZ/time_range
+        
+        
+        for i in range(time_range):
+            if rospy.is_shutdown(): break
+
+            z = i*z_inc + self.initialZ
+
+            self.cmd_hover_msg.header.seq += 1
+            self.cmd_hover_msg.header.stamp = rospy.Time.now()
+
+            self.cmd_pos(x_goal, y_goal, z)
+            self.rate.sleep()
+            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % (x_goal, y_goal, z, self.poseX, self.poseY, self.poseZ))
+
+        rospy.loginfo("Pos reached (%.2f, %.2f, %.2f)" % (self.poseX, self.poseY, self.poseZ))
+        self.hover_trig()
+    
+    def on_enter_hover(self):
+        rospy.loginfo("HOVERING")
+
+        # while self.to_hover and not rospy.is_shutdown():
+        #     self.cmd_pos_msg.header.seq += 1
+        #     self.cmd_pos_msg.header.stamp = rospy.Time.now()
+        #     self.cmd_pos(x_goal, y_goal, z_goal)
+        #     self.rate.sleep()
+
+    def on_enter_land(self):
         zGround = 0.2
 
         x_start = self.poseX
@@ -182,18 +200,25 @@ class Crazyflie:
         z_dec = dZ/time_range
         
         for i in range(time_range):
-            if not self.to_land or rospy.is_shutdown(): break
+            if rospy.is_shutdown(): break
 
             z = self.initialZ - i*z_dec 
 
             self.cmd_hover_msg.header.seq += 1
             self.cmd_hover_msg.header.stamp = rospy.Time.now()
 
-            self.cmd_pos(x_start, y_start, z)
+            # self.cmd_pos(x_start, y_start, z)
             self.rate.sleep()
             rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % (x_start, y_start, z, self.poseX, self.poseY, self.poseZ))
 
         rospy.loginfo("Landed (%.2f, %.2f, %.2f)" % (self.poseX, self.poseY, self.poseZ))
+
+        self.stop_trig()
+
+    def on_enter_pos_ctl(self):
+        rospy.loginfo("Stoping")
+        self.cmd_vel(0, 0, 0, 0)
+        self.rate.sleep()
 
     # TODO
     def thrust_test(self, req):
@@ -216,40 +241,6 @@ class Crazyflie:
         rate = rospy.Rate(100)
         self.cmd_vel(0, 0, 0, self.thrust)
         rate.sleep()
-
-    def posTest(self):
-        self.findInitialPose()
-
-        dZ = 0.5
-        x_goal = self.initialX
-        y_goal = self.initialY
-        z_goal = self.initialZ + dZ
-
-        rospy.loginfo("Going to (%.2f, %.2f, %.2f)" % (x_goal, y_goal, z_goal))
-
-        time_range = 1*10
-        z_inc = dZ/time_range
-        
-        
-        for i in range(time_range):
-            if not self.to_hover or rospy.is_shutdown(): break
-
-            z = i*z_inc + self.initialZ
-
-            self.cmd_hover_msg.header.seq += 1
-            self.cmd_hover_msg.header.stamp = rospy.Time.now()
-
-            self.cmd_pos(x_goal, y_goal, z)
-            self.rate.sleep()
-            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % (x_goal, y_goal, z, self.poseX, self.poseY, self.poseZ))
-
-        rospy.loginfo("Pos reached (%.2f, %.2f, %.2f)" % (self.poseX, self.poseY, self.poseZ))
-        
-        while self.to_hover and not rospy.is_shutdown():
-            self.cmd_pos_msg.header.seq += 1
-            self.cmd_pos_msg.header.stamp = rospy.Time.now()
-            self.cmd_pos(x_goal, y_goal, z_goal)
-            self.rate.sleep()
 
     # PUblishing methods
     def cmd_vel(self, roll, pitch, yawrate, thrust):
@@ -304,8 +295,9 @@ if __name__ == '__main__':
     rospy.loginfo('Initialisation de ' + cf_id)
     cf1 = Crazyflie(cf_id)
     
-    # rospy.spin()
-    start_time = rospy.get_rostime()
-    toggled = False
-    while not rospy.is_shutdown():
-        cf1.run()
+    rospy.spin()
+
+    # start_time = rospy.get_rostime()
+    # toggled = False
+    # while not rospy.is_shutdown():
+        # cf1.run()

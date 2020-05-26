@@ -3,7 +3,7 @@
 <launch>  
   <!-- Crazyflie args -->
   <arg name="cf_name" default="crazyflie" />
-  <arg name="uri" default="radio://0/105/2M/0xE7E7E7E702" />
+  <arg name="uri" default="radio://0/105/2M/0xE7E7E7E701" />
   <arg name="frame" default="crazyflie/crazyflie" />
   <arg name="to_teleop" default="true"/>
   
@@ -49,8 +49,8 @@
       </include>
     </group>
 
-    <node name="crazyflie_hover" pkg="crazyflie_charles" type="crazyflie.py" output="screen">
-    </node>
+    <!-- <node name="crazyflie_hover" pkg="crazyflie_charles" type="crazyflie.py" output="screen">
+    </node> -->
 
   </group>
 

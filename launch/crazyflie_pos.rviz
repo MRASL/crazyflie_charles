@@ -4,7 +4,8 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Marker1
+        - /RobotModel1
+        - /TF1/Frames1
       Splitter Ratio: 0.6172410249710083
     Tree Height: 695
   - Class: rviz/Selection
@@ -17,7 +18,8 @@ Panels:
     Name: Tool Properties
     Splitter Ratio: 0.5886790156364441
   - Class: rviz/Views
-    Expanded: ~
+    Expanded:
+      - /Current View1
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
@@ -67,7 +69,7 @@ Visualization Manager:
           Value: true
       Name: RobotModel
       Robot Description: robot_description
-      TF Prefix: crazyflie1
+      TF Prefix: cf1
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -91,17 +93,22 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        crazyflie1/base_link:
+        cf1/base_link:
           Value: false
-        crazyflie1/crazyflie1:
+        cf1/cf1:
           Value: false
+        world:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: false
       Show Axes: true
       Show Names: false
       Tree:
-        {}
+        world:
+          cf1/cf1:
+            cf1/base_link:
+              {}
       Update Interval: 0
       Value: true
     - Class: rviz/Marker
@@ -109,7 +116,7 @@ Visualization Manager:
       Marker Topic: visualization_marker
       Name: Marker
       Namespaces:
-        {}
+        bed: true
       Queue Size: 100
       Value: true
   Enabled: true
