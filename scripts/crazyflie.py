@@ -9,7 +9,7 @@ voir les commandes possibles: https://github.com/bitcraze/crazyflie-firmware/blo
 import rospy
 import tf
 import numpy as np
-from transitions import Machine
+import thread
 
 from crazyflie_driver.msg import Hover, Position
 from std_msgs.msg import Empty as Empty_msg
@@ -30,12 +30,7 @@ class Crazyflie:
         rospy.loginfo("waiting for update_params service...")
         rospy.wait_for_service(self.cf_id + '/update_params')
         rospy.loginfo("found update_params service")
-        self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
-
-        # rospy.Service(self.cf_id + '/thrust_test', Empty_srv, self.thrust_test)
-        # rospy.Service(self.cf_id + '/stop', Empty_srv, self.stopServ)
-        # rospy.Service(self.cf_id + '/takeoff', Empty_srv, self.takeOffServ)   
-        # rospy.Service(self.cf_id + '/land', Empty_srv, self.landServ)        
+        self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)     
 
         # Declare publishers
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
@@ -68,33 +63,21 @@ class Crazyflie:
 
         self.thrust = 0
         self.to_land = False
+        self.to_hover = False
 
         self.pose = [0, 0 , 0]
         self.intial_pose = [0, 0, 0]
         self.goal = [0, 0, 0]
 
-        # Define state machine
-        self.state = None
-        self.states = ['landed', 'take_off', 'hovering', 'land']
-        self.transitions = [
-            {'trigger': 'take_off_trig', 'source': 'landed', 'dest':'take_off'},
-            {'trigger': 'hover_trig', 'source': 'take_off', 'dest':'hovering'},
-            {'trigger': 'land_trig', 'source': ['hovering', 'take_off'], 'dest':'land'},
-            {'trigger': 'stop_trig', 'source': '*', 'dest':'landed'},
-        ]
-
-        self.sm = Machine(model=self, states=self.states, transitions=self.transitions, initial='landed')
-        # machine: Manages transitions and states
-        # sm: instance of the State Machine
+        self.states = ["take_off", "land", "hover", "stop"]
+        self.state = ""
 
     def pose_handler(self, data):
         """ Update crazyflie position in world
         """
-        self.poseX = data.pose.position.x
-        self.poseY = data.pose.position.y
-        self.poseZ = data.pose.position.z
-
-        # rospy.loginfo("CF position: %.2f, %.2f, %.2f" % (self.poseX, self.poseY, self.poseZ))
+        self.pose[0] = data.pose.position.x
+        self.pose[1] = data.pose.position.y
+        self.pose[2] = data.pose.position.z
 
     def findInitialPose(self):
         """ Find the initial position of the crazyflie by calculating the mean during a time interval
@@ -103,9 +86,9 @@ class Crazyflie:
         r = rospy.Rate(100)
         initialPose = {'x': [], 'y':[], 'z':[] } 
         while len(initialPose['x']) < 10:
-            initialPose['x'].append(self.poseX)
-            initialPose['y'].append(self.poseY)
-            initialPose['z'].append(self.poseZ)
+            initialPose['x'].append(self.pose[0])
+            initialPose['y'].append(self.pose[1])
+            initialPose['z'].append(self.pose[2])
             r.sleep()
         
         self.intial_pose[0] = np.mean(initialPose['x'])
@@ -127,8 +110,31 @@ class Crazyflie:
     def getId(self):
         return self.cf_id
 
+    # To change states
+    def _setState(self, newState):
+        if newState in self.states:
+            self.state = newState
+        else:
+            rospy.logerr("Invalid State: %s" % newState)
+
+    def take_off(self):
+        rospy.loginfo("Take off")
+        self._setState("take_off")
+
+    def hover(self):
+        rospy.loginfo("Hover")
+        self._setState("hover")
+
+    def land(self):
+        rospy.loginfo("Landing")
+        self._setState("land")
+
+    def stop(self):
+        rospy.loginfo("Stoping")
+        self._setState("stop")
+
     # Methods depending on state
-    def on_enter_take_off(self):
+    def _take_off(self):
         self.findInitialPose()
 
         dZ = 0.5
@@ -143,7 +149,7 @@ class Crazyflie:
         
         
         for i in range(time_range):
-            if rospy.is_shutdown(): break
+            if rospy.is_shutdown() or self.state is not "take_off": break
 
             z = i*z_inc + self.intial_pose[2]
 
@@ -151,23 +157,24 @@ class Crazyflie:
             self.cmd_hovering_msg.header.stamp = rospy.Time.now()
 
             self.cmd_pos(self.goal[0], self.goal[1], z)
+
             self.rate.sleep()
             rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % (self.goal[0], self.goal[0], z, self.pose[0], self.pose[1], self.pose[2]))
 
         rospy.loginfo("Pos reached {}".format(self.pose))
-        self.hover_trig()
-    
-    def on_enter_hovering(self):
-        rospy.loginfo("HOVERING")
-        rospy.loginfo(self.state)
 
-        while self.state == "hovering" and not rospy.is_shutdown():
-            self.cmd_pos_msg.header.seq += 1
-            self.cmd_pos_msg.header.stamp = rospy.Time.now()
-            self.cmd_pos(self.goal[0], self.goal[1], self.goal[2])
-            self.rate.sleep()
+        if self.state is "take_off":
+            self.hover()
 
-    def on_enter_land(self):
+    def _hover(self):
+
+        rospy.loginfo("Hovering")
+        self.cmd_pos_msg.header.seq += 1
+        self.cmd_pos_msg.header.stamp = rospy.Time.now()
+        self.cmd_pos(self.goal[0], self.goal[1], self.goal[2])
+        self.rate.sleep()
+
+    def _land(self):
         zGround = 0.2
 
         x_start = self.pose[0]
@@ -176,14 +183,13 @@ class Crazyflie:
 
         dZ = z_start - zGround
 
-        rospy.loginfo("Landing")
 
         time_range = 2*10
 
         z_dec = dZ/time_range
         
         for i in range(time_range):
-            if rospy.is_shutdown(): break
+            if rospy.is_shutdown() or self.state is not "land": break
 
             z = z_start - i*z_dec 
 
@@ -191,18 +197,17 @@ class Crazyflie:
             self.cmd_hovering_msg.header.stamp = rospy.Time.now()
 
             self.cmd_pos(x_start, y_start, z)
+
             self.rate.sleep()
             rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % (x_start, y_start, z, self.pose[0], self.pose[1], self.pose[2]))
 
         rospy.loginfo("Landed {}".format(self.pose))
 
-        self.stop_trig()
+        self.stop()
 
-    def on_enter_landed(self):
-        rospy.loginfo("Stoping")
-        while self.state == "landed" and not rospy.is_shutdown():
-            self.cmd_vel(0, 0, 0, 0)
-            self.rate.sleep()
+    def _stop(self):
+        self.cmd_vel(0, 0, 0, 0)
+        self.rate.sleep()
 
     # PUblishing methods
     def cmd_vel(self, roll, pitch, yawrate, thrust):
@@ -233,3 +238,13 @@ class Crazyflie:
         self.cmd_pos_msg.y = y
         self.cmd_pos_msg.z = z
         self.cmd_pos_pub.publish(self.cmd_pos_msg)
+
+    def run_auto(self):
+        if self.state == "take_off":
+            self._take_off()
+        elif self.state == "hover":
+            self._hover()
+        elif self.state == "land":
+            self._land()
+        else:
+            self._stop()

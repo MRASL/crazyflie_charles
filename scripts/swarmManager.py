@@ -44,19 +44,22 @@ class Swarm:
 
     def stop(self, req):
         print("STOP")
-        for cf in self.crazyflies: cf.stop_trig()
+        for cf in self.crazyflies: cf.stop()
         return srv.EmptyResponse()
     
     def takeOff(self, req):
         print("TAKE OFF")
-        for cf in self.crazyflies: cf.take_off_trig()
+        for cf in self.crazyflies: cf.take_off()
         return srv.EmptyResponse()
     
     def land(self, req):
         print("LAND")
-        for cf in self.crazyflies: cf.land_trig()
+        for cf in self.crazyflies: cf.land()
         return srv.EmptyResponse()
-        
+    
+    def run_auto(self):
+        for cf in self.crazyflies: cf.run()
+
 if __name__ == '__main__':
     rospy.init_node('swarmManager', anonymous=False)
     rospy.loginfo('Initialisation du swarm manager')
@@ -64,4 +67,5 @@ if __name__ == '__main__':
     swarm = Swarm(cf_list)
 
     
-    rospy.spin()
+    while not rospy.is_shutdown():
+        swarm.run_auto()
