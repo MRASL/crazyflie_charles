@@ -24,11 +24,13 @@ L2 = 6
 R2 = 7
 
 #TODO: Move goal
+#! Only cf1 name is supported
 
 class Axis:
     def __init__(self):
         self.axis_num = 0
-        self.max = 0
+        self.max_vel = 0
+        self.max_goal = 0
 
 class Axes:
     def __init__(self):
@@ -39,6 +41,42 @@ class Axes:
 
 class Controller():
     def __init__(self, joy_topic):
+        # Subscriber
+        rospy.Subscriber(joy_topic, Joy, self._joyChanged)
+        
+        # Publisher
+        # TODO Update to publish on cf_names from params
+        self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
+        self.vel_msg = Twist()
+        
+        self.goal_publisher = rospy.Publisher("goal_swarm", Pose, queue_size=1)
+        self.goal_msg = Pose()
+        self.goal_msg.orientation.x = 0
+        self.goal_msg.orientation.y = 0
+        self.goal_msg.orientation.z = 0
+        self.goal_msg.orientation.w = 0
+
+        # Parameters
+        self._buttons = None   # Store last buttons
+        self._to_teleop = False
+        self.rate = rospy.Rate(100)
+
+        self.axes = Axes()
+        self.axes.x.axis_num = rospy.get_param("~x_axis", 4)
+        self.axes.y.axis_num = rospy.get_param("~y_axis", 3)
+        self.axes.z.axis_num = rospy.get_param("~z_axis", 2)
+        self.axes.yaw.axis_num = rospy.get_param("~yaw_axis", 1)
+        
+        self.axes.x.max_vel = rospy.get_param("~x_velocity_max", 2.0)
+        self.axes.y.max_vel = rospy.get_param("~y_velocity_max", 2.0)
+        self.axes.z.max_vel = rospy.get_param("~z_velocity_max", 2.0)
+        self.axes.yaw.max_vel = rospy.get_param("~yaw_velocity_max", 2.0)
+        
+        self.axes.x.max_goal = rospy.get_param("~x_goal_max", 0.05)
+        self.axes.y.max_goal = rospy.get_param("~y_goal_max", 0.05)
+        self.axes.z.max_goal = rospy.get_param("~z_goal_max", 0.05)
+
+    def _init_services(self):
         # Subscribe to services
         rospy.loginfo("waiting for params service")
         rospy.wait_for_service('update_params')
@@ -70,47 +108,22 @@ class Controller():
         rospy.loginfo("found stop service")
         self._stop = rospy.ServiceProxy('stop', Empty)
 
-        # Subscriber
-        rospy.Subscriber(joy_topic, Joy, self._joyChanged)
-        
-        # Publisher
-        # TODO Update to publish on cf_names from params
-        self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
-        self.vel_msg = Twist()
-        
-        self.goal_publisher = rospy.Publisher("goal", Pose, queue_size=1)
-        self.goal_msg = Pose()
-        self.goal_msg.orientation.x = 0
-        self.goal_msg.orientation.y = 0
-        self.goal_msg.orientation.z = 0
-        self.goal_msg.orientation.w = 0
-
-        # Parameters
-        self._buttons = None   # Store last buttons
-        self._to_teleop = False
-        self.rate = rospy.Rate(100)
-
-        self.axes = Axes()
-        self.axes.x.axis_num = rospy.get_param("~x_axis", 4)
-        self.axes.y.axis_num = rospy.get_param("~y_axis", 3)
-        self.axes.z.axis_num = rospy.get_param("~z_axis", 2)
-        self.axes.yaw.axis_num = rospy.get_param("~yaw_axis", 1)
-        
-        self.axes.x.max = rospy.get_param("~x_velocity_max", 2.0)
-        self.axes.y.max = rospy.get_param("~y_velocity_max", 2.0)
-        self.axes.z.max = rospy.get_param("~z_velocity_max", 2.0)
-        self.axes.yaw.max = rospy.get_param("~yaw_velocity_max", 2.0)
-
     def _joyChanged(self, data):
         # Read the buttons
         self._getButtons(data.buttons)
         
-        self.vel_msg.linear.x = self._getAxis(data.axes, self.axes.x)
-        self.vel_msg.linear.y = self._getAxis(data.axes, self.axes.y)
-        self.vel_msg.linear.z = self._getAxis(data.axes, self.axes.z)
-        self.vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw)
+        if self.in_teleop():
+            self.vel_msg.linear.x = self._getAxis(data.axes, self.axes.x)
+            self.vel_msg.linear.y = self._getAxis(data.axes, self.axes.y)
+            self.vel_msg.linear.z = self._getAxis(data.axes, self.axes.z)
+            self.vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw)
+        
+        else:
+            self.goal_msg.position.x = self._getAxis(data.axes, self.axes.x, False) + self.goal_msg.position.x
+            self.goal_msg.position.y = self._getAxis(data.axes, self.axes.y, False) + self.goal_msg.position.y
+            self.goal_msg.position.z = self._getAxis(data.axes, self.axes.z, False) + self.goal_msg.position.z
 
-    def _getAxis(self, axesData, axisToRead):
+    def _getAxis(self, axesData, axisToRead, measureVel=True):
         sign = 1.0
         if axisToRead.axis_num < 0:
             sign = -1.0
@@ -121,7 +134,7 @@ class Controller():
             return 0
 
         val = axesData[axisToRead.axis_num]
-        max_val = axisToRead.max
+        max_val = axisToRead.max_vel if measureVel else axisToRead.max_goal
 
         return sign * val * max_val
 
@@ -172,6 +185,10 @@ class Controller():
         while not rospy.is_shutdown():
             if self.in_teleop():
                 self.vel_publisher.publish(self.vel_msg)
+
+            else:
+                self.goal_publisher.publish(self.goal_msg)
+
             self.rate.sleep()
 
 if __name__ == '__main__':
