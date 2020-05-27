@@ -21,6 +21,7 @@ class Controller():
         self._L2 = 6
         self._R2 = 7
 
+        rospy.loginfo("waiting for emergency service")
         rospy.wait_for_service('update_params')
         rospy.loginfo("found update_params service")
         self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
@@ -95,19 +96,19 @@ class Controller():
                     # print("Stop")
                     self._stop()
 
-                if i == self._L2 and data.buttons[i] == 1:
-                    value = int(rospy.get_param("ring/headlightEnable"))
-                    if value == 0:
-                        rospy.set_param("ring/headlightEnable", 1)
-                    else:
-                        rospy.set_param("ring/headlightEnable", 0)
-                    self._update_params(["ring/headlightEnable"])
-                    rospy.loginfo('Head light: %s'  % (not value))
+                # if i == self._L2 and data.buttons[i] == 1:
+                #     value = int(rospy.get_param("ring/headlightEnable"))
+                #     if value == 0:
+                #         rospy.set_param("ring/headlightEnable", 1)
+                #     else:
+                #         rospy.set_param("ring/headlightEnable", 0)
+                #     self._update_params(["ring/headlightEnable"])
+                #     rospy.loginfo('Head light: %s'  % (not value))
 
         self._buttons = data.buttons
 
 if __name__ == '__main__':
-    rospy.init_node('crazyflie_demo_controller', anonymous=True)
+    rospy.init_node('crazyflie_joy_controller', anonymous=True)
     use_controller = rospy.get_param("~use_crazyflie_controller", False)
     joy_topic = rospy.get_param("~joy_topic", "joy")
     controller = Controller(use_controller, joy_topic)
