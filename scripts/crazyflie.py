@@ -56,6 +56,7 @@ class Crazyflie:
         self.cmd_stop_msg = Empty_msg()
 
         # Declare subscriptions
+        self.pose = [0, 0 , 0]
         rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self.pose_handler)
 
         # Set parameters
@@ -65,7 +66,6 @@ class Crazyflie:
         self.to_land = False
         self.to_hover = False
 
-        self.pose = [0, 0 , 0]
         self.intial_pose = [0, 0, 0]
         self.goal = [0, 0, 0]
 

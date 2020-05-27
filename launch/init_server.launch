@@ -15,8 +15,17 @@
 
   <!-- Map controller buttons to services -->
   <node name="crazyflie_joystick_controller" pkg="crazyflie_charles" type="joy_controller.py" output="screen">
-    <param name="use_crazyflie_controller" value="True" />
     <param name="joy_topic" value="/joy" />
+
+    <!-- Axis number, start at 0 -->
+    <param name="x_axis" value="1"/>
+    <param name="y_axis" value="0"/>
+    <param name="z_axis" value="5"/>
+    <param name="yaw_axis" value="2"/>
+    <param name="x_velocity_max" value="30"/>
+    <param name="y_velocity_max" value="-30"/>
+    <param name="z_velocity_max" value="60000"/>
+    <param name="yaw_velocity_max" value="-200"/>
   </node>
 
   <!-- Launch swarm manager-->
