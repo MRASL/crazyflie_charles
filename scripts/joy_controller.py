@@ -60,6 +60,8 @@ class Axes:
 
 class Controller():
     def __init__(self, joy_topic):
+        self._init_services()
+        
         # Subscriber
         rospy.Subscriber(joy_topic, Joy, self._joyChanged)
         
