@@ -8,6 +8,7 @@ import rospy
 import tf
 from crazyflie import Crazyflie
 
+from geometry_msgs.msg import Pose
 from std_srvs import srv
 
 
@@ -15,6 +16,7 @@ class Swarm:
     def __init__(self, cf_list):
         self.crazyflies = []
         self._emergency_list = []
+        self._goal_publisher_list = []
         for each_cf in cf_list:
             self.crazyflies.append(Crazyflie(each_cf))
             rospy.loginfo("waiting for emergency service of " + each_cf)
@@ -22,6 +24,7 @@ class Swarm:
             rospy.loginfo("found emergency service of " + each_cf)
             self._emergency_list.append(rospy.ServiceProxy('/' + each_cf + '/emergency', srv.Empty))
 
+            self._goal_publisher_list.append(rospy.Publisher('/' + each_cf + '/goal', Pose, queue_size=1))
 
         # Launch services
         rospy.Service('/update_params', srv.Empty, self.update_params)
@@ -30,6 +33,9 @@ class Swarm:
         rospy.Service('/takeoff', srv.Empty, self.takeOff)   
         rospy.Service('/land', srv.Empty, self.land)      
         rospy.Service('/toggleTeleop', srv.Empty, self.toggleTeleop)   
+
+        # Subscribe
+        rospy.Subscriber("goal_swarm", Pose, self.broadcast_goal)
 
         self._to_teleop = False   
 
@@ -68,6 +74,10 @@ class Swarm:
         for cf in self.crazyflies: cf.land()
         return srv.EmptyResponse()
     
+    def broadcast_goal(self, goal):
+        for each_pub in self._goal_publisher_list:
+            each_pub.publish(goal)
+
     def run_auto(self):
         for cf in self.crazyflies: cf.run_auto()
 

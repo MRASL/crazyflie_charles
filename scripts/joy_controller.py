@@ -26,6 +26,25 @@ R2 = 7
 #TODO: Move goal
 #! Only cf1 name is supported
 
+"""
+#TODO
+1. Facon de setter le goal initial de la swarm selon sa pos
+2. Quand CF take off, verifie que son goal est dans un certain delta en x, y et se base dessus pour le dZ
+3. take off jusqu'a la hauteur
+4. Suit le /cf1/goal
+
+- Plus complexe,
+Structure pour etape 1: 
+    - Swarm manager get les pos initial des CF
+    - Determine le centre selon formation
+    - Set le goal initial du joy_controller
+
+    - Utiliser des services
+
+- Plus simple: 
+Hard code les valeurs de depart
+"""
+
 class Axis:
     def __init__(self):
         self.axis_num = 0
