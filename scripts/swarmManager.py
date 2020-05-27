@@ -29,36 +29,48 @@ class Swarm:
         rospy.Service('/stop', srv.Empty, self.stop)
         rospy.Service('/takeoff', srv.Empty, self.takeOff)   
         rospy.Service('/land', srv.Empty, self.land)      
+        rospy.Service('/toggleTeleop', srv.Empty, self.toggleTeleop)   
 
+        self._to_teleop = False   
+
+    # Setter & getters
+    def in_teleop(self):
+        return self._to_teleop
+        
     # Services methods
+    def toggleTeleop(self, req):
+        self._to_teleop = not self._to_teleop
+        return srv.EmptyResponse()
+
     def update_params(self, req):
-        print("UPDATE PARAMS")
+        rospy.loginfo("Swarm: Update params")
         return srv.EmptyResponse()
 
     def emergency(self, req):
-        rospy.logerr("EMERGENCY")
+        rospy.logerr("Swarm: EMERGENCY")
         for each_emergency in self._emergency_list:
             each_emergency()
 
         return srv.EmptyResponse()
 
     def stop(self, req):
-        print("STOP")
+        rospy.loginfo("Swarm: stop")
         for cf in self.crazyflies: cf.stop()
         return srv.EmptyResponse()
     
     def takeOff(self, req):
-        print("TAKE OFF")
+        rospy.loginfo("Swarm: take off")
         for cf in self.crazyflies: cf.take_off()
         return srv.EmptyResponse()
     
     def land(self, req):
-        print("LAND")
+        rospy.loginfo("Swarm: land")
         for cf in self.crazyflies: cf.land()
         return srv.EmptyResponse()
     
     def run_auto(self):
-        for cf in self.crazyflies: cf.run()
+        for cf in self.crazyflies: cf.run_auto()
+
 
 if __name__ == '__main__':
     rospy.init_node('swarmManager', anonymous=False)
@@ -66,6 +78,6 @@ if __name__ == '__main__':
     cf_list = rospy.get_param("~cf_list", "['cf1']")
     swarm = Swarm(cf_list)
 
-    
     while not rospy.is_shutdown():
-        swarm.run_auto()
+        if not swarm.in_teleop():
+            swarm.run_auto()

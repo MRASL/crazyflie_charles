@@ -118,19 +118,19 @@ class Crazyflie:
             rospy.logerr("Invalid State: %s" % newState)
 
     def take_off(self):
-        rospy.loginfo("Take off")
+        rospy.loginfo("%s: Take off" % self.cf_id)
         self._setState("take_off")
 
     def hover(self):
-        rospy.loginfo("Hover")
+        rospy.loginfo("%s: Hover" % self.cf_id)
         self._setState("hover")
 
     def land(self):
-        rospy.loginfo("Landing")
+        rospy.loginfo("%s: Landing" % self.cf_id)
         self._setState("land")
 
     def stop(self):
-        rospy.loginfo("Stoping")
+        rospy.loginfo("%s: Stoping" % self.cf_id)
         self._setState("stop")
 
     # Methods depending on state
@@ -167,8 +167,6 @@ class Crazyflie:
             self.hover()
 
     def _hover(self):
-
-        rospy.loginfo("Hovering")
         self.cmd_pos_msg.header.seq += 1
         self.cmd_pos_msg.header.stamp = rospy.Time.now()
         self.cmd_pos(self.goal[0], self.goal[1], self.goal[2])
