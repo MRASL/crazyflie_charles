@@ -99,34 +99,34 @@ class Controller():
 
     def _init_services(self):
         # Subscribe to services
-        rospy.loginfo("waiting for params service")
+        rospy.loginfo("Joy: waiting for params service")
         rospy.wait_for_service('update_params')
-        rospy.loginfo("found update_params service")
+        rospy.loginfo("Joy: found update_params service")
         self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
 
-        rospy.loginfo("waiting for emergency service")
+        rospy.loginfo("Joy: waiting for emergency service")
         rospy.wait_for_service('emergency')
-        rospy.loginfo("found emergency service")
+        rospy.loginfo("Joy: found emergency service")
         self._emergency = rospy.ServiceProxy('emergency', Empty)
 
-        rospy.loginfo("waiting for toggleTeleop service")
+        rospy.loginfo("Joy: waiting for toggleTeleop service")
         rospy.wait_for_service('/toggleTeleop')
-        rospy.loginfo("found toggleTeleop service")
+        rospy.loginfo("Joy: found toggleTeleop service")
         self._toggleTeleopServ = rospy.ServiceProxy('/toggleTeleop', Empty)
         
-        rospy.loginfo("waiting for land service")
+        rospy.loginfo("Joy: waiting for land service")
         rospy.wait_for_service('land')
-        rospy.loginfo("found land service")
+        rospy.loginfo("Joy: found land service")
         self._land = rospy.ServiceProxy('land', Empty)
 
-        rospy.loginfo("waiting for takeoff service")
+        rospy.loginfo("Joy: waiting for takeoff service")
         rospy.wait_for_service('takeoff')
-        rospy.loginfo("found takeoff service")
+        rospy.loginfo("Joy: found takeoff service")
         self._takeoff = rospy.ServiceProxy('takeoff', Empty)
 
-        rospy.loginfo("waiting for stop service")
+        rospy.loginfo("Joy: waiting for stop service")
         rospy.wait_for_service('stop')
-        rospy.loginfo("found stop service")
+        rospy.loginfo("Joy: found stop service")
         self._stop = rospy.ServiceProxy('stop', Empty)
 
     def _joyChanged(self, data):
@@ -213,7 +213,7 @@ class Controller():
             self.rate.sleep()
 
 if __name__ == '__main__':
-    rospy.init_node('crazyflie_joy_controller', anonymous=True)
+    rospy.init_node('joy_controller', anonymous=False)
     
     joy_topic = rospy.get_param("~joy_topic", "joy")
     controller = Controller(joy_topic)

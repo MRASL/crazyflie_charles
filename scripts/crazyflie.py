@@ -27,9 +27,9 @@ class Crazyflie:
         self.rate = rospy.Rate(10)
 
         # Declare services
-        rospy.loginfo("waiting for update_params service...")
+        rospy.loginfo(self.cf_id + ": waiting for update_params service...")
         rospy.wait_for_service(self.cf_id + '/update_params')
-        rospy.loginfo("found update_params service")
+        rospy.loginfo(self.cf_id + ": found update_params service")
         self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)     
 
         rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
@@ -85,14 +85,14 @@ class Crazyflie:
         self.pose[2] = data.pose.position.z
 
     def returnPose(self, req):
-        self.pose = Pose()
+        self.pose_msg = Pose()
         self.findInitialPose()
-        self.pose.position.x = self.initial_pose[0]
-        self.pose.position.y = self.initial_pose[1]
-        self.pose.position.z = self.initial_pose[2]
-        self.pose.orientation.z = 0
+        self.pose_msg.position.x = self.initial_pose[0]
+        self.pose_msg.position.y = self.initial_pose[1]
+        self.pose_msg.position.z = self.initial_pose[2]
+        self.pose_msg.orientation.z = 0
 
-        return self.pose
+        return self.pose_msg
 
     def findInitialPose(self):
         """ Find the initial position of the crazyflie by calculating the mean during a time interval
