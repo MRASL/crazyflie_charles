@@ -24,7 +24,7 @@ R1 = 5
 L2 = 6
 R2 = 7
 
-TAKE_OFF_DZ = 0.2
+TAKE_OFF_DZ = 0.5
 
 #TODO: Move goal
 #! Only cf1 name is supported
