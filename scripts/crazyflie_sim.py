@@ -45,15 +45,16 @@ class CrazyflieSim:
             self.rate.sleep()
 
     def _cmd_vel_handler(self, vel_data):
-        rospy.logwarn("cmd_vel not implemented in simulation")
+        # rospy.logwarn("cmd_vel not implemented in simulation")
+        pass
 
     def _cmd_hover_handler(self, hover_data):
         rospy.logwarn("cmd_hovering not implemented in simulation")
     
     def _cmd_pos_handler(self, pos_data):
         self.position.pose.position.x = pos_data.x
-        self.position.pose.position.y = pos_data.x
-        self.position.pose.position.z = pos_data.x
+        self.position.pose.position.y = pos_data.y
+        self.position.pose.position.z = pos_data.z
 
     def _cmd_stop_handler(self, stop_data):
         rospy.logwarn("cmd_stop not implemented in simulation")
