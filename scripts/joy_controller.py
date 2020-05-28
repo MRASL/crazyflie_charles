@@ -12,6 +12,7 @@ from geometry_msgs.msg import Pose
 
 from crazyflie_driver.srv import UpdateParams
 from std_srvs.srv import Empty
+from crazyflie_charles.srv import PoseRequest
 
 # Button mapping of DS4
 SQUARE = 0
@@ -22,6 +23,8 @@ L1 = 4
 R1 = 5
 L2 = 6
 R2 = 7
+
+TAKE_OFF_DZ = 0.2
 
 #TODO: Move goal
 #! Only cf1 name is supported
@@ -41,8 +44,6 @@ Structure pour etape 1:
 
     - Utiliser des services
 
-- Plus simple: 
-Hard code les valeurs de depart
 """
 
 class Axis:
@@ -81,7 +82,9 @@ class Controller():
         self._buttons = None   # Store last buttons
         self._to_teleop = False
         self.rate = rospy.Rate(100)
+        self.swarmInitialPose = Pose()
 
+        # Axis parameters
         self.axes = Axes()
         self.axes.x.axis_num = rospy.get_param("~x_axis", 4)
         self.axes.y.axis_num = rospy.get_param("~y_axis", 3)
@@ -128,6 +131,11 @@ class Controller():
         rospy.wait_for_service('stop')
         rospy.loginfo("Joy: found stop service")
         self._stop = rospy.ServiceProxy('stop', Empty)
+
+        rospy.loginfo("Joy: waiting for getSwarmPos service")
+        rospy.wait_for_service('getSwarmPose')
+        rospy.loginfo("Joy: found getSwarmPose service")
+        self._getSwarmPos = rospy.ServiceProxy('getSwarmPose', PoseRequest)
 
     def _joyChanged(self, data):
         # Read the buttons
@@ -178,10 +186,13 @@ class Controller():
                     if i == CROSS and buttonsData[i] == 1: 
                         self._land()
                     if i == SQUARE and buttonsData[i] == 1:
-                        self._takeoff()
+                        self._takeOffSwarm()
 
                     if i == R2 and buttonsData[i] == 1:
                         self._stop()
+
+                    if i == TRIANGLE and buttonsData[i] == 1:
+                        print(self._getSwarmPos())
 
                 # if i == self._L2 and buttonsData[i] == 1:
                 #     value = int(rospy.get_param("ring/headlightEnable"))
@@ -198,6 +209,14 @@ class Controller():
         self._to_teleop = not self._to_teleop
         self._toggleTeleopServ()  # Toggle in swarm controller
         print("Teleop set to : %s" % self._to_teleop)
+
+    def _takeOffSwarm(self):
+        self.swarmInitialPose = self._getSwarmPos().pose
+        self.goal_msg = self.swarmInitialPose
+        self.goal_msg.position.z = self.goal_msg.position.z + TAKE_OFF_DZ
+        self.goal_publisher.publish(self.goal_msg)
+
+        self._takeoff()
 
     def in_teleop(self):
         return self._to_teleop

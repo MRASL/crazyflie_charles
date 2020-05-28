@@ -32,6 +32,7 @@ class Swarm:
         self._get_pose_srv_list = []
         self._initial_pose_list = []
         
+        # Initialize each Crazyflie
         for each_cf in cf_list:
             self.crazyflies[each_cf] = {"cf": Crazyflie(each_cf),
                                         "emergency_srv": None,
@@ -56,12 +57,13 @@ class Swarm:
             self.crazyflies[each_cf]["goal_pub"] = rospy.Publisher('/' + each_cf + '/goal', Pose, queue_size=1)
 
         # Launch services
-        rospy.Service('/update_params', srv.Empty, self.update_params)
-        rospy.Service('/emergency', srv.Empty, self.emergency)
-        rospy.Service('/stop', srv.Empty, self.stop)
-        rospy.Service('/takeoff', srv.Empty, self.takeOff)   
-        rospy.Service('/land', srv.Empty, self.land)      
-        rospy.Service('/toggleTeleop', srv.Empty, self.toggleTeleop)   
+        rospy.Service('/update_params', srv.Empty, self.update_params)      # TODO: #14 Update all parameters
+        rospy.Service('/emergency', srv.Empty, self.emergency)              # Emergency
+        rospy.Service('/stop', srv.Empty, self.stop)                        # Stop all CFs
+        rospy.Service('/takeoff', srv.Empty, self.takeOff)                  # Take off all CFs
+        rospy.Service('/land', srv.Empty, self.land)                        # Land all CFs
+        rospy.Service('/toggleTeleop', srv.Empty, self.toggleTeleop)        # Toggle between manual and auto mode
+        rospy.Service('/getSwarmPose', PoseRequest, self.get_swarm_pose)    # Find position of the swarm
 
         # Subscribe
         rospy.Subscriber("goal_swarm", Pose, self.broadcast_goal)
@@ -99,7 +101,6 @@ class Swarm:
         rospy.loginfo("Swarm: take off")
 
         for _, cf in self.crazyflies.items(): 
-            print(cf["get_pose_srv"]())
             cf["cf"].take_off()
 
         return srv.EmptyResponse()
@@ -111,9 +112,21 @@ class Swarm:
         return srv.EmptyResponse()
     
     def broadcast_goal(self, goal):
+        # TODO: Different goal for each CF depending on formation (#15)
         for _, cf in self.crazyflies.items(): 
             cf["goal_pub"].publish(goal)
 
+    def get_swarm_pose(self, req):
+        swarmPose = Pose()
+        for _, cf in self.crazyflies.items(): 
+            cf["initial_pose"] = cf["get_pose_srv"]()
+            swarmPose = cf["initial_pose"]
+            
+        # TODO: #15 Initial swarm position depending on formation
+        # For one CF swarm pos = CF pos
+        return swarmPose
+
+    # Run in automatic
     def run_auto(self):
         for _, cf in self.crazyflies.items():  # _: Key (cf_id) cf: items dict
             cf["cf"].run_auto()
