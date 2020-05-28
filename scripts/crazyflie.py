@@ -16,8 +16,8 @@ from std_msgs.msg import Empty as Empty_msg
 from std_srvs.srv import Empty as Empty_srv
 from std_srvs.srv import EmptyResponse as EmptyResponse_srv
 from crazyflie_driver.srv import UpdateParams
-from geometry_msgs.msg import Twist
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Twist, PoseStamped, Pose
+from crazyflie_charles.srv import PoseRequest
 
 class Crazyflie:
     def __init__(self, cf_id):
@@ -32,7 +32,29 @@ class Crazyflie:
         rospy.loginfo("found update_params service")
         self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)     
 
+        rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
+
         # Declare publishers
+        self._init_publishers()
+
+        # Declare subscriptions
+        self.pose = [0, 0 , 0]
+        rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self.pose_handler)
+
+        # Set parameters
+        self.setParam("kalman/resetEstimation", 1)
+
+        self.thrust = 0
+        self.to_land = False
+        self.to_hover = False
+
+        self.initial_pose = [0, 0, 0]
+        self.goal = [0, 0, 0]
+
+        self.states = ["take_off", "land", "hover", "stop"]
+        self.state = ""
+
+    def _init_publishers(self):
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
         self.cmd_vel_msg = Twist()
 
@@ -54,30 +76,23 @@ class Crazyflie:
 
         self.cmd_stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.cmd_stop_msg = Empty_msg()
-
-        # Declare subscriptions
-        self.pose = [0, 0 , 0]
-        rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self.pose_handler)
-
-        # Set parameters
-        self.setParam("kalman/resetEstimation", 1)
-
-        self.thrust = 0
-        self.to_land = False
-        self.to_hover = False
-
-        self.intial_pose = [0, 0, 0]
-        self.goal = [0, 0, 0]
-
-        self.states = ["take_off", "land", "hover", "stop"]
-        self.state = ""
-
+    
     def pose_handler(self, data):
         """ Update crazyflie position in world
         """
         self.pose[0] = data.pose.position.x
         self.pose[1] = data.pose.position.y
         self.pose[2] = data.pose.position.z
+
+    def returnPose(self, req):
+        self.pose = Pose()
+        self.findInitialPose()
+        self.pose.position.x = self.initial_pose[0]
+        self.pose.position.y = self.initial_pose[1]
+        self.pose.position.z = self.initial_pose[2]
+        self.pose.orientation.z = 0
+
+        return self.pose
 
     def findInitialPose(self):
         """ Find the initial position of the crazyflie by calculating the mean during a time interval
@@ -91,10 +106,10 @@ class Crazyflie:
             initialPose['z'].append(self.pose[2])
             r.sleep()
         
-        self.intial_pose[0] = np.mean(initialPose['x'])
-        self.intial_pose[1] = np.mean(initialPose['y'])
-        self.intial_pose[2] = np.mean(initialPose['z'])
-        rospy.loginfo("Initial position: {}".format(self.intial_pose))
+        self.initial_pose[0] = np.mean(initialPose['x'])
+        self.initial_pose[1] = np.mean(initialPose['y'])
+        self.initial_pose[2] = np.mean(initialPose['z'])
+        rospy.loginfo("Initial position: {}".format(self.initial_pose))
 
     def setParam(self, name, value):
         """Changes the value of the given parameter.
@@ -138,9 +153,9 @@ class Crazyflie:
         self.findInitialPose()
 
         dZ = 0.5
-        self.goal[0] = self.intial_pose[0]
-        self.goal[1] = self.intial_pose[1]
-        self.goal[2] = self.intial_pose[2] + dZ
+        self.goal[0] = self.initial_pose[0]
+        self.goal[1] = self.initial_pose[1]
+        self.goal[2] = self.initial_pose[2] + dZ
 
         rospy.loginfo("Going to {}".format(self.goal))
 
@@ -151,7 +166,7 @@ class Crazyflie:
         for i in range(time_range):
             if rospy.is_shutdown() or self.state is not "take_off": break
 
-            z = i*z_inc + self.intial_pose[2]
+            z = i*z_inc + self.initial_pose[2]
 
             self.cmd_hovering_msg.header.seq += 1
             self.cmd_hovering_msg.header.stamp = rospy.Time.now()

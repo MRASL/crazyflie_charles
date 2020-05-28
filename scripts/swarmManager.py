@@ -10,20 +10,35 @@ from crazyflie import Crazyflie
 
 from geometry_msgs.msg import Pose
 from std_srvs import srv
-
+from crazyflie_charles.srv import PoseRequest
 
 class Swarm:
     def __init__(self, cf_list):
-        self.crazyflies = []
-        self._emergency_list = []
+        # Dict for all the cf and their functions/parameters
+        self.crazyflies = {}
+
+        self._emergency_srv_list = []
         self._goal_publisher_list = []
+        
+        self._get_pose_srv_list = []
+        self._initial_pose_list = []
+        
         for each_cf in cf_list:
-            self.crazyflies.append(Crazyflie(each_cf))
+            self.crazyflies[each_cf] = 
+
+            # Subscribe to emergency service
             rospy.loginfo("waiting for emergency service of " + each_cf)
             rospy.wait_for_service('/' + each_cf + '/emergency')
             rospy.loginfo("found emergency service of " + each_cf)
-            self._emergency_list.append(rospy.ServiceProxy('/' + each_cf + '/emergency', srv.Empty))
+            self._emergency_srv_list.append(rospy.ServiceProxy('/' + each_cf + '/emergency', srv.Empty))
 
+            # Subscribe to pose service
+            rospy.loginfo("waiting for pose service of " + each_cf)
+            rospy.wait_for_service('/' + each_cf + '/get_pose')
+            rospy.loginfo("found pose service of " + each_cf)
+            self._get_pose_srv_list.append(rospy.ServiceProxy('/' + each_cf + '/get_pose', PoseRequest))
+
+            # Publish goal
             self._goal_publisher_list.append(rospy.Publisher('/' + each_cf + '/goal', Pose, queue_size=1))
 
         # Launch services
@@ -54,7 +69,7 @@ class Swarm:
 
     def emergency(self, req):
         rospy.logerr("Swarm: EMERGENCY")
-        for each_emergency in self._emergency_list:
+        for each_emergency in self._emergency_srv_list:
             each_emergency()
 
         return srv.EmptyResponse()
@@ -66,7 +81,12 @@ class Swarm:
     
     def takeOff(self, req):
         rospy.loginfo("Swarm: take off")
-        for cf in self.crazyflies: cf.take_off()
+        # for cf in self.crazyflies: 
+        #     cf.take_off()
+
+        for get_pose in self._get_pose_srv_list:
+            self._initial_pose_list.a
+
         return srv.EmptyResponse()
     
     def land(self, req):
