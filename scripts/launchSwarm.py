@@ -28,14 +28,16 @@ if __name__ == '__main__':
     # Check arguments
     parser = argparse.ArgumentParser(description='Start crazyflie swarm')
     parser.add_argument('-n', type=int, help='Number of crazyflie in the swarm', default=1)
-    parser.add_argument('--teleop', '-t', action='store_true', help='Activate teleoperation')
+    # parser.add_argument('--teleop', '-t', action='store_true', help='Activate teleoperation')
+    parser.add_argument('--sim', '-s', action='store_true', help='Flag to launch in simulation')
     
     args = parser.parse_args()
     n_cf = args.n
-    to_teleop = args.teleop
+    # to_teleop = args.teleop
+    to_sim = args.sim
 
     # Launch server
-    rospy.init_node('launchSwarm', anonymous=True)
+    rospy.init_node('launchSwarm', anonymous=False)
     
     rospy.loginfo("Initializing server for %i crazyflies" % n_cf)
     uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
@@ -45,14 +47,14 @@ if __name__ == '__main__':
     cf_list = [('cf' + str(i + 1)) for i in range(n_cf)]
 
     # Launch server
-    cli_server = ['crazyflie_charles', 'init_server.launch', 'cf_list:=' + str(cf_list)]
+    cli_server = ['crazyflie_charles', 'init_server.launch', 'cf_list:='+str(cf_list), 'to_sim:=%s' % to_sim]
     launch_file(cli_server)
 
     # Add n CFs
     for each_cf in cf_list:
-        #TODO: Find uris of active CFs
+        # TODO: Find uris of active CFs
         uri = 'radio://0/105/2M/0xE7E7E7E702'
-        cli_add_cf = ['crazyflie_charles', 'add_cf.launch', 'to_teleop:=%s' % to_teleop, 'cf_name:='+each_cf, 'uri:=' + uri, 'frame:='+each_cf+'/'+each_cf]
+        cli_add_cf = ['crazyflie_charles', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri, 'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
     launch_file(cli_add_cf)
 
 

@@ -3,19 +3,24 @@
 <launch>
   <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="cf_list" default="['cf1']" />
+  <arg name="to_sim" default="False" />
 
   <!-- Launch server -->
-  <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
-  </include>
+  <group unless="$(arg to_sim)">
+    <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
+    </include>
+  </group>
+
 
   <!-- Initiate joystick -->
   <node name="joy" pkg="joy" type="joy_node" output="screen" >
     <param name="dev" value="$(arg joy_dev)" />
   </node>
 
-  <!-- Map controller buttons to services -->
+  <!-- Map controller to services -->
   <node name="crazyflie_joystick_controller" pkg="crazyflie_charles" type="joy_controller.py" output="screen">
     <param name="joy_topic" value="/joy" />
+    <param name="to_sim" value="$(arg to_sim)"/>
 
     <!-- Axis number, start at 0 -->
     <param name="x_axis" value="1"/>
@@ -31,11 +36,16 @@
   <!-- Launch swarm manager-->
   <node name="swarmManager" pkg="crazyflie_charles" type="swarmManager.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
+    <param name="to_sim" value="$(arg to_sim)"/>
   </node>
  
 
   <!-- Rviz markers -->
   <node name="rviz_markers" pkg="crazyflie_charles" type="rviz_markers.py" output="screen" >
   </node>
+
+  <!-- run rviz -->
+  <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find crazyflie_charles)/launch/crazyflie_pos.rviz" required="true" />
 
 </launch>
