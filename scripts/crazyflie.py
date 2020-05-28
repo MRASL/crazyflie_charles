@@ -16,8 +16,8 @@ from std_msgs.msg import Empty as Empty_msg
 from std_srvs.srv import Empty as Empty_srv
 from std_srvs.srv import EmptyResponse as EmptyResponse_srv
 from crazyflie_driver.srv import UpdateParams
-from geometry_msgs.msg import Twist
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Twist, PoseStamped, Pose
+from crazyflie_charles.srv import PoseRequest
 
 class Crazyflie:
     def __init__(self, cf_id):
@@ -27,12 +27,37 @@ class Crazyflie:
         self.rate = rospy.Rate(10)
 
         # Declare services
-        rospy.loginfo("waiting for update_params service...")
+        rospy.loginfo(self.cf_id + ": waiting for update_params service...")
         rospy.wait_for_service(self.cf_id + '/update_params')
-        rospy.loginfo("found update_params service")
+        rospy.loginfo(self.cf_id + ": found update_params service")
         self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)     
 
+        rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
+
         # Declare publishers
+        self._init_publishers()
+
+        # Declare subscriptions
+        self.pose = Pose()
+        self.goal = Pose()
+        self.initial_pose = Pose()
+
+        rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self._pose_handler)
+        rospy.Subscriber(self.cf_id + '/goal', Pose, self._goal_handler)
+
+        # Set parameters
+        self.setParam("kalman/resetEstimation", 1)
+
+        self.thrust = 0
+        self.to_land = False
+        self.to_hover = False
+
+        # self.goal = [0, 0, 0]
+
+        self.states = ["take_off", "land", "hover", "stop"]
+        self.state = ""
+
+    def _init_publishers(self):
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
         self.cmd_vel_msg = Twist()
 
@@ -54,47 +79,36 @@ class Crazyflie:
 
         self.cmd_stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.cmd_stop_msg = Empty_msg()
-
-        # Declare subscriptions
-        rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self.pose_handler)
-
-        # Set parameters
-        self.setParam("kalman/resetEstimation", 1)
-
-        self.thrust = 0
-        self.to_land = False
-        self.to_hover = False
-
-        self.pose = [0, 0 , 0]
-        self.intial_pose = [0, 0, 0]
-        self.goal = [0, 0, 0]
-
-        self.states = ["take_off", "land", "hover", "stop"]
-        self.state = ""
-
-    def pose_handler(self, data):
+    
+    def _pose_handler(self, pose_stamped):
         """ Update crazyflie position in world
         """
-        self.pose[0] = data.pose.position.x
-        self.pose[1] = data.pose.position.y
-        self.pose[2] = data.pose.position.z
+        self.pose = pose_stamped.pose
 
-    def findInitialPose(self):
+    def _goal_handler(self, goal):
+        self.goal = goal
+
+    def returnPose(self, req):
+        self.findInitialPose()
+
+        return self.initial_pose
+
+    def findInitialPose(self):  
         """ Find the initial position of the crazyflie by calculating the mean during a time interval
         """
         rospy.loginfo("Estimating inital pos...")
         r = rospy.Rate(100)
         initialPose = {'x': [], 'y':[], 'z':[] } 
         while len(initialPose['x']) < 10:
-            initialPose['x'].append(self.pose[0])
-            initialPose['y'].append(self.pose[1])
-            initialPose['z'].append(self.pose[2])
+            initialPose['x'].append(self.pose.position.x)
+            initialPose['y'].append(self.pose.position.y)
+            initialPose['z'].append(self.pose.position.z)
             r.sleep()
         
-        self.intial_pose[0] = np.mean(initialPose['x'])
-        self.intial_pose[1] = np.mean(initialPose['y'])
-        self.intial_pose[2] = np.mean(initialPose['z'])
-        rospy.loginfo("Initial position: {}".format(self.intial_pose))
+        self.initial_pose.position.x = np.mean(initialPose['x'])
+        self.initial_pose.position.y = np.mean(initialPose['y'])
+        self.initial_pose.position.z = np.mean(initialPose['z'])
+        rospy.loginfo("Initial position: \n{}".format(self.initial_pose))
 
     def setParam(self, name, value):
         """Changes the value of the given parameter.
@@ -118,31 +132,26 @@ class Crazyflie:
             rospy.logerr("Invalid State: %s" % newState)
 
     def take_off(self):
-        rospy.loginfo("Take off")
+        rospy.loginfo("%s: Take off" % self.cf_id)
         self._setState("take_off")
 
     def hover(self):
-        rospy.loginfo("Hover")
+        rospy.loginfo("%s: Hover" % self.cf_id)
         self._setState("hover")
 
     def land(self):
-        rospy.loginfo("Landing")
+        rospy.loginfo("%s: Landing" % self.cf_id)
         self._setState("land")
 
     def stop(self):
-        rospy.loginfo("Stoping")
+        rospy.loginfo("%s: Stoping" % self.cf_id)
         self._setState("stop")
 
     # Methods depending on state
     def _take_off(self):
-        self.findInitialPose()
+        dZ = self.goal.position.z - self.initial_pose.position.z
 
-        dZ = 0.5
-        self.goal[0] = self.intial_pose[0]
-        self.goal[1] = self.intial_pose[1]
-        self.goal[2] = self.intial_pose[2] + dZ
-
-        rospy.loginfo("Going to {}".format(self.goal))
+        rospy.loginfo("Going to \n{}".format(self.goal.position))
 
         time_range = 1*10
         z_inc = dZ/time_range
@@ -151,35 +160,32 @@ class Crazyflie:
         for i in range(time_range):
             if rospy.is_shutdown() or self.state is not "take_off": break
 
-            z = i*z_inc + self.intial_pose[2]
+            z = i*z_inc + self.initial_pose.position.z
 
-            self.cmd_hovering_msg.header.seq += 1
-            self.cmd_hovering_msg.header.stamp = rospy.Time.now()
-
-            self.cmd_pos(self.goal[0], self.goal[1], z)
+            self.cmd_pos(self.goal.position.x, self.goal.position.y, z)
 
             self.rate.sleep()
-            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % (self.goal[0], self.goal[0], z, self.pose[0], self.pose[1], self.pose[2]))
+            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
+                            (self.goal.position.x, self.goal.position.y, z, 
+                            self.pose.position.x, self.pose.position.y, self.pose.position.z))
 
-        rospy.loginfo("Pos reached {}".format(self.pose))
+        rospy.loginfo("Pos reached \n{}".format(self.pose.position))
 
         if self.state is "take_off":
             self.hover()
 
     def _hover(self):
-
-        rospy.loginfo("Hovering")
         self.cmd_pos_msg.header.seq += 1
         self.cmd_pos_msg.header.stamp = rospy.Time.now()
-        self.cmd_pos(self.goal[0], self.goal[1], self.goal[2])
+        self.cmd_pos(self.goal.position.x, self.goal.position.y, self.goal.position.z)
         self.rate.sleep()
 
     def _land(self):
         zGround = 0.2
 
-        x_start = self.pose[0]
-        y_start = self.pose[1]
-        z_start = self.pose[2]
+        x_start = self.pose.position.x
+        y_start = self.pose.position.y
+        z_start = self.pose.position.z
 
         dZ = z_start - zGround
 
@@ -193,15 +199,14 @@ class Crazyflie:
 
             z = z_start - i*z_dec 
 
-            self.cmd_hovering_msg.header.seq += 1
-            self.cmd_hovering_msg.header.stamp = rospy.Time.now()
-
             self.cmd_pos(x_start, y_start, z)
 
             self.rate.sleep()
-            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % (x_start, y_start, z, self.pose[0], self.pose[1], self.pose[2]))
+            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
+                            (x_start, y_start, z, 
+                            self.pose.position.x, self.pose.position.y, self.pose.position.z))
 
-        rospy.loginfo("Landed {}".format(self.pose))
+        rospy.loginfo("Landed \n{}".format(self.pose.position))
 
         self.stop()
 

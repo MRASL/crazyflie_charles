@@ -1,102 +1,181 @@
 #!/usr/bin/env python
 
 """
-Script to map inputs of the controller to services
+Script to map inputs of the controller to services and teleop CF in manual mode
 """
 
 import rospy
+
 from sensor_msgs.msg import Joy
+from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Pose
+
 from crazyflie_driver.srv import UpdateParams
 from std_srvs.srv import Empty
+from crazyflie_charles.srv import PoseRequest
+
+# Button mapping of DS4
+SQUARE = 0
+CROSS = 1
+CIRCLE = 2
+TRIANGLE = 3
+L1 = 4
+R1 = 5
+L2 = 6
+R2 = 7
+
+TAKE_OFF_DZ = 0.5
+#! Only cf1 name is supported for teleop TODO #16
+
+class Axis:
+    def __init__(self):
+        self.axis_num = 0
+        self.max_vel = 0
+        self.max_goal = 0
+
+class Axes:
+    def __init__(self):
+        self.x = Axis()
+        self.y = Axis()
+        self.z = Axis()
+        self.yaw = Axis()
 
 class Controller():
-    def __init__(self, use_controller, joy_topic):
-        # Map buttons to ds4
-        self._square = 0
-        self._cross = 1
-        self._circle = 2
-        self._triangle = 3
-        self._L1 = 4
-        self._R1 = 5
-        self._L2 = 6
-        self._R2 = 7
+    def __init__(self, joy_topic):
+        self._init_services()
+        
+        # Subscriber
+        rospy.Subscriber(joy_topic, Joy, self._joyChanged)
+        
+        # Publisher
+        # TODO Update to publish on cf_names from params
+        self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
+        self.vel_msg = Twist()
+        
+        self.goal_publisher = rospy.Publisher("goal_swarm", Pose, queue_size=1)
+        self.goal_msg = Pose()
+        self.goal_msg.orientation.x = 0
+        self.goal_msg.orientation.y = 0
+        self.goal_msg.orientation.z = 0
+        self.goal_msg.orientation.w = 0
 
-        rospy.loginfo("waiting for emergency service")
+        # Parameters
+        self._buttons = None   # Store last buttons
+        self._to_teleop = False
+        self.rate = rospy.Rate(100)
+        self.swarmInitialPose = Pose()
+
+        # Axis parameters
+        self.axes = Axes()
+        self.axes.x.axis_num = rospy.get_param("~x_axis", 4)
+        self.axes.y.axis_num = rospy.get_param("~y_axis", 3)
+        self.axes.z.axis_num = rospy.get_param("~z_axis", 2)
+        self.axes.yaw.axis_num = rospy.get_param("~yaw_axis", 1)
+        
+        self.axes.x.max_vel = rospy.get_param("~x_velocity_max", 2.0)
+        self.axes.y.max_vel = rospy.get_param("~y_velocity_max", 2.0)
+        self.axes.z.max_vel = rospy.get_param("~z_velocity_max", 2.0)
+        self.axes.yaw.max_vel = rospy.get_param("~yaw_velocity_max", 2.0)
+        
+        self.axes.x.max_goal = rospy.get_param("~x_goal_max", 0.05)
+        self.axes.y.max_goal = rospy.get_param("~y_goal_max", 0.05)
+        self.axes.z.max_goal = rospy.get_param("~z_goal_max", 0.05)
+
+    def _init_services(self):
+        # Subscribe to services
+        rospy.loginfo("Joy: waiting for params service")
         rospy.wait_for_service('update_params')
-        rospy.loginfo("found update_params service")
+        rospy.loginfo("Joy: found update_params service")
         self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
 
-        rospy.loginfo("waiting for emergency service")
+        rospy.loginfo("Joy: waiting for emergency service")
         rospy.wait_for_service('emergency')
-        rospy.loginfo("found emergency service")
+        rospy.loginfo("Joy: found emergency service")
         self._emergency = rospy.ServiceProxy('emergency', Empty)
 
-        if use_controller:
-            rospy.loginfo("waiting for land service")
-            rospy.wait_for_service('land')
-            rospy.loginfo("found land service")
-            self._land = rospy.ServiceProxy('land', Empty)
+        rospy.loginfo("Joy: waiting for toggleTeleop service")
+        rospy.wait_for_service('/toggleTeleop')
+        rospy.loginfo("Joy: found toggleTeleop service")
+        self._toggleTeleopServ = rospy.ServiceProxy('/toggleTeleop', Empty)
+        
+        rospy.loginfo("Joy: waiting for land service")
+        rospy.wait_for_service('land')
+        rospy.loginfo("Joy: found land service")
+        self._land = rospy.ServiceProxy('land', Empty)
 
-            rospy.loginfo("waiting for takeoff service")
-            rospy.wait_for_service('takeoff')
-            rospy.loginfo("found takeoff service")
-            self._takeoff = rospy.ServiceProxy('takeoff', Empty)
+        rospy.loginfo("Joy: waiting for takeoff service")
+        rospy.wait_for_service('takeoff')
+        rospy.loginfo("Joy: found takeoff service")
+        self._takeoff = rospy.ServiceProxy('takeoff', Empty)
 
-            rospy.loginfo("waiting for stop service")
-            rospy.wait_for_service('stop')
-            rospy.loginfo("found stop service")
-            self._stop = rospy.ServiceProxy('stop', Empty)
+        rospy.loginfo("Joy: waiting for stop service")
+        rospy.wait_for_service('stop')
+        rospy.loginfo("Joy: found stop service")
+        self._stop = rospy.ServiceProxy('stop', Empty)
 
-        else:
-            self._land = None
-            self._takeoff = None
-            self._stop = None
-
-        # subscribe to the joystick at the end to make sure that all required
-        # services were found
-        self._buttons = None   # Store last buttons
-        rospy.Subscriber(joy_topic, Joy, self._joyChanged)
+        rospy.loginfo("Joy: waiting for getSwarmPos service")
+        rospy.wait_for_service('getSwarmPose')
+        rospy.loginfo("Joy: found getSwarmPose service")
+        self._getSwarmPos = rospy.ServiceProxy('getSwarmPose', PoseRequest)
 
     def _joyChanged(self, data):
-        """
-        Mapping des bouttons: 0 -> square 
-                              1 -> cross
-                              2 -> circle
-                              3 -> triangle
-                              4 -> L1
-                              5 -> R1
-                              6 -> L2
-                              7 -> R2
-                              8 -> Share
-                              9 -> Options
-                              10 -> LS press
-                              11 -> RS press
-                              12 -> PS button
-                              13 -> Track pad press
+        # Read the buttons
+        self._getButtons(data.buttons)
+        
+        if self.in_teleop():
+            self.vel_msg.linear.x = self._getAxis(data.axes, self.axes.x)
+            self.vel_msg.linear.y = self._getAxis(data.axes, self.axes.y)
+            self.vel_msg.linear.z = self._getAxis(data.axes, self.axes.z)
+            self.vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw)
+        
+        else:
+            self.goal_msg.position.x = self._getAxis(data.axes, self.axes.x, False) + self.goal_msg.position.x
+            self.goal_msg.position.y = self._getAxis(data.axes, self.axes.y, False) + self.goal_msg.position.y
+            self.goal_msg.position.z = self._getAxis(data.axes, self.axes.z, False) + self.goal_msg.position.z
 
+    def _getAxis(self, axesData, axisToRead, measureVel=True):
+        sign = 1.0
+        if axisToRead.axis_num < 0:
+            sign = -1.0
+            axisToRead.axis_num = -axisToRead.axis_num
+
+        if axisToRead.axis_num > len(axesData):
+            rospy.logerr("Invalid axes number")
+            return 0
+
+        val = axesData[axisToRead.axis_num]
+        max_val = axisToRead.max_vel if measureVel else axisToRead.max_goal
+
+        return sign * val * max_val
+
+    def _getButtons(self, buttonsData):
+        """
         Circle: Emergency
         Triangle:  
         Square: TakeOff
         Cross: Land
 
         """
-        for i in range(0, len(data.buttons)):
-            if self._buttons == None or data.buttons[i] != self._buttons[i]: # If button changed
-                if i == self._cross and data.buttons[i] == 1 and self._land != None:
-                    # print("Landing")
-                    self._land()
-                if i == self._circle and data.buttons[i] == 1:
-                    # print("Emergency")
+        for i in range(0, len(buttonsData)):
+            if self._buttons == None or buttonsData[i] != self._buttons[i]: # If button changed
+                if i == CIRCLE and buttonsData[i] == 1:
                     self._emergency()
-                if i == self._square and data.buttons[i] == 1 and self._takeoff != None:
-                    # print("Take off")
-                    self._takeoff()
+                if i == L1 and buttonsData[i] == 1:
+                    self._toggleTeleop()
 
-                if i == self._R2 and data.buttons[i] == 1 and self._stop != None:
-                    # print("Stop")
-                    self._stop()
+                if not self.in_teleop():
+                    if i == CROSS and buttonsData[i] == 1: 
+                        self._land()
+                    if i == SQUARE and buttonsData[i] == 1:
+                        self._takeOffSwarm()
 
-                # if i == self._L2 and data.buttons[i] == 1:
+                    if i == R2 and buttonsData[i] == 1:
+                        self._stop()
+
+                    if i == TRIANGLE and buttonsData[i] == 1:
+                        print(self._getSwarmPos())
+
+                # if i == self._L2 and buttonsData[i] == 1:
                 #     value = int(rospy.get_param("ring/headlightEnable"))
                 #     if value == 0:
                 #         rospy.set_param("ring/headlightEnable", 1)
@@ -105,11 +184,38 @@ class Controller():
                 #     self._update_params(["ring/headlightEnable"])
                 #     rospy.loginfo('Head light: %s'  % (not value))
 
-        self._buttons = data.buttons
+        self._buttons = buttonsData
+
+    def _toggleTeleop(self):
+        self._to_teleop = not self._to_teleop
+        self._toggleTeleopServ()  # Toggle in swarm controller
+        print("Teleop set to : %s" % self._to_teleop)
+
+    def _takeOffSwarm(self):
+        self.swarmInitialPose = self._getSwarmPos().pose
+        self.goal_msg = self.swarmInitialPose
+        self.goal_msg.position.z = self.goal_msg.position.z + TAKE_OFF_DZ
+        self.goal_publisher.publish(self.goal_msg)
+
+        self._takeoff()
+
+    def in_teleop(self):
+        return self._to_teleop
+
+    def execute(self):
+        while not rospy.is_shutdown():
+            if self.in_teleop():
+                self.vel_publisher.publish(self.vel_msg)
+
+            else:
+                self.goal_publisher.publish(self.goal_msg)
+
+            self.rate.sleep()
 
 if __name__ == '__main__':
-    rospy.init_node('crazyflie_joy_controller', anonymous=True)
-    use_controller = rospy.get_param("~use_crazyflie_controller", False)
+    rospy.init_node('joy_controller', anonymous=False)
+    
     joy_topic = rospy.get_param("~joy_topic", "joy")
-    controller = Controller(use_controller, joy_topic)
-    rospy.spin()
+    controller = Controller(joy_topic)
+
+    controller.execute()

@@ -4,7 +4,6 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /RobotModel1
         - /TF1/Frames1
       Splitter Ratio: 0.6172410249710083
     Tree Height: 695
@@ -73,21 +72,6 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Alpha: 0.5
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 255; 25; 0
-      Enabled: true
-      Head Length: 0.10000000149011612
-      Head Radius: 0.05000000074505806
-      Name: Pose
-      Shaft Length: 0.10000000149011612
-      Shaft Radius: 0.019999999552965164
-      Shape: Arrow
-      Topic: /crazyflie/goal
-      Unreliable: false
-      Value: true
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
@@ -117,6 +101,7 @@ Visualization Manager:
       Name: Marker
       Namespaces:
         bed: true
+        goal: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -162,10 +147,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.3547965288162231
+      Pitch: 1.3797965049743652
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.8004279136657715
+      Yaw: 4.75042724609375
     Saved: ~
 Window Geometry:
   Displays:
