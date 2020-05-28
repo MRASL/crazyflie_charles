@@ -41,7 +41,9 @@ class Axes:
         self.yaw = Axis()
 
 class Controller():
-    def __init__(self, joy_topic):
+    def __init__(self, joy_topic, to_sim):
+        self._to_sim = to_sim
+
         self._init_services()
         
         # Subscriber
@@ -83,15 +85,16 @@ class Controller():
 
     def _init_services(self):
         # Subscribe to services
-        rospy.loginfo("Joy: waiting for params service")
-        rospy.wait_for_service('update_params')
-        rospy.loginfo("Joy: found update_params service")
-        self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
+        if not self._to_sim:
+            rospy.loginfo("Joy: waiting for params service")
+            rospy.wait_for_service('update_params')
+            rospy.loginfo("Joy: found update_params service")
+            self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
 
-        rospy.loginfo("Joy: waiting for emergency service")
-        rospy.wait_for_service('emergency')
-        rospy.loginfo("Joy: found emergency service")
-        self._emergency = rospy.ServiceProxy('emergency', Empty)
+            rospy.loginfo("Joy: waiting for emergency service")
+            rospy.wait_for_service('emergency')
+            rospy.loginfo("Joy: found emergency service")
+            self._emergency = rospy.ServiceProxy('emergency', Empty)
 
         rospy.loginfo("Joy: waiting for toggleTeleop service")
         rospy.wait_for_service('/toggleTeleop')
@@ -216,6 +219,7 @@ if __name__ == '__main__':
     rospy.init_node('joy_controller', anonymous=False)
     
     joy_topic = rospy.get_param("~joy_topic", "joy")
-    controller = Controller(joy_topic)
+    to_sim = rospy.get_param("~to_sim", "False")
+    controller = Controller(joy_topic, to_sim)
 
     controller.execute()

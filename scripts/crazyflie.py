@@ -9,7 +9,6 @@ voir les commandes possibles: https://github.com/bitcraze/crazyflie-firmware/blo
 import rospy
 import tf
 import numpy as np
-import thread
 
 from crazyflie_driver.msg import Hover, Position
 from std_msgs.msg import Empty as Empty_msg
@@ -20,18 +19,27 @@ from geometry_msgs.msg import Twist, PoseStamped, Pose
 from crazyflie_charles.srv import PoseRequest
 
 class Crazyflie:
-    def __init__(self, cf_id):
+    def __init__(self, cf_id, to_sim):
         self.cf_id = '/' + cf_id
+        self.to_sim = to_sim
+        
+        rospy.loginfo("%s: Initializing" % self.cf_id)
+        
 
         self.world_frame = rospy.get_param("~worldFrame", "/world")
         self.rate = rospy.Rate(10)
 
-        # Declare services
-        rospy.loginfo(self.cf_id + ": waiting for update_params service...")
-        rospy.wait_for_service(self.cf_id + '/update_params')
-        rospy.loginfo(self.cf_id + ": found update_params service")
-        self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)     
+        # If not in simulation, find services and set parameters
+        if not self.to_sim:
+            rospy.loginfo(self.cf_id + ": waiting for update_params service...")
+            rospy.wait_for_service(self.cf_id + '/update_params')
+            rospy.loginfo(self.cf_id + ": found update_params service")
+            self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
+            # Set parameters
+            self.setParam("kalman/resetEstimation", 1)     
+
+        # Declare services
         rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
 
         # Declare publishers
@@ -45,17 +53,15 @@ class Crazyflie:
         rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self._pose_handler)
         rospy.Subscriber(self.cf_id + '/goal', Pose, self._goal_handler)
 
-        # Set parameters
-        self.setParam("kalman/resetEstimation", 1)
-
+        # Parameters
         self.thrust = 0
         self.to_land = False
         self.to_hover = False
 
-        # self.goal = [0, 0, 0]
-
         self.states = ["take_off", "land", "hover", "stop"]
         self.state = ""
+
+        rospy.loginfo("%s: Setup done" % self.cf_id)
 
     def _init_publishers(self):
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)

@@ -7,6 +7,7 @@ To manage the flight of the swarm
 import rospy
 import tf
 from crazyflie import Crazyflie
+from crazyflie_sim import CrazyflieSim
 
 from geometry_msgs.msg import Pose
 from std_srvs import srv
@@ -14,7 +15,7 @@ from crazyflie_charles.srv import PoseRequest
 
 # TODO Parameters update
 class Swarm:
-    def __init__(self, cf_list):
+    def __init__(self, cf_list, to_sim):
         # Dict for all the cf and their functions/parameters
         #   - Keys: cf_names
         #       - Dict:
@@ -25,6 +26,7 @@ class Swarm:
         #           - initial_pose
 
         self.crazyflies = {}
+        self.crazyflies_sim = {}
 
         self._emergency_srv_list = []
         self._goal_publisher_list = []
@@ -34,18 +36,21 @@ class Swarm:
         
         # Initialize each Crazyflie
         for each_cf in cf_list:
-            self.crazyflies[each_cf] = {"cf": Crazyflie(each_cf),
+            self.crazyflies[each_cf] = {"cf": Crazyflie(each_cf, to_sim),
                                         "emergency_srv": None,
                                         "goal_pub": None,
                                         "get_pose_srv": None,
                                         "initial_pose": None}
 
-            # Subscribe to emergency service
-            rospy.loginfo("Swarm: waiting for emergency service of " + each_cf)
-            rospy.wait_for_service('/' + each_cf + '/emergency')
-            rospy.loginfo("Swarm: found emergency service of " + each_cf)
+            if to_sim:
+                self.crazyflies_sim[each_cf] = {"cf": CrazyflieSim(each_cf)}
 
-            self.crazyflies[each_cf]["emergency_srv"] = rospy.ServiceProxy('/' + each_cf + '/emergency', srv.Empty)
+            else:
+                # Subscribe to emergency service
+                rospy.loginfo("Swarm: waiting for emergency service of " + each_cf)
+                rospy.wait_for_service('/' + each_cf + '/emergency')
+                rospy.loginfo("Swarm: found emergency service of " + each_cf)
+                self.crazyflies[each_cf]["emergency_srv"] = rospy.ServiceProxy('/' + each_cf + '/emergency', srv.Empty)
 
             # Subscribe to pose service
             rospy.loginfo("Swarm: waiting for pose service of " + each_cf)
@@ -132,10 +137,16 @@ class Swarm:
             cf["cf"].run_auto()
 
 if __name__ == '__main__':
+    # Launch node
     rospy.init_node('swarmManager', anonymous=False)
     rospy.loginfo('Initialisation du swarm manager')
+
+    # Get params
     cf_list = rospy.get_param("~cf_list", "['cf1']")
-    swarm = Swarm(cf_list)
+    to_sim = rospy.get_param("~to_sim", "False")
+    
+    # Initialize swarm
+    swarm = Swarm(cf_list, to_sim)
 
     while not rospy.is_shutdown():
         if not swarm.in_teleop():
