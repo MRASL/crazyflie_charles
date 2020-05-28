@@ -63,7 +63,6 @@ class Crazyflie:
 
         rospy.loginfo("%s: Setup done" % self.cf_id)
 
-
     def _init_publishers(self):
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
         self.cmd_vel_msg = Twist()

@@ -36,19 +36,14 @@ class Swarm:
         
         # Initialize each Crazyflie
         for each_cf in cf_list:
-            rospy.loginfo("SWARM: ICI")
-
             self.crazyflies[each_cf] = {"cf": Crazyflie(each_cf, to_sim),
                                         "emergency_srv": None,
                                         "goal_pub": None,
                                         "get_pose_srv": None,
                                         "initial_pose": None}
 
-            rospy.loginfo("SWARM: CF init")
-
             if to_sim:
                 self.crazyflies_sim[each_cf] = {"cf": CrazyflieSim(each_cf)}
-
 
             else:
                 # Subscribe to emergency service

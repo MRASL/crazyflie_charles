@@ -83,9 +83,9 @@ def get_goal_msg():
     msg.pose.orientation.z = 0.0
     msg.pose.orientation.w = 1.0
 
-    msg.scale.x = 0.08
-    msg.scale.y = 0.08
-    msg.scale.z = 0.08
+    msg.scale.x = 0.03
+    msg.scale.y = 0.03
+    msg.scale.z = 0.03
 
     msg.color.a = 0.8
     msg.color.r = 1
