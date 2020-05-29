@@ -31,13 +31,18 @@
       </include>
     </group>
 
+    <!-- CF controller -->
+    <node name="$(arg cf_name)_controller" pkg="crazyflie_charles" type="crazyflie.py" output="screen">
+        <param name="cf_name" value="$(arg cf_name)"/>
+        <param name="to_sim" value="$(arg to_sim)"/>
+    </node>
+
+    <!-- Simulation of CF -->
     <group if="$(arg to_sim)">
       <node name="$(arg cf_name)_sim" pkg="crazyflie_charles" type="crazyflie_sim.py" output="screen">
         <param name="cf_name" value="$(arg cf_name)"/>
       </node>
     </group>
-
-    
 
     <!-- Position frame -->
     <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /$(arg cf_name)/base_link 100" />

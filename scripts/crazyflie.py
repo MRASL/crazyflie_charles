@@ -20,9 +20,17 @@ from crazyflie_charles.srv import PoseRequest
 
 class Crazyflie:
     def __init__(self, cf_id, to_sim):
+        # Parameters
         self.cf_id = '/' + cf_id
         self._to_sim = to_sim
         self._to_teleop = False
+
+        self.thrust = 0
+        self.to_land = False
+        self.to_hover = False
+
+        self.states = ["take_off", "land", "hover", "stop", "teleop"]
+        self._setState("stop")
         
         rospy.loginfo("%s: Initializing" % self.cf_id)
         
@@ -53,14 +61,6 @@ class Crazyflie:
 
         rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self._pose_handler)
         rospy.Subscriber(self.cf_id + '/goal', Pose, self._goal_handler)
-
-        # Parameters
-        self.thrust = 0
-        self.to_land = False
-        self.to_hover = False
-
-        self.states = ["take_off", "land", "hover", "stop", "teleop"]
-        self.state = ""
 
         rospy.loginfo("%s: Setup done" % self.cf_id)
 
