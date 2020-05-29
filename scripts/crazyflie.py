@@ -173,7 +173,7 @@ class Crazyflie:
 
     def toggleTeleop(self, req):
         if self.state == "teleop":
-            self._setState("land")
+            self._setState("stop")
         else:
             self._setState("teleop")
 
