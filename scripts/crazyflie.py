@@ -89,11 +89,11 @@ class Crazyflie:
     
     def _init_services(self):
         rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
-        rospy.Service(self.cf_id + '/take_off', Empty_srv, self.take_off())
-        rospy.Service(self.cf_id + '/hover', Empty_srv, self.hover())
-        rospy.Service(self.cf_id + '/land', Empty_srv, self.land())
-        rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop())
-        rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggleTeleop())
+        rospy.Service(self.cf_id + '/take_off', Empty_srv, self.take_off)
+        rospy.Service(self.cf_id + '/hover', Empty_srv, self.hover)
+        rospy.Service(self.cf_id + '/land', Empty_srv, self.land)
+        rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
+        rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggleTeleop)
 
     # Handlers
     def _pose_handler(self, pose_stamped):
@@ -144,14 +144,6 @@ class Crazyflie:
     def in_teleop(self):
         return self.state == "teleop"
 
-    def toggleTeleop(self):
-        if self.state == "teleop":
-            self._setState("land")
-        else:
-            self._setState("teleop")
-
-        return EmptyResponse_srv
-
     # State manager
     def _setState(self, newState):
         if newState in self.states:
@@ -159,25 +151,33 @@ class Crazyflie:
         else:
             rospy.logerr("Invalid State: %s" % newState)
 
-    def take_off(self):
+    def take_off(self, req):
         rospy.loginfo("%s: Take off" % self.cf_id)
         self._setState("take_off")
-        return EmptyResponse_srv
+        return EmptyResponse_srv()
 
-    def hover(self):
+    def hover(self, req):
         rospy.loginfo("%s: Hover" % self.cf_id)
         self._setState("hover")
-        return EmptyResponse_srv
+        return EmptyResponse_srv()
 
-    def land(self):
+    def land(self, req):
         rospy.loginfo("%s: Landing" % self.cf_id)
         self._setState("land")
-        return EmptyResponse_srv
+        return EmptyResponse_srv()
 
-    def stop(self):
+    def stop(self, req):
         rospy.loginfo("%s: Stoping" % self.cf_id)
         self._setState("stop")
-        return EmptyResponse_srv
+        return EmptyResponse_srv()
+
+    def toggleTeleop(self, req):
+        if self.state == "teleop":
+            self._setState("land")
+        else:
+            self._setState("teleop")
+
+        return EmptyResponse_srv()
 
     # Methods depending on state
     def _take_off(self):
@@ -204,7 +204,7 @@ class Crazyflie:
         rospy.loginfo("Pos reached \n{}".format(self.pose.position))
 
         if self.state is "take_off":
-            self.hover()
+            self.hover(Empty_srv())
 
     def _hover(self):
         self.cmd_pos_msg.header.seq += 1
@@ -240,7 +240,7 @@ class Crazyflie:
 
         rospy.loginfo("Landed \n{}".format(self.pose.position))
 
-        self.stop()
+        self.stop(Empty_srv())
 
     def _stop(self):
         self.cmd_vel(0, 0, 0, 0)
@@ -288,14 +288,13 @@ class Crazyflie:
             self._stop()
 
 if __name__ == '__main__':
-    # Get params
-    cf_id = rospy.get_param("~cf_name", "cf1")
-    to_sim = rospy.get_param("~to_sim", "False")
-    
     # Launch node
-    rospy.init_node('%s_', anonymous=False)
-    rospy.loginfo('Initialisation %s' % cf_id)
+    rospy.init_node('cf_controller', anonymous=False)
 
+    # Get params
+    cf_id = rospy.get_param("~cf_name", "cf_default")
+    to_sim = rospy.get_param("~to_sim", "False")
+    rospy.loginfo('Initialisation %s' % cf_id)
     
     # Initialize cfx
     cf = Crazyflie(cf_id, to_sim)

@@ -133,9 +133,9 @@ class Swarm:
     def _call_all_cf_service(self, service_name, service_msg=None):
         for _, cf in self.crazyflies.items():
             if service_msg is None:
-                res = cf["service_name"]()
+                res = cf[service_name]()
             else:
-                res = cf["service_name"](service_msg)
+                res = cf[service_name](service_msg)
         return res
 
     # Run in automatic

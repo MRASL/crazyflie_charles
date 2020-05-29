@@ -61,8 +61,8 @@ class CrazyflieSim:
 
 if __name__ == '__main__':
     # Launch node
-    cf_id = rospy.get_param("~cf_name", "crazyflie")
-    rospy.init_node('%s_sim' % cf_id, anonymous=False)
+    rospy.init_node('cf_sim', anonymous=False)
+    cf_id = rospy.get_param("~cf_name", "cf_default")
 
     # Get params
     cf_sim = CrazyflieSim(cf_id)
