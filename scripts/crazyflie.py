@@ -21,7 +21,8 @@ from crazyflie_charles.srv import PoseRequest
 class Crazyflie:
     def __init__(self, cf_id, to_sim):
         self.cf_id = '/' + cf_id
-        self.to_sim = to_sim
+        self._to_sim = to_sim
+        self._to_teleop = False
         
         rospy.loginfo("%s: Initializing" % self.cf_id)
         
@@ -30,17 +31,17 @@ class Crazyflie:
         self.rate = rospy.Rate(10)
 
         # If not in simulation, find services and set parameters
-        if not self.to_sim:
+        if not self._to_sim:
             rospy.loginfo(self.cf_id + ": waiting for update_params service...")
             rospy.wait_for_service(self.cf_id + '/update_params')
             rospy.loginfo(self.cf_id + ": found update_params service")
             self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
-            # Set parameters
+            # Set parameters # TODO: Move to swarmManager
             self.setParam("kalman/resetEstimation", 1)     
 
         # Declare services
-        rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
+        self._init_services()
 
         # Declare publishers
         self._init_publishers()
@@ -58,7 +59,7 @@ class Crazyflie:
         self.to_land = False
         self.to_hover = False
 
-        self.states = ["take_off", "land", "hover", "stop"]
+        self.states = ["take_off", "land", "hover", "stop", "teleop"]
         self.state = ""
 
         rospy.loginfo("%s: Setup done" % self.cf_id)
@@ -86,6 +87,15 @@ class Crazyflie:
         self.cmd_stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.cmd_stop_msg = Empty_msg()
     
+    def _init_services(self):
+        rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
+        rospy.Service(self.cf_id + '/take_off', Empty_srv, self.take_off())
+        rospy.Service(self.cf_id + '/hover', Empty_srv, self.hover())
+        rospy.Service(self.cf_id + '/land', Empty_srv, self.land())
+        rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop())
+        rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggleTeleop())
+
+    # Handlers
     def _pose_handler(self, pose_stamped):
         """ Update crazyflie position in world
         """
@@ -116,6 +126,7 @@ class Crazyflie:
         self.initial_pose.position.z = np.mean(initialPose['z'])
         rospy.loginfo("Initial position: \n{}".format(self.initial_pose))
 
+    # Setter & Getters
     def setParam(self, name, value):
         """Changes the value of the given parameter.
 
@@ -130,7 +141,18 @@ class Crazyflie:
     def getId(self):
         return self.cf_id
 
-    # To change states
+    def in_teleop(self):
+        return self.state == "teleop"
+
+    def toggleTeleop(self):
+        if self.state == "teleop":
+            self._setState("land")
+        else:
+            self._setState("teleop")
+
+        return EmptyResponse_srv
+
+    # State manager
     def _setState(self, newState):
         if newState in self.states:
             self.state = newState
@@ -140,18 +162,22 @@ class Crazyflie:
     def take_off(self):
         rospy.loginfo("%s: Take off" % self.cf_id)
         self._setState("take_off")
+        return EmptyResponse_srv
 
     def hover(self):
         rospy.loginfo("%s: Hover" % self.cf_id)
         self._setState("hover")
+        return EmptyResponse_srv
 
     def land(self):
         rospy.loginfo("%s: Landing" % self.cf_id)
         self._setState("land")
+        return EmptyResponse_srv
 
     def stop(self):
         rospy.loginfo("%s: Stoping" % self.cf_id)
         self._setState("stop")
+        return EmptyResponse_srv
 
     # Methods depending on state
     def _take_off(self):
@@ -220,7 +246,7 @@ class Crazyflie:
         self.cmd_vel(0, 0, 0, 0)
         self.rate.sleep()
 
-    # PUblishing methods
+    # Publishing methods
     def cmd_vel(self, roll, pitch, yawrate, thrust):
         """
         Publish pose in cmd_vel topic
@@ -250,6 +276,7 @@ class Crazyflie:
         self.cmd_pos_msg.z = z
         self.cmd_pos_pub.publish(self.cmd_pos_msg)
 
+    # Run methods
     def run_auto(self):
         if self.state == "take_off":
             self._take_off()
@@ -259,3 +286,23 @@ class Crazyflie:
             self._land()
         else:
             self._stop()
+
+if __name__ == '__main__':
+    # Get params
+    cf_id = rospy.get_param("~cf_name", "cf1")
+    to_sim = rospy.get_param("~to_sim", "False")
+    
+    # Launch node
+    rospy.init_node('%s_', anonymous=False)
+    rospy.loginfo('Initialisation %s' % cf_id)
+
+    
+    # Initialize cfx
+    cf = Crazyflie(cf_id, to_sim)
+
+    while not rospy.is_shutdown():
+        if not cf.in_teleop():
+            cf.run_auto()
+
+        else:
+            pass

@@ -36,23 +36,28 @@ class Swarm:
         
         # Initialize each Crazyflie
         for each_cf in cf_list:
-            self.crazyflies[each_cf] = {"cf": Crazyflie(each_cf, to_sim),
-                                        "emergency_srv": None,
+            self.crazyflies[each_cf] = {"emergency_srv": None,
                                         "goal_pub": None,
                                         "get_pose_srv": None,
-                                        "initial_pose": None}
+                                        "initial_pose": None,
+                                        "take_off": None,
+                                        "hover": None,
+                                        "land": None,
+                                        "stop": None,
+                                        "toggle_teleop": None}
 
-            if to_sim:
-                self.crazyflies_sim[each_cf] = {"cf": CrazyflieSim(each_cf)}
+            # if to_sim:
+            #     self.crazyflies_sim[each_cf] = {"cf": CrazyflieSim(each_cf)}
 
-            else:
+            if not to_sim:
                 # Subscribe to emergency service
                 rospy.loginfo("Swarm: waiting for emergency service of " + each_cf)
                 rospy.wait_for_service('/' + each_cf + '/emergency')
                 rospy.loginfo("Swarm: found emergency service of " + each_cf)
                 self.crazyflies[each_cf]["emergency_srv"] = rospy.ServiceProxy('/' + each_cf + '/emergency', srv.Empty)
 
-            # Subscribe to pose service
+            # Subscribe to services
+            # TODO: Add other services
             rospy.loginfo("Swarm: waiting for pose service of " + each_cf)
             rospy.wait_for_service('/' + each_cf + '/get_pose')
             rospy.loginfo("Swarm: found pose service of " + each_cf)
@@ -148,6 +153,4 @@ if __name__ == '__main__':
     # Initialize swarm
     swarm = Swarm(cf_list, to_sim)
 
-    while not rospy.is_shutdown():
-        if not swarm.in_teleop():
-            swarm.run_auto()
+    rospy.spin()
