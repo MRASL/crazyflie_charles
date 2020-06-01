@@ -77,6 +77,17 @@ class SquareFormation(Formation):
             each_cf[1].position.y = position[1] + self.initial_offset.position.y
             each_cf[1].position.z = position[2] + self.initial_offset.position.z
 
+class SingleFormation(Formation):
+    def __init__(self, cf_list, offset=[0, 0, 0]):
+        n_cf_supported = [1]
+        super(SingleFormation, self).__init__(cf_list, n_cf_supported, offset=offset)
+
+    def compute_initial_pose(self):
+        for _, each_cf in self.poses.items():
+            each_cf.position.x = self.initial_offset.position.x 
+            each_cf.position.y = self.initial_offset.position.y
+            each_cf.position.z = self.initial_offset.position.z
+
 if __name__ == '__main__':
     # cf_list = ["cf1", "cf2", "cf3", "cf4"]
     cf_list = ["cf1", "cf2", "cf3", "cf4", "cf5", "cf6", "cf7", "cf8", "cf9"]

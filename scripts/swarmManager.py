@@ -17,7 +17,7 @@ import numpy as np
 
 from crazyflie import Crazyflie
 from crazyflie_sim import CrazyflieSim
-from swarmFormation import SquareFormation
+from swarmFormation import SquareFormation, SingleFormation
 
 from geometry_msgs.msg import Pose
 from std_srvs import srv
@@ -44,7 +44,11 @@ class Swarm:
         self.rate = rospy.Rate(100)
         self.cf_list = cf_list
         
+        # Change class depending on formation
         self.formation = SquareFormation(self.cf_list, offset=[0, 0, 0.2])
+        # self.formation = SingleFormation(self.cf_list, offset=[0.2, 0.2, 0.2])
+        
+        
         self.formation.compute_initial_pose()
 
         # Initialize each Crazyflie
