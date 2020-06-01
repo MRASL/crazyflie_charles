@@ -8,8 +8,8 @@
 
 import rospy
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Pose, PoseStamped
-
+from geometry_msgs.msg import Pose, PoseStamped, Twist
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class RvizMarkers:
     def __init__(self, cf_list):
@@ -21,7 +21,7 @@ class RvizMarkers:
         self.rate = rospy.Rate(100)
 
 
-        rospy.Subscriber("swarm_goal", Pose, self.update_goal)
+        rospy.Subscriber("swarm_goal", Twist, self.update_goal)
 
         for each_cf in cf_list:
             self.cf_pose_msgs[each_cf] = self.init_cf_marker(each_cf)
@@ -163,8 +163,13 @@ class RvizMarkers:
         msg_pose.pose.position = pose_msg.pose.position
 
     def update_goal(self, goal):
-        self.goal_msg.pose.position = goal.position
-        self.goal_pose_msg.pose = goal
+        self.goal_msg.pose.position = goal.linear
+        self.goal_pose_msg.pose.position = goal.linear
+        x, y, z, w = quaternion_from_euler(goal.angular.x, goal.angular.y, goal.angular.z)
+        self.goal_pose_msg.pose.orientation.x = x
+        self.goal_pose_msg.pose.orientation.y = y
+        self.goal_pose_msg.pose.orientation.z = z
+        self.goal_pose_msg.pose.orientation.w = w
 
     def publish(self):
         while not rospy.is_shutdown():

@@ -19,7 +19,7 @@ from crazyflie import Crazyflie
 from crazyflie_sim import CrazyflieSim
 from swarmFormation import SquareFormation, SingleFormation
 
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Twist
 from std_srvs import srv
 from crazyflie_charles.srv import PoseRequest, PoseSet
 
@@ -38,7 +38,7 @@ class Swarm:
         self.crazyflies = {} #: dict: Keys are name of the CF
         self.crazyflies_sim = {}
         self._to_sim = to_sim
-        self.swarm_goal = Pose()
+        self.swarm_goal = Twist()
         self._to_teleop = False   
         self.swarm_pose = Pose() #: Position of the swarm
         self.rate = rospy.Rate(100)
@@ -64,10 +64,10 @@ class Swarm:
         rospy.Service('/toggleTeleop', srv.Empty, self.toggleTeleop)        # Toggle between manual and auto mode
 
         # Publisher
-        self.goal_pub = rospy.Publisher('swarm_goal', Pose, queue_size=1)
+        self.goal_pub = rospy.Publisher('swarm_goal', Twist, queue_size=1)
 
         # Subscribe
-        rospy.Subscriber("swarm_goal_var", Pose, self.update_swarm_goal)
+        rospy.Subscriber("swarm_goal_var", Twist, self.update_swarm_goal)
 
         self.get_swarm_pose()
 
@@ -185,8 +185,8 @@ class Swarm:
         
         self.get_swarm_pose()
 
-        goal_var = Pose()
-        goal_var.position.z = 0.5
+        goal_var = Twist()
+        goal_var.linear.z = 0.5
         self.update_swarm_goal(goal_var)
 
         self._call_all_cf_service("take_off")
@@ -195,22 +195,23 @@ class Swarm:
     def land(self, req):
         rospy.loginfo("Swarm: land")
 
-        goal_var = Pose()
-        goal_var.position.z = GND_HEIGHT - self.swarm_goal.position.z
+        goal_var = Twist()
+        goal_var.linear.z = GND_HEIGHT - self.swarm_goal.linear.z
         self.update_swarm_goal(goal_var)
 
         self._call_all_cf_service("land")
         return srv.EmptyResponse()
     
     def update_swarm_goal(self, goal_var):
-        self.swarm_goal.position.x += goal_var.position.x
-        self.swarm_goal.position.y += goal_var.position.y
-        self.swarm_goal.position.z += goal_var.position.z
+        self.swarm_goal.linear.x += goal_var.linear.x
+        self.swarm_goal.linear.y += goal_var.linear.y
+        self.swarm_goal.linear.z += goal_var.linear.z
+        self.swarm_goal.angular.z += goal_var.angular.z
         
         for _, cf in self.crazyflies.items(): 
-            cf["goal_msg"].position.x += goal_var.position.x
-            cf["goal_msg"].position.y += goal_var.position.y
-            cf["goal_msg"].position.z += goal_var.position.z
+            cf["goal_msg"].linear.x += goal_var.linear.x
+            cf["goal_msg"].linear.y += goal_var.linear.y
+            cf["goal_msg"].linear.z += goal_var.linear.z
     
     def get_swarm_pose(self):
         # TODO: #15 Initial swarm position depending on formation
