@@ -21,7 +21,7 @@ class RvizMarkers:
         self.rate = rospy.Rate(100 * (len(self.cf_list) + 2))
 
 
-        rospy.Subscriber("goal_swarm", Pose, self.update_goal)
+        rospy.Subscriber("swarm_goal", Pose, self.update_goal)
 
         for each_cf in cf_list:
             self.cf_pose_msgs[each_cf] = self.init_cf_marker(each_cf)
@@ -69,12 +69,12 @@ class RvizMarkers:
 
         msg.ns = "goal"
         msg.id = 0
-        msg.type = 2      # Cube
+        msg.type = 2      # Sphere
         msg.action = 0    # Add
 
-        msg.pose.position.x = 1
-        msg.pose.position.y = 1
-        msg.pose.position.z = 1
+        msg.pose.position.x = 0
+        msg.pose.position.y = 0
+        msg.pose.position.z = 0
 
         msg.pose.orientation.x = 0.0
         msg.pose.orientation.y = 0.0

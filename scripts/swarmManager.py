@@ -13,6 +13,8 @@ TODO:
 
 import rospy
 import tf
+import numpy as np
+
 from crazyflie import Crazyflie
 from crazyflie_sim import CrazyflieSim
 
@@ -32,6 +34,9 @@ class Swarm:
         self.crazyflies = {} #: dict: Keys are name of the CF
         self.crazyflies_sim = {}
         self._to_sim = to_sim
+        self.swarm_goal = Pose()
+        self._to_teleop = False   
+        self.swarm_pose = Pose() #: Position of the swarm
             
         # Initialize each Crazyflie
         for each_cf in cf_list:
@@ -44,13 +49,17 @@ class Swarm:
         rospy.Service('/takeoff', srv.Empty, self.takeOff)                  # Take off all CFs
         rospy.Service('/land', srv.Empty, self.land)                        # Land all CFs
         rospy.Service('/toggleTeleop', srv.Empty, self.toggleTeleop)        # Toggle between manual and auto mode
-        rospy.Service('/getSwarmPose', PoseRequest, self.get_swarm_pose)    # Find position of the swarm
+        # rospy.Service('/getSwarmPose', PoseRequest, self.get_swarm_pose)    # Find position of the swarm
+
+        # Publisher
+        self.goal_pub = rospy.Publisher('swarm_goal', Pose, queue_size=1)
 
         # Subscribe
-        rospy.Subscriber("goal_swarm", Pose, self.broadcast_goal)
+        rospy.Subscriber("swarm_goal_var", Pose, self.broadcast_goal)
 
-        self._to_teleop = False   
+        self.get_swarm_pose()
 
+    # CF initialization
     def _init_cf(self, cf_id):
         """Initialize each CF
 
@@ -74,7 +83,8 @@ class Swarm:
                                     "land": None,           # service  
                                     "stop": None,           # service
                                     "toggle_teleop": None,  # service  
-                                    "initial_pose": None,   # attribute  
+                                    "initial_pose": None,   # attr
+                                    "goal_msg": None,       # msg  
                                     "goal_pub": None}       # publisher
 
         # Subscribe to services
@@ -87,6 +97,8 @@ class Swarm:
         self._link_service(cf_id, "hover", srv.Empty)
         self._link_service(cf_id, "stop", srv.Empty)
         self._link_service(cf_id, "toggle_teleop", srv.Empty)
+
+        self.crazyflies[cf_id]["goal_msg"] = Pose()
 
         # Publish goal
         self.crazyflies[cf_id]["goal_pub"] = rospy.Publisher('/' + cf_id + '/goal', Pose, queue_size=1)
@@ -162,19 +174,42 @@ class Swarm:
     
     def broadcast_goal(self, goal):
         # TODO: Different goal for each CF depending on formation (#15)
-        for _, cf in self.crazyflies.items(): 
-            cf["goal_pub"].publish(goal)
+        self.swarm_goal.position.x += goal.position.x
+        self.swarm_goal.position.y += goal.position.y
+        self.swarm_goal.position.z += goal.position.z
 
-    def get_swarm_pose(self, req):
-        swarmPose = Pose()
+        self.goal_pub.publish(self.swarm_goal)
+        
         for _, cf in self.crazyflies.items(): 
-            cf["initial_pose"] = cf["get_pose"]()
-            swarmPose = cf["initial_pose"]
-            
+            cf["goal_msg"].position.x += goal.position.x
+            cf["goal_msg"].position.y += goal.position.y
+            cf["goal_msg"].position.z += goal.position.z
+
+            cf["goal_pub"].publish(cf["goal_msg"])
+
+    def get_swarm_pose(self):
         # TODO: #15 Initial swarm position depending on formation
-        # For one CF swarm pos = CF pos
-        return swarmPose
+        # To simplify, swarm pose is the average of all the poses
 
+        x = []
+        y = []
+        z = []
+        yaw = []
+
+        for _, cf in self.crazyflies.items(): 
+            cf["initial_pose"] = cf["get_pose"]().pose
+            cf["goal_msg"] = cf["initial_pose"]
+
+            x.append(cf["initial_pose"].position.x)
+            y.append(cf["initial_pose"].position.y)
+            z.append(cf["initial_pose"].position.z)
+
+        self.swarm_pose.position.x = np.mean(x)
+        self.swarm_pose.position.y = np.mean(y)
+        self.swarm_pose.position.z = np.mean(z)
+
+        self.swarm_goal = self.swarm_pose
+        
     def _call_all_cf_service(self, service_name, service_msg=None):
         """Call a service for all the CF in the swarm
 
