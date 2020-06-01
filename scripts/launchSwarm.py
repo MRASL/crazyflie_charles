@@ -3,7 +3,18 @@
 """
 Script to manage all the crazyflies
 
-Python api for launch files: http://wiki.ros.org/roslaunch/API%20Usage
+Options:
+    -n: To specify number of CFs in the swarm
+    --sim: To launch in simulation
+
+Example:
+    ::
+
+    $ rosrun crazyflie_charles launchSwarm.py
+
+.._ Python api for launch files: 
+    http://wiki.ros.org/roslaunch/API%20Usage
+
 """
 
 import rospy
@@ -12,6 +23,11 @@ import sys
 import argparse
 
 def launch_file(cli_args):
+    """To execute launch files with arguments
+
+    Args:
+        cli_args (list - str): ["pkg_name", "file.launch", "args"]
+    """
     roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(cli_args)
     roslaunch_args = cli_args[2:]
 
@@ -20,6 +36,11 @@ def launch_file(cli_args):
     launch.start()
 
 def add_args(arg_list):
+    """Add arguments of the launch file
+
+    Args:
+        arg_list (list): List of args
+    """
     for each_arg in arg_list:
         sys.argv.append(each_arg)
 
@@ -28,17 +49,14 @@ if __name__ == '__main__':
     # Check arguments
     parser = argparse.ArgumentParser(description='Start crazyflie swarm')
     parser.add_argument('-n', type=int, help='Number of crazyflie in the swarm', default=1)
-    # parser.add_argument('--teleop', '-t', action='store_true', help='Activate teleoperation')
     parser.add_argument('--sim', '-s', action='store_true', help='Flag to launch in simulation')
     
     args = parser.parse_args()
     n_cf = args.n
-    # to_teleop = args.teleop
     to_sim = args.sim
 
     # Launch server
     rospy.init_node('launchSwarm', anonymous=False)
-    
     rospy.loginfo("Initializing server for %i crazyflies" % n_cf)
     uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
     roslaunch.configure_logging(uuid)
