@@ -28,3 +28,18 @@
     - Lightouse deck
     - Base station
     - Support
+
+## Objectifs
+  - Vol en formation
+    - Supporter plusieurs formations
+      - Carre
+      - Cercle
+      - Pyramide
+    - Changement entre les formation
+      - En utilisant l'algorithme de planification de trajet
+    - Pilotage en formation
+      - x, y, z, yaw
+    - Aller en formation a partir de pos inital random
+    - Determiner les cf de la formation selon le nombre dispo
+  - Choregraphie
+    - Executer une sequence preenregistre

@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /TF1/Frames1
+        - /TF1/Tree1
       Splitter Ratio: 0.6172410249710083
     Tree Height: 695
   - Class: rviz/Selection
@@ -54,23 +55,18 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
-      Enabled: true
+      Enabled: false
       Links:
         All Links Enabled: true
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: ""
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: RobotModel
       Robot Description: robot_description
       TF Prefix: cf1
       Update Interval: 0
-      Value: true
+      Value: false
       Visual Enabled: true
     - Class: rviz/TF
       Enabled: true
@@ -80,18 +76,39 @@ Visualization Manager:
         cf1/base_link:
           Value: false
         cf1/cf1:
+          Value: true
+        cf2/base_link:
           Value: false
+        cf2/cf2:
+          Value: true
+        cf3/base_link:
+          Value: true
+        cf3/cf3:
+          Value: true
+        cf4/base_link:
+          Value: true
+        cf4/cf4:
+          Value: true
         world:
           Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: false
-      Show Axes: true
+      Show Axes: false
       Show Names: false
       Tree:
         world:
           cf1/cf1:
             cf1/base_link:
+              {}
+          cf2/cf2:
+            cf2/base_link:
+              {}
+          cf3/cf3:
+            cf3/base_link:
+              {}
+          cf4/cf4:
+            cf4/base_link:
               {}
       Update Interval: 0
       Value: true
@@ -101,6 +118,10 @@ Visualization Manager:
       Name: Marker
       Namespaces:
         bed: true
+        cf1: true
+        cf2: true
+        cf3: true
+        cf4: true
         goal: true
       Queue Size: 100
       Value: true
@@ -132,25 +153,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.861868858337402
+      Distance: 6.475081443786621
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.6568782329559326
-        Y: 2.524038553237915
-        Z: -1.714577555656433
+        X: 1.726025938987732
+        Y: 2.166294813156128
+        Z: -1.9498800039291382
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.874796986579895
+      Pitch: 0.964796781539917
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.695428371429443
+      Yaw: 4.715427875518799
     Saved: ~
 Window Geometry:
   Displays:
