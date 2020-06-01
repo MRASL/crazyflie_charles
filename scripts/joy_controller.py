@@ -28,12 +28,28 @@ TAKE_OFF_DZ = 0.5
 #! Only cf1 name is supported for teleop TODO #16
 
 class Axis:
+    """Represents an axis
+
+    Attributes:
+        axis_num (int): Index of the axis to read
+        max_vel (int): Maximum value for velocity control
+        max_goal (int): Maximum value for goal control 
+    """
     def __init__(self):
+
         self.axis_num = 0
         self.max_vel = 0
         self.max_goal = 0
 
 class Axes:
+    """All the axis of a CF
+
+    Attributes:
+        x (Axis): X axis
+        y (Axis): Y axis
+        z (Axis): Z axis
+        yaw (Axis): Yaw axis
+    """
     def __init__(self):
         self.x = Axis()
         self.y = Axis()
@@ -41,9 +57,28 @@ class Axes:
         self.yaw = Axis()
 
 class Controller():
+    """Interface with the joystick
+    """
     def __init__(self, joy_topic, to_sim):
-        self._to_sim = to_sim
+        """Init
 
+        Args:
+            joy_topic (str): Topic with joystick values
+            to_sim (bool): True if simulation is activated
+        """
+        # Attributes
+        
+        self._to_sim = to_sim #: bool
+
+        self._buttons = None  #: list: previous state of the buttons
+
+        self._to_teleop = False #: bool: in automatic or teleop
+
+        self.rate = rospy.Rate(100) #: rospy.Rate: Publishing rate 
+
+        self.swarmInitialPose = Pose() #: Pose: Swarm initial pose
+
+        # Init services
         self._init_services()
         
         # Subscriber
@@ -60,12 +95,6 @@ class Controller():
         self.goal_msg.orientation.y = 0
         self.goal_msg.orientation.z = 0
         self.goal_msg.orientation.w = 0
-
-        # Parameters
-        self._buttons = None   # Store last buttons
-        self._to_teleop = False
-        self.rate = rospy.Rate(100)
-        self.swarmInitialPose = Pose()
 
         # Axis parameters
         self.axes = Axes()
@@ -84,7 +113,8 @@ class Controller():
         self.axes.z.max_goal = rospy.get_param("~z_goal_max", 0.05)
 
     def _init_services(self):
-        # Subscribe to services
+        """Init services
+        """
         if not self._to_sim:
             rospy.loginfo("Joy: waiting for params service")
             rospy.wait_for_service('update_params')
@@ -122,6 +152,11 @@ class Controller():
         self._getSwarmPos = rospy.ServiceProxy('getSwarmPose', PoseRequest)
 
     def _joyChanged(self, data):
+        """Called when data is received from the joystick
+
+        Args:
+            data (Joy): Joystick data
+        """
         # Read the buttons
         self._getButtons(data.buttons)
         
@@ -137,6 +172,16 @@ class Controller():
             self.goal_msg.position.z = self._getAxis(data.axes, self.axes.z, False) + self.goal_msg.position.z
 
     def _getAxis(self, axesData, axisToRead, measureVel=True):
+        """Find the value of the axis
+
+        Args:
+            axesData (list of int): Value of all the joystick axes
+            axisToRead (Axis): Axis to read
+            measureVel (bool, optional): To measure velocity or goal. Defaults to True.
+
+        Returns:
+            int: Read value. Input from -1 to 1, output from -max to max
+        """
         sign = 1.0
         if axisToRead.axis_num < 0:
             sign = -1.0
@@ -152,13 +197,18 @@ class Controller():
         return sign * val * max_val
 
     def _getButtons(self, buttonsData):
-        """
-        Circle: Emergency
-        Triangle:  
-        Square: TakeOff
-        Cross: Land
+        """Find pressed buttons
 
+        Args:
+            buttonsData (list of int): buttons values
+        
+        Notes:
+            Circle: Emergency
+            Triangle:  
+            Square: TakeOff
+            Cross: Land
         """
+
         for i in range(0, len(buttonsData)):
             if self._buttons == None or buttonsData[i] != self._buttons[i]: # If button changed
                 if i == CIRCLE and buttonsData[i] == 1:
@@ -190,11 +240,18 @@ class Controller():
         self._buttons = buttonsData
 
     def _toggleTeleop(self):
+        """Toggle between teleop and automatic mode
+
+        In teleop, CF is piloted with joystick.
+        In automatic, CF goal is controlled with joystick
+        """
         self._to_teleop = not self._to_teleop
         self._toggleTeleopServ()  # Toggle in swarm controller
         print("Teleop set to : %s" % self._to_teleop)
 
     def _takeOffSwarm(self):
+        """Take off all the CF in the swarm 
+        """
         self.swarmInitialPose = self._getSwarmPos().pose
         self.goal_msg = self.swarmInitialPose
         self.goal_msg.position.z = self.goal_msg.position.z + TAKE_OFF_DZ
@@ -203,9 +260,16 @@ class Controller():
         self._takeoff()
 
     def in_teleop(self):
+        """Return teleop value
+
+        Returns:
+            bool: True if in teleop mode
+        """
         return self._to_teleop
 
     def execute(self):
+        """Loop as long as alive
+        """
         while not rospy.is_shutdown():
             if self.in_teleop():
                 self.vel_publisher.publish(self.vel_msg)

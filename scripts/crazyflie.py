@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 
-"""
-Class that represents a single crazyflie
+"""Class that represents a single crazyflie
 
-voir les commandes possibles: https://github.com/bitcraze/crazyflie-firmware/blob/master/src/modules/src/crtp_commander_generic.c
+Args:
+    cf_name (str): Name of the crazyflie
+    to_sim (bool): To run in simulation or not
+
+:: _Voir les topics possibles: 
+    https://github.com/bitcraze/crazyflie-firmware/blob/master/src/modules/src/crtp_commander_generic.c
 """
 
 import rospy
@@ -20,16 +24,35 @@ from crazyflie_charles.srv import PoseRequest
 
 class Crazyflie:
     def __init__(self, cf_id, to_sim):
-        # Parameters
+        """
+        Args:
+            cf_id (str): Name of the CF
+            to_sim (bool): To sim
+
+        Attributes:
+            cf_id (str): Name of the CF
+            _to_sim (bool): To sim
+            _to_teleop (bool): To teleop
+            
+            _states (list of str): All possible states of the CF
+            _state (str): Current state of the CF
+
+        Publishers:
+
+        Messages:
+
+        Services:
+
+
+        """
+        # Attributes
         self.cf_id = '/' + cf_id
+
         self._to_sim = to_sim
         self._to_teleop = False
 
-        self.thrust = 0
-        self.to_land = False
-        self.to_hover = False
-
-        self.states = ["take_off", "land", "hover", "stop", "teleop"]
+        self._states = ["take_off", "land", "hover", "stop", "teleop"]
+        self._state = "stop"
         self._setState("stop")
         
         rospy.loginfo("%s: Initializing" % self.cf_id)
@@ -65,6 +88,7 @@ class Crazyflie:
         rospy.loginfo("%s: Setup done" % self.cf_id)
 
     def _init_publishers(self):
+        """Initialize all publishers"""
         self.cmd_vel_pub = rospy.Publisher(self.cf_id + '/cmd_vel', Twist, queue_size=1)
         self.cmd_vel_msg = Twist()
 
@@ -97,8 +121,7 @@ class Crazyflie:
 
     # Handlers
     def _pose_handler(self, pose_stamped):
-        """ Update crazyflie position in world
-        """
+        """Update crazyflie position in world """
         self.pose = pose_stamped.pose
 
     def _goal_handler(self, goal):
@@ -142,12 +165,12 @@ class Crazyflie:
         return self.cf_id
 
     def in_teleop(self):
-        return self.state == "teleop"
+        return self._state == "teleop"
 
     # State manager
     def _setState(self, newState):
-        if newState in self.states:
-            self.state = newState
+        if newState in self._states:
+            self._state = newState
         else:
             rospy.logerr("Invalid State: %s" % newState)
 
@@ -172,7 +195,7 @@ class Crazyflie:
         return EmptyResponse_srv()
 
     def toggleTeleop(self, req):
-        if self.state == "teleop":
+        if self._state == "teleop":
             self._setState("stop")
         else:
             self._setState("teleop")
@@ -190,7 +213,7 @@ class Crazyflie:
         
         
         for i in range(time_range):
-            if rospy.is_shutdown() or self.state is not "take_off": break
+            if rospy.is_shutdown() or self._state is not "take_off": break
 
             z = i*z_inc + self.initial_pose.position.z
 
@@ -203,7 +226,7 @@ class Crazyflie:
 
         rospy.loginfo("Pos reached \n{}".format(self.pose.position))
 
-        if self.state is "take_off":
+        if self._state is "take_off":
             self.hover(Empty_srv())
 
     def _hover(self):
@@ -227,7 +250,7 @@ class Crazyflie:
         z_dec = dZ/time_range
         
         for i in range(time_range):
-            if rospy.is_shutdown() or self.state is not "land": break
+            if rospy.is_shutdown() or self._state is not "land": break
 
             z = z_start - i*z_dec 
 
@@ -248,8 +271,8 @@ class Crazyflie:
 
     # Publishing methods
     def cmd_vel(self, roll, pitch, yawrate, thrust):
-        """
-        Publish pose in cmd_vel topic
+        """Publish pose in cmd_vel topic
+
         Args:
             roll (float): Roll angle. Degrees. Positive values == roll right.
             pitch (float): Pitch angle. Degrees. Positive values == pitch
@@ -267,10 +290,22 @@ class Crazyflie:
         self.cmd_vel_pub.publish(msg)
 
     def cmd_hovering(self, zDistance):
+        """Publish hover in cmd_hover topic
+
+        Args:
+            zDistance (float): Distance to hover
+        """
         self.cmd_hovering_msg.zDistance = zDistance
         self.cmd_hovering_pub.publish(self.cmd_hovering_msg)
 
     def cmd_pos(self, x, y, z):
+        """Publish target position to cmd_positions topic
+
+        Args:
+            x (float): X
+            y (float): Y
+            z (float): Z
+        """
         self.cmd_pos_msg.x = x
         self.cmd_pos_msg.y = y
         self.cmd_pos_msg.z = z
@@ -278,11 +313,11 @@ class Crazyflie:
 
     # Run methods
     def run_auto(self):
-        if self.state == "take_off":
+        if self._state == "take_off":
             self._take_off()
-        elif self.state == "hover":
+        elif self._state == "hover":
             self._hover()
-        elif self.state == "land":
+        elif self._state == "land":
             self._land()
         else:
             self._stop()
