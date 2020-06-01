@@ -81,6 +81,7 @@ class Crazyflie:
         self.pose = Pose()
         self.goal = Pose()
         self.initial_pose = Pose()
+        self.findInitialPose()
 
         rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self._pose_handler)
         rospy.Subscriber(self.cf_id + '/goal', Pose, self._goal_handler)
@@ -133,21 +134,23 @@ class Crazyflie:
         return self.initial_pose
 
     def findInitialPose(self):  
-        """ Find the initial position of the crazyflie by calculating the mean during a time interval
-        """
-        rospy.loginfo("Estimating inital pos...")
-        r = rospy.Rate(100)
-        initialPose = {'x': [], 'y':[], 'z':[] } 
-        while len(initialPose['x']) < 10:
-            initialPose['x'].append(self.pose.position.x)
-            initialPose['y'].append(self.pose.position.y)
-            initialPose['z'].append(self.pose.position.z)
-            r.sleep()
-        
-        self.initial_pose.position.x = np.mean(initialPose['x'])
-        self.initial_pose.position.y = np.mean(initialPose['y'])
-        self.initial_pose.position.z = np.mean(initialPose['z'])
-        rospy.loginfo("Initial position: \n{}".format(self.initial_pose))
+        """ Find the initial position of the crazyflie by calculating the mean during a time interval"""
+        if not self._to_sim:
+            r = rospy.Rate(100)
+            initialPose = {'x': [], 'y':[], 'z':[] } 
+            while len(initialPose['x']) < 10:
+                initialPose['x'].append(self.pose.position.x)
+                initialPose['y'].append(self.pose.position.y)
+                initialPose['z'].append(self.pose.position.z)
+                r.sleep()
+            
+            self.initial_pose.position.x = np.mean(initialPose['x'])
+            self.initial_pose.position.y = np.mean(initialPose['y'])
+            self.initial_pose.position.z = np.mean(initialPose['z'])
+            rospy.loginfo("Initial position: \n{}".format(self.initial_pose))
+
+        else:
+            self.initial_pose = self.pose
 
     # Setter & Getters
     def setParam(self, name, value):

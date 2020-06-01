@@ -116,7 +116,7 @@ class RvizMarkers:
         marker_msg.scale.y = 0.1
         marker_msg.scale.z = 0.05
 
-        marker_msg.color.a = 1
+        marker_msg.color.a = 0.7
         marker_msg.color.r = 0
         marker_msg.color.g = 0
         marker_msg.color.b = 1

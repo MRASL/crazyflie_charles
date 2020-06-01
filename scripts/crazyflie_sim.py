@@ -11,6 +11,7 @@ import numpy as np
 from crazyflie_driver.msg import Position, Hover
 from geometry_msgs.msg import Twist, PoseStamped, Pose
 from std_msgs.msg import Empty
+from crazyflie_charles.srv import PoseSet, PoseSetResponse
 
 start_pos = {"cf1": [0.5, 0.5, 0.5], 
              "cf2": [0.5, 1.0, 0.5],
@@ -32,12 +33,13 @@ class CrazyflieSim:
         self.position.header.stamp = rospy.Time.now()
         self.position.header.frame_id = self.world_frame
         self.position.pose.orientation.w = 1
-        self.position.pose.position.x = start_pos[cf_id][0]
-        self.position.pose.position.y = start_pos[cf_id][1]
-        self.position.pose.position.z = start_pos[cf_id][2]
+        # self.position.pose.position.x = start_pos[cf_id][0]
+        # self.position.pose.position.y = start_pos[cf_id][1]
+        # self.position.pose.position.z = start_pos[cf_id][2]
 
 
-        # Declare subscriptions
+        # Declare subscriptions and services
+        rospy.Service('%s/set_pose' % self.cf_id, PoseSet, self._set_pose)
         rospy.Subscriber('%s/cmd_vel' % self.cf_id, Twist, self._cmd_vel_handler)
         rospy.Subscriber('%s/cmd_hovering' % self.cf_id, Hover, self._cmd_hover_handler)
         rospy.Subscriber('%s/cmd_position' % self.cf_id, Position, self._cmd_pos_handler)
@@ -51,6 +53,10 @@ class CrazyflieSim:
             self.position_pub.publish(self.position)
 
             self.rate.sleep()
+
+    def _set_pose(self, pose_to_set):
+        self.position.pose = pose_to_set.pose
+        return PoseSetResponse()
 
     def _cmd_vel_handler(self, vel_data):
         # rospy.logwarn("cmd_vel not implemented in simulation")
