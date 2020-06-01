@@ -24,7 +24,6 @@ R1 = 5
 L2 = 6
 R2 = 7
 
-TAKE_OFF_DZ = 0.5
 #! Only cf1 name is supported for teleop TODO #16
 
 class Axis:
@@ -253,10 +252,6 @@ class Controller():
     def _takeOffSwarm(self):
         """Take off all the CF in the swarm 
         """
-        # self.swarmInitialPose = self._getSwarmPos().pose
-        # self.goal_msg = self.swarmInitialPose
-        # self.goal_msg.position.z = self.goal_msg.position.z + TAKE_OFF_DZ
-        # self.goal_publisher.publish(self.goal_msg)
         self._takeoff()
 
     def in_teleop(self):

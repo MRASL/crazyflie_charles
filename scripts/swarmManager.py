@@ -22,6 +22,9 @@ from geometry_msgs.msg import Pose
 from std_srvs import srv
 from crazyflie_charles.srv import PoseRequest
 
+TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
+GND_HEIGHT = 0.2 #: (float) Height of the ground
+
 class Swarm:
     """Controls the swarm """
 
@@ -37,6 +40,7 @@ class Swarm:
         self.swarm_goal = Pose()
         self._to_teleop = False   
         self.swarm_pose = Pose() #: Position of the swarm
+        self.rate = rospy.Rate(100)
             
         # Initialize each Crazyflie
         for each_cf in cf_list:
@@ -55,7 +59,7 @@ class Swarm:
         self.goal_pub = rospy.Publisher('swarm_goal', Pose, queue_size=1)
 
         # Subscribe
-        rospy.Subscriber("swarm_goal_var", Pose, self.broadcast_goal)
+        rospy.Subscriber("swarm_goal_var", Pose, self.update_swarm_goal)
 
         self.get_swarm_pose()
 
@@ -164,29 +168,36 @@ class Swarm:
     
     def takeOff(self, req):
         rospy.loginfo("Swarm: take off")
+        
+        self.get_swarm_pose()
+
+        goal_var = Pose()
+        goal_var.position.z = 0.5
+        self.update_swarm_goal(goal_var)
+
         self._call_all_cf_service("take_off")
         return srv.EmptyResponse()
     
     def land(self, req):
         rospy.loginfo("Swarm: land")
+
+        goal_var = Pose()
+        goal_var.position.z = GND_HEIGHT - self.swarm_goal.position.z
+        self.update_swarm_goal(goal_var)
+
         self._call_all_cf_service("land")
         return srv.EmptyResponse()
     
-    def broadcast_goal(self, goal):
-        # TODO: Different goal for each CF depending on formation (#15)
-        self.swarm_goal.position.x += goal.position.x
-        self.swarm_goal.position.y += goal.position.y
-        self.swarm_goal.position.z += goal.position.z
-
-        self.goal_pub.publish(self.swarm_goal)
+    def update_swarm_goal(self, goal_var):
+        self.swarm_goal.position.x += goal_var.position.x
+        self.swarm_goal.position.y += goal_var.position.y
+        self.swarm_goal.position.z += goal_var.position.z
         
         for _, cf in self.crazyflies.items(): 
-            cf["goal_msg"].position.x += goal.position.x
-            cf["goal_msg"].position.y += goal.position.y
-            cf["goal_msg"].position.z += goal.position.z
-
-            cf["goal_pub"].publish(cf["goal_msg"])
-
+            cf["goal_msg"].position.x += goal_var.position.x
+            cf["goal_msg"].position.y += goal_var.position.y
+            cf["goal_msg"].position.z += goal_var.position.z
+    
     def get_swarm_pose(self):
         # TODO: #15 Initial swarm position depending on formation
         # To simplify, swarm pose is the average of all the poses
@@ -209,7 +220,7 @@ class Swarm:
         self.swarm_pose.position.z = np.mean(z)
 
         self.swarm_goal = self.swarm_pose
-        
+
     def _call_all_cf_service(self, service_name, service_msg=None):
         """Call a service for all the CF in the swarm
 
@@ -227,10 +238,14 @@ class Swarm:
                 res = cf[service_name](service_msg)
         return res
 
-    # Run in automatic
-    def run_auto(self):
-        for _, cf in self.crazyflies.items():  # _: Key (cf_id) cf: items dict
-            cf["cf"].run_auto()
+    def pub_goal(self):
+        while not rospy.is_shutdown():
+            self.goal_pub.publish(self.swarm_goal)
+
+            for _, cf in self.crazyflies.items(): 
+                cf["goal_pub"].publish(cf["goal_msg"])
+
+            self.rate.sleep()
 
 if __name__ == '__main__':
     # Launch node
@@ -243,5 +258,7 @@ if __name__ == '__main__':
     
     # Initialize swarm
     swarm = Swarm(cf_list, to_sim)
+
+    swarm.pub_goal()
 
     rospy.spin()

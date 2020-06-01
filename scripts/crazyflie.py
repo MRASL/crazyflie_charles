@@ -236,13 +236,11 @@ class Crazyflie:
         self.rate.sleep()
 
     def _land(self):
-        zGround = 0.2
-
         x_start = self.pose.position.x
         y_start = self.pose.position.y
         z_start = self.pose.position.z
 
-        dZ = z_start - zGround
+        dZ =  z_start - self.goal.position.z
 
 
         time_range = 2*10
