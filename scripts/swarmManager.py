@@ -17,6 +17,7 @@ import numpy as np
 
 from crazyflie import Crazyflie
 from crazyflie_sim import CrazyflieSim
+import swarmFormation
 
 from geometry_msgs.msg import Pose
 from std_srvs import srv
@@ -205,7 +206,7 @@ class Swarm:
         x = []
         y = []
         z = []
-        yaw = []
+        # yaw = []
 
         for _, cf in self.crazyflies.items(): 
             cf["initial_pose"] = cf["get_pose"]().pose
