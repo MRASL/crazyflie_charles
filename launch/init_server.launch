@@ -42,10 +42,11 @@
 
   <!-- Rviz markers -->
   <node name="rviz_markers" pkg="crazyflie_charles" type="rviz_markers.py" output="screen" >
+    <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
   </node>
 
   <!-- run rviz -->
-  <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
+  <param name="cf_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find crazyflie_charles)/launch/crazyflie_pos.rviz" required="true" />
 
 </launch>

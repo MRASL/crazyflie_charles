@@ -12,6 +12,11 @@ from crazyflie_driver.msg import Position, Hover
 from geometry_msgs.msg import Twist, PoseStamped, Pose
 from std_msgs.msg import Empty
 
+start_pos = {"cf1": [0.5, 0.5, 0.5], 
+             "cf2": [0.5, 1.0, 0.5],
+             "cf3": [1.0, 1.0, 0.5],
+             "cf4": [1.0, 0.5, 0.5],}
+
 class CrazyflieSim:
     def __init__(self, cf_id):
         self.cf_id = '/' + cf_id
@@ -27,6 +32,9 @@ class CrazyflieSim:
         self.position.header.stamp = rospy.Time.now()
         self.position.header.frame_id = self.world_frame
         self.position.pose.orientation.w = 1
+        self.position.pose.position.x = start_pos[cf_id][0]
+        self.position.pose.position.y = start_pos[cf_id][1]
+        self.position.pose.position.z = start_pos[cf_id][2]
 
 
         # Declare subscriptions

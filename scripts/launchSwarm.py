@@ -73,8 +73,7 @@ if __name__ == '__main__':
         # TODO: Find uris of active CFs
         uri = 'radio://0/105/2M/0xE7E7E7E702'
         cli_add_cf = ['crazyflie_charles', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri, 'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
-    launch_file(cli_add_cf)
-
+        launch_file(cli_add_cf)
 
     rospy.spin()
 
