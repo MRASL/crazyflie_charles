@@ -13,13 +13,14 @@ TODO:
 
 import rospy
 import tf
+from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_multiply
 import numpy as np
 
 from crazyflie import Crazyflie
 from crazyflie_sim import CrazyflieSim
 from swarmFormation import SquareFormation, SingleFormation
 
-from geometry_msgs.msg import Pose, Twist
+from geometry_msgs.msg import Pose, Twist, Quaternion
 from std_srvs import srv
 from crazyflie_charles.srv import PoseRequest, PoseSet
 
@@ -38,11 +39,14 @@ class Swarm:
         self.crazyflies = {} #: dict: Keys are name of the CF
         self.crazyflies_sim = {}
         self._to_sim = to_sim
-        self.swarm_goal = Pose()
         self._to_teleop = False   
-        self.swarm_pose = Pose() #: Position of the swarm
         self.rate = rospy.Rate(100)
         self.cf_list = cf_list
+        self.swarm_goal = Pose()
+        self.swarm_pose = Pose() #: Position of the swarm
+
+        self.swarm_goal.orientation.w = 1
+        self.swarm_pose.orientation.w = 1
         
         # Change class depending on formation
         self.formation = SquareFormation(self.cf_list, offset=[0, 0, 0.2])
@@ -203,15 +207,17 @@ class Swarm:
         return srv.EmptyResponse()
     
     def update_swarm_goal(self, goal_spd):
-        self.swarm_goal.position.x += goal_spd.linear.x
-        self.swarm_goal.position.y += goal_spd.linear.y
-        self.swarm_goal.position.z += goal_spd.linear.z
+        """Update swarm_goal based on a change of speed
+
+        Args:
+            goal_spd (Twist): Speed variation of goal
+        """
+        self.formation.compute_goal(goal_spd)
+        self.swarm_goal = self.formation.swarm_goal
         
-        for _, cf in self.crazyflies.items(): 
-            cf["goal_msg"].position.x += goal_spd.linear.x
-            cf["goal_msg"].position.y += goal_spd.linear.y
-            cf["goal_msg"].position.z += goal_spd.linear.z
-    
+        for cf_name, cf in self.crazyflies.items(): 
+            cf["goal_msg"] =  self.formation.poses[cf_name]
+ 
     def get_swarm_pose(self):
         # TODO: #15 Initial swarm position depending on formation
         # To simplify, swarm pose is the average of all the poses

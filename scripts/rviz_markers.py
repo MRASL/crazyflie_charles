@@ -159,8 +159,12 @@ class RvizMarkers:
 
     def update_pose(self, pose_msg, cf_name):
         msg_sphere, msg_pose = self.cf_pose_msgs[cf_name]
+
         msg_sphere.pose.position = pose_msg.pose.position
+        msg_sphere.pose.orientation = pose_msg.pose.orientation
+
         msg_pose.pose.position = pose_msg.pose.position
+        msg_pose.pose.orientation = pose_msg.pose.orientation
 
     def update_goal(self, goal):
         self.goal_msg.pose.position = goal.position

@@ -101,6 +101,7 @@ class Controller():
         self.axes.x.max_goal = rospy.get_param("~x_goal_max", 0.05)
         self.axes.y.max_goal = rospy.get_param("~y_goal_max", 0.05)
         self.axes.z.max_goal = rospy.get_param("~z_goal_max", 0.05)
+        self.axes.yaw.max_goal = rospy.get_param("~yaw_goal_max", 0.05)
 
     def _init_services(self):
         """Init services

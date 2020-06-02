@@ -12,6 +12,7 @@ Args:
 
 import rospy
 import tf
+from tf.transformations import euler_from_quaternion
 import numpy as np
 
 from crazyflie_driver.msg import Hover, Position
@@ -220,7 +221,7 @@ class Crazyflie:
 
             z = i*z_inc + self.initial_pose.position.z
 
-            self.cmd_pos(self.goal.position.x, self.goal.position.y, z)
+            self.cmd_pos(self.goal.position.x, self.goal.position.y, z, 0)
 
             self.rate.sleep()
             rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
@@ -235,7 +236,13 @@ class Crazyflie:
     def _hover(self):
         self.cmd_pos_msg.header.seq += 1
         self.cmd_pos_msg.header.stamp = rospy.Time.now()
-        self.cmd_pos(self.goal.position.x, self.goal.position.y, self.goal.position.z)
+
+        _, _, yaw = euler_from_quaternion([self.goal.orientation.x, 
+                                          self.goal.orientation.y, 
+                                          self.goal.orientation.z, 
+                                          self.goal.orientation.w])
+
+        self.cmd_pos(self.goal.position.x, self.goal.position.y, self.goal.position.z, yaw)
         self.rate.sleep()
 
     def _land(self):
@@ -255,7 +262,7 @@ class Crazyflie:
 
             z = z_start - i*z_dec 
 
-            self.cmd_pos(x_start, y_start, z)
+            self.cmd_pos(x_start, y_start, z, 0)
 
             self.rate.sleep()
             rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
@@ -299,17 +306,19 @@ class Crazyflie:
         self.cmd_hovering_msg.zDistance = zDistance
         self.cmd_hovering_pub.publish(self.cmd_hovering_msg)
 
-    def cmd_pos(self, x, y, z):
+    def cmd_pos(self, x, y, z, yaw):
         """Publish target position to cmd_positions topic
 
         Args:
             x (float): X
             y (float): Y
             z (float): Z
+            yaw (float): Yaw
         """
         self.cmd_pos_msg.x = x
         self.cmd_pos_msg.y = y
         self.cmd_pos_msg.z = z
+        self.cmd_pos_msg.yaw = yaw
         self.cmd_pos_pub.publish(self.cmd_pos_msg)
 
     # Run methods

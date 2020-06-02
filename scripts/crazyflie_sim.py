@@ -7,16 +7,12 @@ Class to act as the crazyflie in simulation. Publish position of CF based on cmd
 import rospy
 import tf
 import numpy as np
+from tf.transformations import quaternion_from_euler
 
 from crazyflie_driver.msg import Position, Hover
 from geometry_msgs.msg import Twist, PoseStamped, Pose
 from std_msgs.msg import Empty
 from crazyflie_charles.srv import PoseSet, PoseSetResponse
-
-start_pos = {"cf1": [0.5, 0.5, 0.5], 
-             "cf2": [0.5, 1.0, 0.5],
-             "cf3": [1.0, 1.0, 0.5],
-             "cf4": [1.0, 0.5, 0.5],}
 
 class CrazyflieSim:
     def __init__(self, cf_id):
@@ -33,10 +29,6 @@ class CrazyflieSim:
         self.position.header.stamp = rospy.Time.now()
         self.position.header.frame_id = self.world_frame
         self.position.pose.orientation.w = 1
-        # self.position.pose.position.x = start_pos[cf_id][0]
-        # self.position.pose.position.y = start_pos[cf_id][1]
-        # self.position.pose.position.z = start_pos[cf_id][2]
-
 
         # Declare subscriptions and services
         rospy.Service('%s/set_pose' % self.cf_id, PoseSet, self._set_pose)
@@ -69,6 +61,12 @@ class CrazyflieSim:
         self.position.pose.position.x = pos_data.x
         self.position.pose.position.y = pos_data.y
         self.position.pose.position.z = pos_data.z
+
+        [x, y, z, w] = quaternion_from_euler(0, 0, pos_data.yaw)
+        self.position.pose.orientation.x = x
+        self.position.pose.orientation.y = y
+        self.position.pose.orientation.z = z
+        self.position.pose.orientation.w = w
 
     def _cmd_stop_handler(self, stop_data):
         rospy.logwarn("cmd_stop not implemented in simulation")
