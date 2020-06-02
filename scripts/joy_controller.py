@@ -83,8 +83,8 @@ class Controller():
             self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
             self.vel_msg = Twist()
         
-        self.goal_spd_publisher = rospy.Publisher("swarm_goal_spd", Twist, queue_size=1)
-        self.goal_spd_msg = Twist()
+        self.goal_vel_publisher = rospy.Publisher("swarm_goal_vel", Twist, queue_size=1)
+        self.goal_vel_msg = Twist()
 
         # Axis parameters
         self.axes = Axes()
@@ -117,8 +117,8 @@ class Controller():
             rospy.loginfo("Joy: found emergency service")
             self._emergency = rospy.ServiceProxy('emergency', Empty)
 
-        rospy.loginfo("Joy: waiting for toggleTeleop service")
-        rospy.wait_for_service('/toggleTeleop')
+        rospy.loginfo("Joy: waiting for toggle_teleop service")
+        rospy.wait_for_service('/toggle_teleop')
         rospy.loginfo("Joy: found toggleTeleop service")
         self._toggleTeleopServ = rospy.ServiceProxy('/toggleTeleop', Empty)
         
@@ -127,10 +127,10 @@ class Controller():
         rospy.loginfo("Joy: found land service")
         self._land = rospy.ServiceProxy('land', Empty)
 
-        rospy.loginfo("Joy: waiting for takeoff service")
-        rospy.wait_for_service('takeoff')
-        rospy.loginfo("Joy: found takeoff service")
-        self._takeoff = rospy.ServiceProxy('takeoff', Empty)
+        rospy.loginfo("Joy: waiting for take_off service")
+        rospy.wait_for_service('take_off')
+        rospy.loginfo("Joy: found take_off service")
+        self._takeoff = rospy.ServiceProxy('take_off', Empty)
 
         rospy.loginfo("Joy: waiting for stop service")
         rospy.wait_for_service('stop')
@@ -153,10 +153,10 @@ class Controller():
             self.vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw)
         
         else:
-            self.goal_spd_msg.linear.x = self._getAxis(data.axes, self.axes.x, False)
-            self.goal_spd_msg.linear.y = self._getAxis(data.axes, self.axes.y, False)
-            self.goal_spd_msg.linear.z = self._getAxis(data.axes, self.axes.z, False)
-            self.goal_spd_msg.angular.z = self._getAxis(data.axes, self.axes.yaw, False)
+            self.goal_vel_msg.linear.x = self._getAxis(data.axes, self.axes.x, False)
+            self.goal_vel_msg.linear.y = self._getAxis(data.axes, self.axes.y, False)
+            self.goal_vel_msg.linear.z = self._getAxis(data.axes, self.axes.z, False)
+            self.goal_vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw, False)
 
     def _getAxis(self, axesData, axisToRead, measureVel=True):
         """Find the value of the axis
@@ -261,7 +261,7 @@ class Controller():
                 self.vel_publisher.publish(self.vel_msg)
 
             else:
-                self.goal_spd_publisher.publish(self.goal_spd_msg)
+                self.goal_vel_publisher.publish(self.goal_vel_msg)
 
             self.rate.sleep()
 

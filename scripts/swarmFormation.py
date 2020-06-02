@@ -27,11 +27,11 @@ class Formation(object):
         self.cf_list = cf_list
         self.n_cf = len(cf_list) #: (int) Number of CF in the formation
         
-        self.poses = {} #: (dict of Pose) Target Pose of all the CF
+        self.cf_goals = {} #: (dict of Pose) Target Pose of all the CF
         for each_cf in cf_list:
             p = Pose()
             p.orientation.w = 1
-            self.poses[each_cf] = p
+            self.cf_goals[each_cf] = p
 
         self.swarm_goal = Pose()
         self.swarm_goal.orientation.w = 1
@@ -61,8 +61,8 @@ class Formation(object):
         self.swarm_goal.position.y += goal_vel.linear.y
         self.swarm_goal.position.z += goal_vel.linear.z
         self.swarm_goal.orientation = calculate_rot(self.swarm_goal.orientation, goal_vel.angular)
-        
-        for _, pose in self.poses.items(): 
+                
+        for _, pose in self.cf_goals.items(): 
             pose.position.x += goal_vel.linear.x
             pose.position.y += goal_vel.linear.y
             pose.position.z += goal_vel.linear.z
@@ -93,7 +93,7 @@ class SquareFormation(Formation):
             for j  in range(k):
                 pose_list.append([i*l, j*l, 0])
 
-        for each_cf, position in zip(self.poses.items(), pose_list):
+        for each_cf, position in zip(self.cf_goals.items(), pose_list):
             each_cf[1].position.x = position[0] + self.initial_offset.position.x 
             each_cf[1].position.y = position[1] + self.initial_offset.position.y
             each_cf[1].position.z = position[2] + self.initial_offset.position.z
@@ -104,7 +104,7 @@ class SingleFormation(Formation):
         super(SingleFormation, self).__init__(cf_list, n_cf_supported, offset=offset)
 
     def compute_initial_pose(self):
-        for _, each_cf in self.poses.items():
+        for _, each_cf in self.cf_goals.items():
             each_cf.position.x = self.initial_offset.position.x 
             each_cf.position.y = self.initial_offset.position.y
             each_cf.position.z = self.initial_offset.position.z
@@ -136,12 +136,12 @@ def calculate_rot(start_orientation, rot):
     return res_msg
 
 
-if __name__ == '__main__':
-    # cf_list = ["cf1", "cf2", "cf3", "cf4"]
-    cf_list = ["cf1", "cf2", "cf3", "cf4", "cf5", "cf6", "cf7", "cf8", "cf9"]
-    square = SquareFormation(cf_list)
+# if __name__ == '__main__':
+#     # cf_list = ["cf1", "cf2", "cf3", "cf4"]
+#     cf_list = ["cf1", "cf2", "cf3", "cf4", "cf5", "cf6", "cf7", "cf8", "cf9"]
+#     square = SquareFormation(cf_list)
 
-    square.compute_initial_pose()
+#     square.compute_initial_pose()
 
 
 

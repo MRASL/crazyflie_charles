@@ -63,15 +63,15 @@ class Swarm:
         rospy.Service('/update_params', srv.Empty, self.update_params)      # TODO: #14 Update all parameters
         rospy.Service('/emergency', srv.Empty, self.emergency)              # Emergency
         rospy.Service('/stop', srv.Empty, self.stop)                        # Stop all CFs
-        rospy.Service('/takeoff', srv.Empty, self.takeOff)                  # Take off all CFs
+        rospy.Service('/take_off', srv.Empty, self.takeOff)                  # Take off all CFs
         rospy.Service('/land', srv.Empty, self.land)                        # Land all CFs
-        rospy.Service('/toggleTeleop', srv.Empty, self.toggleTeleop)        # Toggle between manual and auto mode
+        rospy.Service('/toggle_teleop', srv.Empty, self.toggleTeleop)        # Toggle between manual and auto mode
 
         # Publisher
         self.goal_pub = rospy.Publisher('swarm_goal', Pose, queue_size=1)
 
         # Subscribe
-        rospy.Subscriber("swarm_goal_spd", Twist, self.update_swarm_goal)
+        rospy.Subscriber("swarm_goal_vel", Twist, self.update_swarm_goal)
 
         self.get_swarm_pose()
 
@@ -99,7 +99,7 @@ class Swarm:
                                     "land": None,           # service  
                                     "stop": None,           # service
                                     "toggle_teleop": None,  # service  
-                                    "set_pose": None,  # service  
+                                    "set_pose": None,       # service  
                                     "initial_pose": None,   # attr
                                     "goal_msg": None,       # msg  
                                     "goal_pub": None}       # publisher
@@ -122,7 +122,7 @@ class Swarm:
 
         if self._to_sim:
             self._link_service(cf_id, "set_pose", PoseSet)
-            self.crazyflies[cf_id]["initial_pose"] = self.formation.poses[cf_id]
+            self.crazyflies[cf_id]["initial_pose"] = self.formation.cf_goals[cf_id]
             self.crazyflies[cf_id]["set_pose"](self.crazyflies[cf_id]["initial_pose"])
 
     def _link_service(self, cf_id, service_name, service_type):
@@ -216,7 +216,7 @@ class Swarm:
         self.swarm_goal = self.formation.swarm_goal
         
         for cf_name, cf in self.crazyflies.items(): 
-            cf["goal_msg"] =  self.formation.poses[cf_name]
+            cf["goal_msg"] =  self.formation.cf_goals[cf_name]
  
     def get_swarm_pose(self):
         # TODO: #15 Initial swarm position depending on formation
@@ -240,7 +240,8 @@ class Swarm:
         self.swarm_pose.position.z = np.mean(z)
         
         self.swarm_goal = self.swarm_pose
-
+        self.formation.swarm_goal = self.swarm_goal
+        
     def _call_all_cf_service(self, service_name, service_msg=None):
         """Call a service for all the CF in the swarm
 
