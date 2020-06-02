@@ -22,7 +22,7 @@ from std_srvs.srv import Empty
 import numpy as np
 import rospy
 from tf.transformations import quaternion_from_euler, quaternion_multiply
-from crazyflie_charles.srv import SetFormation
+from crazyflie_charles.srv import SetFormation, PoseSet
 from crazyflie_driver.msg import Position
 
 offset = [0, 0, 0.2]
@@ -37,15 +37,23 @@ class FormationManager:
         self.formations = {"solo": SoloFormation(self.cf_list, self.offset), 
                            "square": SquareFormation(self.cf_list, self.offset),} #: All possible formations
         self.formation = None
+        self.start_positions = []
                 
         self.swarm_pose_publisher = rospy.Publisher('/swarm_pose', Pose, queue_size=1)
+        self.swarm_pose = Pose()
 
         self.goal_publisher = {}
+        self.set_pose_srv = {}
         self.cf_poses = {}
 
         for cf_id in cf_list:
             self.goal_publisher[cf_id] = rospy.Publisher('/%s/goal' % cf_id, Position, queue_size=1)
             rospy.Subscriber("/%s/pose" % cf_id, PoseStamped, self.pose_handler, cf_id)
+
+            rospy.loginfo("Formation: waiting for %s service of %s " % ("set_pose", cf_id))
+            rospy.wait_for_service('/%s/%s' % (cf_id, "set_pose"))
+            rospy.loginfo("Formation: found %s service of %s" % ("set_pose", cf_id))     
+            self.set_pose_srv[cf_id] = rospy.ServiceProxy('/%s/set_pose' % cf_id, PoseSet)
 
         # Start services
         rospy.Service('/set_formation', SetFormation, self.set_formation)
@@ -65,15 +73,34 @@ class FormationManager:
         valid_formation = True
 
         if form_to_set in self.formations.keys():
-            rospy.loginfo("Setting formation to %s" % form_to_set)
+            rospy.loginfo("Formation: Setting formation to %s" % form_to_set)
             self.formation = self.formations[form_to_set]
-            self.formation.check_n()
+            self.init_formation()
 
         else:
-            rospy.logerr("Invalid formation: %s" % form_to_set)
+            rospy.logerr("Formation: Invalid formation: %s" % form_to_set)
             valid_formation = False
 
         return valid_formation
+
+    def init_formation(self):
+        self.formation.check_n()
+        self.start_positions = self.formation.compute_start_positions()
+
+        if self.to_sim:
+            # print zip(self.set_pose_srv.items(), self.start_positions)
+            for (_, set_pose_srv), positions in zip(self.set_pose_srv.items(), self.start_positions):
+                pose = Pose()
+                pose.position.x = positions[0]
+                pose.position.y = positions[1]                
+                pose.position.z = positions[2]                
+                pose.orientation.w = 1
+                
+                set_pose_srv(pose)
+        else:
+            #TODO 
+            pass
+
 
     def set_offset(self, srv_call):
         pass
@@ -90,7 +117,8 @@ class FormationManager:
             cf_goal.publish(self.formation.cf_goals[cf_id])        
 
     def publish_swarm_pose(self):
-        self.swarm_pose_publisher.publish(self.formation.swarm_pose)
+        self.swarm_pose = self.formation.compute_swarm_pose(self.cf_poses)
+        self.swarm_pose_publisher.publish(self.swarm_pose)
 
     def run_formation(self):
         while not rospy.is_shutdown():
@@ -105,13 +133,12 @@ class FormationType(object):
         self.cf_list = cf_list
         self.n_cf = len(cf_list) #: (int) Number of CF in the formation
         
-        self.cf_goals = {} #: (dict of Pose) Target Pose of all the CF
-        for each_cf in cf_list:
-            p = Pose()
-            p.orientation.w = 1
-            self.cf_goals[each_cf] = p
-
-        self.swarm_pose = Pose()
+        # self.cf_goals = {} #: (dict of Pose) Target Pose of all the CF
+        
+        # for each_cf in cf_list:
+        #     p = Pose()
+        #     p.orientation.w = 1
+        #     self.cf_goals[each_cf] = p
 
         self.swarm_goal = Position()
         self.swarm_goal.yaw = 0
@@ -131,34 +158,40 @@ class FormationType(object):
     def get_n_cf(self):
         return self.n_cf
 
-    def compute_initial_pose(self):
+    def compute_start_positions(self):
         pass
     
-    def compute_new_pose(self):
+    def compute_new_cf_goals(self):
         pass
 
-    def get_swarm_pose(self):
+    def compute_swarm_pose(self, cf_poses):
+        """Compute pose of the swarm
+
+        Args:
+            cf_poses (dict of PoseStamped): Position of each_cf
+        
+        Returns:
+            Pose: Swarm Pose
+        """
+
         # To simplify, swarm pose is the average of all the poses
+        swarm_pose = Pose()
 
         x = []
         y = []
         z = []
         # yaw = []
 
-        for _, cf in self.crazyflies.items(): 
-            cf["initial_pose"] = cf["get_pose"]().pose
-            cf["goal_msg"] = cf["initial_pose"]
+        for _, cf in cf_poses.items(): 
+            x.append(cf.pose.position.x)
+            y.append(cf.pose.position.y)
+            z.append(cf.pose.position.z)
 
-            x.append(cf["initial_pose"].position.x)
-            y.append(cf["initial_pose"].position.y)
-            z.append(cf["initial_pose"].position.z)
-
-        self.swarm_pose.position.x = np.mean(x)
-        self.swarm_pose.position.y = np.mean(y)
-        self.swarm_pose.position.z = np.mean(z)
+        swarm_pose.position.x = np.mean(x)
+        swarm_pose.position.y = np.mean(y)
+        swarm_pose.position.z = np.mean(z)
         
-        self.swarm_goal = self.swarm_pose
-        self.formation.swarm_goal = self.swarm_goal
+        return swarm_pose
 
     def set_offset(self, x , y, z):
         self.initial_offset.position.x = x
@@ -170,7 +203,7 @@ class SquareFormation(FormationType):
         n_cf_supported = [4, 9]
         super(SquareFormation, self).__init__(cf_list, n_cf_supported, offset=offset)
 
-    def compute_initial_pose(self):
+    def compute_start_positions(self):
         pose_list = []
         
         l = 1.0 # Lenght of the square
@@ -181,21 +214,25 @@ class SquareFormation(FormationType):
             for j  in range(k):
                 pose_list.append([i*l, j*l, 0])
 
-        for each_cf, position in zip(self.cf_goals.items(), pose_list):
-            each_cf[1].position.x = position[0] + self.initial_offset.position.x 
-            each_cf[1].position.y = position[1] + self.initial_offset.position.y
-            each_cf[1].position.z = position[2] + self.initial_offset.position.z
+        return pose_list
+
+        # for each_cf, position in zip(self.cf_goals.items(), pose_list):
+        #     each_cf[1].position.x = position[0] + self.initial_offset.position.x 
+        #     each_cf[1].position.y = position[1] + self.initial_offset.position.y
+        #     each_cf[1].position.z = position[2] + self.initial_offset.position.z
 
 class SoloFormation(FormationType):
     def __init__(self, cf_list, offset=[0, 0, 0]):
         n_cf_supported = [1]
         super(SoloFormation, self).__init__(cf_list, n_cf_supported, offset=offset)
 
-    def compute_initial_pose(self):
-        for _, each_cf in self.cf_goals.items():
-            each_cf.position.x = self.initial_offset.position.x 
-            each_cf.position.y = self.initial_offset.position.y
-            each_cf.position.z = self.initial_offset.position.z
+    def compute_start_positions(self):
+        return [self.initial_offset.position.x,  self.initial_offset.position.y, self.initial_offset.position.z]
+        
+        # for _, each_cf in self.cf_goals.items():
+        #     each_cf.position.x = self.initial_offset.position.x 
+        #     each_cf.position.y = self.initial_offset.position.y
+        #     each_cf.position.z = self.initial_offset.position.z
 
 def calculate_rot(start_orientation, rot):
     """Apply roatation to quaternion

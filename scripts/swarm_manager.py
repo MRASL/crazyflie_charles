@@ -46,8 +46,6 @@ class Swarm:
 
         self.swarm_goal = Position()
         self.swarm_goal.yaw = 0
-        self.swarm_pose = Pose() #: Position of the swarm
-        self.swarm_pose.orientation.w = 1
 
         # Initialize each Crazyflie
         for each_cf in cf_list:
@@ -74,8 +72,6 @@ class Swarm:
 
         self.formation = "square"
         self.set_formation(self.formation)
-
-        # self.get_swarm_pose()
 
     # CF initialization
     def _init_cf(self, cf_id):
@@ -111,7 +107,8 @@ class Swarm:
             self._link_service(cf_id, "emergency", srv.Empty)
 
         else:
-            self._link_service(cf_id, "set_pose", PoseSet)
+            # self._link_service(cf_id, "set_pose", PoseSet)
+            pass
             # self.crazyflies[cf_id]["initial_pose"] = self.formation.cf_goals[cf_id]
             # self.crazyflies[cf_id]["set_pose"](self.crazyflies[cf_id]["initial_pose"])
 
@@ -122,9 +119,10 @@ class Swarm:
         self._link_service(cf_id, "stop", srv.Empty)
         self._link_service(cf_id, "toggle_teleop", srv.Empty)
 
-        self.crazyflies[cf_id]["goal_msg"] = Position()
 
-        # Publish goal
+        # CF goal
+        # TODO Enlever?
+        self.crazyflies[cf_id]["goal_msg"] = Position()
         self.crazyflies[cf_id]["goal_pub"] = rospy.Publisher('/' + cf_id + '/goal', Position, queue_size=1)
 
     def _link_service(self, cf_id, service_name, service_type):
@@ -237,10 +235,6 @@ class Swarm:
     def pub_goal(self):
         while not rospy.is_shutdown():
             self.goal_pub.publish(self.swarm_goal)
-
-            # for _, cf in self.crazyflies.items(): 
-            #     cf["goal_pub"].publish(cf["goal_msg"])
-
             self.rate.sleep()
 
 if __name__ == '__main__':
