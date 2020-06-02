@@ -60,6 +60,7 @@ add_service_files(
   FILES
   PoseRequest.srv
   PoseSet.srv
+  SetFormation.srv
 )
 
 ## Generate actions in the 'action' folder

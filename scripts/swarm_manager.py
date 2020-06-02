@@ -18,11 +18,11 @@ import numpy as np
 
 from crazyflie import Crazyflie
 from crazyflie_sim import CrazyflieSim
-from swarmFormation import SquareFormation, SingleFormation
 
 from geometry_msgs.msg import Pose, Twist, Quaternion
 from std_srvs import srv
-from crazyflie_charles.srv import PoseRequest, PoseSet
+from crazyflie_charles.srv import PoseRequest, PoseSet, SetFormation
+from crazyflie_driver.msg import Position
 
 TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
 GND_HEIGHT = 0.2 #: (float) Height of the ground
@@ -38,42 +38,44 @@ class Swarm:
         """
         self.crazyflies = {} #: dict: Keys are name of the CF
         self.crazyflies_sim = {}
+
         self._to_sim = to_sim
         self._to_teleop = False   
         self.rate = rospy.Rate(100)
         self.cf_list = cf_list
-        self.swarm_goal = Pose()
-        self.swarm_pose = Pose() #: Position of the swarm
 
-        self.swarm_goal.orientation.w = 1
+        self.swarm_goal = Position()
+        self.swarm_goal.yaw = 0
+        self.swarm_pose = Pose() #: Position of the swarm
         self.swarm_pose.orientation.w = 1
-        
-        # Change class depending on formation
-        self.formation = SquareFormation(self.cf_list, offset=[0, 0, 0.2])
-        # self.formation = SingleFormation(self.cf_list, offset=[0.2, 0.2, 0.2])
-        
-        
-        self.formation.compute_initial_pose()
 
         # Initialize each Crazyflie
         for each_cf in cf_list:
             self._init_cf(each_cf)
 
-        # Launch services
+        # Services
         rospy.Service('/update_params', srv.Empty, self.update_params)      # TODO: #14 Update all parameters
         rospy.Service('/emergency', srv.Empty, self.emergency)              # Emergency
         rospy.Service('/stop', srv.Empty, self.stop)                        # Stop all CFs
-        rospy.Service('/take_off', srv.Empty, self.takeOff)                  # Take off all CFs
+        rospy.Service('/take_off', srv.Empty, self.take_off)                  # Take off all CFs
         rospy.Service('/land', srv.Empty, self.land)                        # Land all CFs
-        rospy.Service('/toggle_teleop', srv.Empty, self.toggleTeleop)        # Toggle between manual and auto mode
+        rospy.Service('/toggle_teleop', srv.Empty, self.toggle_teleop)        # Toggle between manual and auto mode
+
+        rospy.loginfo("Swarm: waiting for %s service" % "set_formation")
+        rospy.wait_for_service("set_formation")
+        rospy.loginfo("Swarm: found %s service" % "set_formation")
+        self.set_formation = rospy.ServiceProxy("set_formation", SetFormation)
 
         # Publisher
-        self.goal_pub = rospy.Publisher('swarm_goal', Pose, queue_size=1)
+        self.goal_pub = rospy.Publisher('swarm_goal', Position, queue_size=1)
 
         # Subscribe
         rospy.Subscriber("swarm_goal_vel", Twist, self.update_swarm_goal)
 
-        self.get_swarm_pose()
+        self.formation = "square"
+        self.set_formation(self.formation)
+
+        # self.get_swarm_pose()
 
     # CF initialization
     def _init_cf(self, cf_id):
@@ -108,6 +110,11 @@ class Swarm:
         if not to_sim:
             self._link_service(cf_id, "emergency", srv.Empty)
 
+        else:
+            self._link_service(cf_id, "set_pose", PoseSet)
+            # self.crazyflies[cf_id]["initial_pose"] = self.formation.cf_goals[cf_id]
+            # self.crazyflies[cf_id]["set_pose"](self.crazyflies[cf_id]["initial_pose"])
+
         self._link_service(cf_id, "get_pose", PoseRequest)
         self._link_service(cf_id, "take_off", srv.Empty)
         self._link_service(cf_id, "land", srv.Empty)
@@ -115,15 +122,10 @@ class Swarm:
         self._link_service(cf_id, "stop", srv.Empty)
         self._link_service(cf_id, "toggle_teleop", srv.Empty)
 
-        self.crazyflies[cf_id]["goal_msg"] = Pose()
+        self.crazyflies[cf_id]["goal_msg"] = Position()
 
         # Publish goal
-        self.crazyflies[cf_id]["goal_pub"] = rospy.Publisher('/' + cf_id + '/goal', Pose, queue_size=1)
-
-        if self._to_sim:
-            self._link_service(cf_id, "set_pose", PoseSet)
-            self.crazyflies[cf_id]["initial_pose"] = self.formation.cf_goals[cf_id]
-            self.crazyflies[cf_id]["set_pose"](self.crazyflies[cf_id]["initial_pose"])
+        self.crazyflies[cf_id]["goal_pub"] = rospy.Publisher('/' + cf_id + '/goal', Position, queue_size=1)
 
     def _link_service(self, cf_id, service_name, service_type):
         """Add a service to the dict of CFs
@@ -147,7 +149,7 @@ class Swarm:
         return self._to_teleop
         
     # Services methods
-    def toggleTeleop(self, req):
+    def toggle_teleop(self, req):
         """Toggle teleop mode
 
         Args:
@@ -184,11 +186,9 @@ class Swarm:
         self._call_all_cf_service("stop")
         return srv.EmptyResponse()
     
-    def takeOff(self, req):
+    def take_off(self, req):
         rospy.loginfo("Swarm: take off")
         
-        self.get_swarm_pose()
-
         goal_var = Twist()
         goal_var.linear.z = 0.5
         self.update_swarm_goal(goal_var)
@@ -200,7 +200,7 @@ class Swarm:
         rospy.loginfo("Swarm: land")
 
         goal_var = Twist()
-        goal_var.linear.z = GND_HEIGHT - self.swarm_goal.position.z
+        goal_var.linear.z = GND_HEIGHT - self.swarm_goal.z
         self.update_swarm_goal(goal_var)
 
         self._call_all_cf_service("land")
@@ -212,35 +212,10 @@ class Swarm:
         Args:
             goal_spd (Twist): Speed variation of goal
         """
-        self.formation.compute_goal(goal_spd)
-        self.swarm_goal = self.formation.swarm_goal
-        
-        for cf_name, cf in self.crazyflies.items(): 
-            cf["goal_msg"] =  self.formation.cf_goals[cf_name]
- 
-    def get_swarm_pose(self):
-        # TODO: #15 Initial swarm position depending on formation
-        # To simplify, swarm pose is the average of all the poses
-
-        x = []
-        y = []
-        z = []
-        # yaw = []
-
-        for _, cf in self.crazyflies.items(): 
-            cf["initial_pose"] = cf["get_pose"]().pose
-            cf["goal_msg"] = cf["initial_pose"]
-
-            x.append(cf["initial_pose"].position.x)
-            y.append(cf["initial_pose"].position.y)
-            z.append(cf["initial_pose"].position.z)
-
-        self.swarm_pose.position.x = np.mean(x)
-        self.swarm_pose.position.y = np.mean(y)
-        self.swarm_pose.position.z = np.mean(z)
-        
-        self.swarm_goal = self.swarm_pose
-        self.formation.swarm_goal = self.swarm_goal
+        self.swarm_goal.x += goal_spd.linear.x
+        self.swarm_goal.y += goal_spd.linear.y
+        self.swarm_goal.z += goal_spd.linear.z
+        self.swarm_goal.yaw += goal_spd.angular.z
         
     def _call_all_cf_service(self, service_name, service_msg=None):
         """Call a service for all the CF in the swarm
@@ -263,14 +238,14 @@ class Swarm:
         while not rospy.is_shutdown():
             self.goal_pub.publish(self.swarm_goal)
 
-            for _, cf in self.crazyflies.items(): 
-                cf["goal_pub"].publish(cf["goal_msg"])
+            # for _, cf in self.crazyflies.items(): 
+            #     cf["goal_pub"].publish(cf["goal_msg"])
 
             self.rate.sleep()
 
 if __name__ == '__main__':
     # Launch node
-    rospy.init_node('swarmManager', anonymous=False)
+    rospy.init_node('swarm_manager', anonymous=False)
     rospy.loginfo('Initialisation du swarm manager')
 
     # Get params

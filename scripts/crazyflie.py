@@ -80,12 +80,12 @@ class Crazyflie:
 
         # Declare subscriptions
         self.pose = Pose()
-        self.goal = Pose()
+        self.goal = Position()
         self.initial_pose = Pose()
         self.findInitialPose()
 
         rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self._pose_handler)
-        rospy.Subscriber(self.cf_id + '/goal', Pose, self._goal_handler)
+        rospy.Subscriber(self.cf_id + '/goal', Position, self._goal_handler)
 
         rospy.loginfo("%s: Setup done" % self.cf_id)
 
@@ -208,9 +208,9 @@ class Crazyflie:
 
     # Methods depending on state
     def _take_off(self):
-        dZ = self.goal.position.z - self.initial_pose.position.z
+        dZ = self.goal.z - self.initial_pose.position.z
 
-        rospy.loginfo("Going to \n{}".format(self.goal.position))
+        rospy.loginfo("Going to \n{}".format(self.goal))
 
         time_range = 1*10
         z_inc = dZ/time_range
@@ -221,12 +221,12 @@ class Crazyflie:
 
             z = i*z_inc + self.initial_pose.position.z
 
-            self.cmd_pos(self.goal.position.x, self.goal.position.y, z, 0)
+            self.cmd_pos(self.goal.x, self.goal.y, z, self.goal.yaw)
 
             self.rate.sleep()
             rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
-                            (self.goal.position.x, self.goal.position.y, z, 
-                            self.pose.position.x, self.pose.position.y, self.pose.position.z))
+                            (self.goal.x, self.goal.y, z, 
+                            self.pose.x, self.pose.position.y, self.pose.position.z))
 
         rospy.loginfo("Pos reached \n{}".format(self.pose.position))
 
@@ -237,12 +237,7 @@ class Crazyflie:
         self.cmd_pos_msg.header.seq += 1
         self.cmd_pos_msg.header.stamp = rospy.Time.now()
 
-        _, _, yaw = euler_from_quaternion([self.goal.orientation.x, 
-                                          self.goal.orientation.y, 
-                                          self.goal.orientation.z, 
-                                          self.goal.orientation.w])
-
-        self.cmd_pos(self.goal.position.x, self.goal.position.y, self.goal.position.z, yaw)
+        self.cmd_pos(self.goal.x, self.goal.y, self.goal.z, self.goal.yaw)
         self.rate.sleep()
 
     def _land(self):
@@ -250,7 +245,7 @@ class Crazyflie:
         y_start = self.pose.position.y
         z_start = self.pose.position.z
 
-        dZ =  z_start - self.goal.position.z
+        dZ =  z_start - self.goal.z
 
 
         time_range = 2*10
