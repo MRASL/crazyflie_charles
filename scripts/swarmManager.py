@@ -19,7 +19,7 @@ from crazyflie import Crazyflie
 from crazyflie_sim import CrazyflieSim
 from swarmFormation import SquareFormation, SingleFormation
 
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Twist
 from std_srvs import srv
 from crazyflie_charles.srv import PoseRequest, PoseSet
 
@@ -67,7 +67,7 @@ class Swarm:
         self.goal_pub = rospy.Publisher('swarm_goal', Pose, queue_size=1)
 
         # Subscribe
-        rospy.Subscriber("swarm_goal_var", Pose, self.update_swarm_goal)
+        rospy.Subscriber("swarm_goal_spd", Twist, self.update_swarm_goal)
 
         self.get_swarm_pose()
 
@@ -185,8 +185,8 @@ class Swarm:
         
         self.get_swarm_pose()
 
-        goal_var = Pose()
-        goal_var.position.z = 0.5
+        goal_var = Twist()
+        goal_var.linear.z = 0.5
         self.update_swarm_goal(goal_var)
 
         self._call_all_cf_service("take_off")
@@ -195,22 +195,22 @@ class Swarm:
     def land(self, req):
         rospy.loginfo("Swarm: land")
 
-        goal_var = Pose()
-        goal_var.position.z = GND_HEIGHT - self.swarm_goal.position.z
+        goal_var = Twist()
+        goal_var.linear.z = GND_HEIGHT - self.swarm_goal.position.z
         self.update_swarm_goal(goal_var)
 
         self._call_all_cf_service("land")
         return srv.EmptyResponse()
     
-    def update_swarm_goal(self, goal_var):
-        self.swarm_goal.position.x += goal_var.position.x
-        self.swarm_goal.position.y += goal_var.position.y
-        self.swarm_goal.position.z += goal_var.position.z
+    def update_swarm_goal(self, goal_spd):
+        self.swarm_goal.position.x += goal_spd.linear.x
+        self.swarm_goal.position.y += goal_spd.linear.y
+        self.swarm_goal.position.z += goal_spd.linear.z
         
         for _, cf in self.crazyflies.items(): 
-            cf["goal_msg"].position.x += goal_var.position.x
-            cf["goal_msg"].position.y += goal_var.position.y
-            cf["goal_msg"].position.z += goal_var.position.z
+            cf["goal_msg"].position.x += goal_spd.linear.x
+            cf["goal_msg"].position.y += goal_spd.linear.y
+            cf["goal_msg"].position.z += goal_spd.linear.z
     
     def get_swarm_pose(self):
         # TODO: #15 Initial swarm position depending on formation
