@@ -85,8 +85,12 @@ class Controller():
             self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
             self.vel_msg = Twist()
         
-        self.goal_publisher = rospy.Publisher("swarm_goal_var", Twist, queue_size=1)
-        self.goal_msg = Twist()
+        self.goal_publisher = rospy.Publisher("swarm_goal_var", Pose, queue_size=1)
+        self.goal_msg = Pose()
+        self.goal_msg.orientation.x = 0
+        self.goal_msg.orientation.y = 0
+        self.goal_msg.orientation.z = 0
+        self.goal_msg.orientation.w = 0
 
         # Axis parameters
         self.axes = Axes()
@@ -103,7 +107,6 @@ class Controller():
         self.axes.x.max_goal = rospy.get_param("~x_goal_max", 0.05)
         self.axes.y.max_goal = rospy.get_param("~y_goal_max", 0.05)
         self.axes.z.max_goal = rospy.get_param("~z_goal_max", 0.05)
-        self.axes.yaw.max_goal = rospy.get_param("~yaw_goal_max", 0.05)
 
     def _init_services(self):
         """Init services
@@ -160,10 +163,9 @@ class Controller():
             self.vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw)
         
         else:
-            self.goal_msg.linear.x = self._getAxis(data.axes, self.axes.x, False)
-            self.goal_msg.linear.y = self._getAxis(data.axes, self.axes.y, False)
-            self.goal_msg.linear.z = self._getAxis(data.axes, self.axes.z, False)
-            self.goal_msg.angular.z = self._getAxis(data.axes, self.axes.yaw, False)
+            self.goal_msg.position.x = self._getAxis(data.axes, self.axes.x, False)
+            self.goal_msg.position.y = self._getAxis(data.axes, self.axes.y, False)
+            self.goal_msg.position.z = self._getAxis(data.axes, self.axes.z, False)
 
     def _getAxis(self, axesData, axisToRead, measureVel=True):
         """Find the value of the axis
@@ -219,8 +221,8 @@ class Controller():
                     if i == R2 and buttonsData[i] == 1:
                         self._stop()
 
-                    # if i == TRIANGLE and buttonsData[i] == 1:
-                    #     print(self._getSwarmPos())
+                    if i == TRIANGLE and buttonsData[i] == 1:
+                        print(self._getSwarmPos())
 
                 # if i == self._L2 and buttonsData[i] == 1:
                 #     value = int(rospy.get_param("ring/headlightEnable"))
@@ -248,7 +250,8 @@ class Controller():
             rospy.logwarn("Teleop not supported in simulation")
 
     def _takeOffSwarm(self):
-        """Take off all the CF in the swarm """
+        """Take off all the CF in the swarm 
+        """
         self._takeoff()
 
     def in_teleop(self):
