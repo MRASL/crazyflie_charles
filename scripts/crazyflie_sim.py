@@ -21,7 +21,6 @@ class CrazyflieSim:
         self.world_frame = rospy.get_param("~worldFrame", "/world")
         self.rate = rospy.Rate(100)
         
-
         # Declare publishers
         self.position_pub = rospy.Publisher(self.cf_id + '/pose', PoseStamped, queue_size=1)
         self.position = PoseStamped()

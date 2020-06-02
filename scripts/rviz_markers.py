@@ -208,9 +208,9 @@ class RvizMarkers:
         pose_msg.scale.y = 0.01
         pose_msg.scale.z = 0.01
         pose_msg.color.a = 1
-        pose_msg.color.r = 1
+        pose_msg.color.r = 0
         pose_msg.color.g = 0
-        pose_msg.color.b = 0
+        pose_msg.color.b = 1
 
         return [marker_msg, pose_msg]
 
@@ -291,9 +291,9 @@ class RvizMarkers:
 
     def publish(self):
         while not rospy.is_shutdown():
-            # Publish swarm data
-            self.markerPub.publish(self.swarm_goal_msg)
-            self.markerPub.publish(self.swarm_goal_arrow_msg)
+            # # Publish swarm data
+            # self.markerPub.publish(self.swarm_goal_msg)
+            # self.markerPub.publish(self.swarm_goal_arrow_msg)
             self.markerPub.publish(self.swarm_pose_msg)
             self.markerPub.publish(self.swarm_pose_arrow_msg)
             
@@ -302,10 +302,10 @@ class RvizMarkers:
                 self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
                 self.markerPub.publish(each_cf_msg[1]) # Publish arrow
 
-            # Publish all CFs goal
-            for _, each_cf_msg in self.cf_goal_msgs.items():
-                self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
-                self.markerPub.publish(each_cf_msg[1]) # Publish arrow
+            # # Publish all CFs goal
+            # for _, each_cf_msg in self.cf_goal_msgs.items():
+            #     self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
+            #     self.markerPub.publish(each_cf_msg[1]) # Publish arrow
             
             self.rate.sleep()
 

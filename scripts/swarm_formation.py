@@ -95,12 +95,11 @@ class FormationManager:
                 pose.position.y = positions[1]                
                 pose.position.z = positions[2]                
                 pose.orientation.w = 1
-                
+
                 set_pose_srv(pose)
         else:
             #TODO 
             pass
-
 
     def set_offset(self, srv_call):
         pass
