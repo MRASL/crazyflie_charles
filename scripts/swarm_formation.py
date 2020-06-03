@@ -13,6 +13,7 @@ Notes:
         - Ligne (X)
 
 TODO:
+    *Prob avec la position initiale 
     *Add possibility to scale formations
     *Change between formations
 """
@@ -25,7 +26,7 @@ from tf.transformations import quaternion_from_euler, quaternion_multiply, euler
 from crazyflie_charles.srv import SetFormation, PoseSet
 from crazyflie_driver.msg import Position
 
-from math import sin, cos, pi, sqrt
+from math import sin, cos, pi, sqrt, atan
 
 offset = [0, 0, 0.2]
 
@@ -87,7 +88,6 @@ class FormationManager:
                 # rospy.loginfo("Formation: found %s service of %s" % ("set_pose", cf_id))     
                 self.crazyflies[cf_id]["set_pose"] = rospy.ServiceProxy('/%s/set_pose' % cf_id, PoseSet)
                 rospy.loginfo("Formation: found services of %s " %  cf_id)
-
 
         # Start services
         rospy.Service('/set_formation', SetFormation, self.set_formation)
@@ -369,6 +369,7 @@ class SquareFormation(FormationType):
 
     Notes:
         n_cf supported: 4 or 9
+        scale: Length of a side
 
     Layouts:
 
@@ -394,22 +395,67 @@ class SquareFormation(FormationType):
         n_cf_supported = [4, 9]
         super(SquareFormation, self).__init__(n_cf_supported, offset=offset)
         
-    def compute_start_positions(self):        
-        k = int(np.sqrt(self.n_cf)) # Number of CF per side
-        l = self.scale/(k-1) # Space between CFs
+        self.radius = [] #: Number of different radius in the square
+        self.cf_per_side = 0 #: (float) Number of CF per side
+        self.dist = 0 #: (float) Space between CFs
+        self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
+        self.angle = {} #: (dict of float) Keys: swarm id, Item: Angle(rad) from x axis 
 
+    # Setter
+    def set_n_cf(self, n):
+        super(SquareFormation, self).set_n_cf(n)
+        self.cf_per_side = int(sqrt(self.n_cf)) # Number of CF per side
+        self.dist = self.scale/(self.cf_per_side-1) # Space between CFs
+
+        # Useless?? ... :(
+        # if self.cf_per_side % 2 == 0:
+        #     self.n_radius = 0
+        #     max_range = int(self.cf_per_side/2 + 1)
+        #     for n in range(1, max_range):
+        #         self.n_radius += n
+            
+        # else:
+        #     self.n_radius = 1
+        #     max_range = int((self.cf_per_side + 1)/2 + 1)
+        #     for n in range(1, max_range):
+        #         self.n_radius += (2*n - 1)/2
+        
+    # Computing
+    def compute_start_positions(self):        
         cf_num = 0
-        for i in range(k):
-            for j  in range(k):
+        center_x = self.scale/2.0
+        center_y = self.scale/2.0
+
+
+        for i in range(self.cf_per_side):
+            for j  in range(self.cf_per_side):
                 start_goal = Position()
-                start_goal.x = i*l
-                start_goal.y = j*l
+                start_goal.x = i*self.dist
+                start_goal.y = j*self.dist
                 start_goal.z = 0
                 start_goal.yaw = 0
-
                 self.cf_goals[cf_num] = start_goal
+
+                dX = start_goal.x - center_x
+                dY = start_goal.y - center_y
+                self.center_dist[cf_num] = sqrt(dX**2 + dY**2)
+
+                if dX != 0:
+                    theta = atan(dY/dX)
+                    if dX < 0 and dY < 0: 
+                        theta = theta - pi
+                    elif dX < 0: 
+                        theta = theta + pi
+
+                else:
+                    if dY > 0: theta = pi/2
+                    else: theta = -pi/2
+
+                self.angle[cf_num] = theta
+
                 cf_num += 1
-    
+        
+
         return self.cf_goals
 
     def compute_cf_goals(self, crazyflies, swarm_goal):
@@ -420,20 +466,17 @@ class SquareFormation(FormationType):
             swarm_goal (Position): Goal of the swarm
         """
         # Compute position of all the CF
-        radius = sqrt(0.5)
-        thetas = [225.0, 135.0, 45.0, 315]
-        thetas = [t*pi/180.0 for t in thetas] # Convert to rad
 
-        for i in range(self.n_cf):
+        for swarm_id in range(self.n_cf):
             yaw = swarm_goal.yaw
-            theta = thetas[i] + yaw
-            dX = cos(theta) * radius
-            dY = sin(theta) * radius
+            theta = self.angle[swarm_id] + yaw
+            dX = cos(theta) * self.center_dist[swarm_id]
+            dY = sin(theta) * self.center_dist[swarm_id]
 
-            self.cf_goals[i].x = swarm_goal.x + dX
-            self.cf_goals[i].y = swarm_goal.y + dY
-            self.cf_goals[i].z = swarm_goal.z
-            self.cf_goals[i].yaw = yaw
+            self.cf_goals[swarm_id].x = swarm_goal.x + dX
+            self.cf_goals[swarm_id].y = swarm_goal.y + dY
+            self.cf_goals[swarm_id].z = swarm_goal.z
+            self.cf_goals[swarm_id].yaw = yaw
 
         # Update crazyflies based on swarm ID
         for _, cf_attrs in crazyflies.items():
