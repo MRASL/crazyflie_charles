@@ -123,6 +123,7 @@ class FormationManager:
             #TODO: Pos initial exp
             pass
         
+        rospy.sleep(0.2)    
         # Set CF goal to current pose
         for _, cf_attrs in self.crazyflies.items():
             cur_position = cf_attrs["pose"].pose
