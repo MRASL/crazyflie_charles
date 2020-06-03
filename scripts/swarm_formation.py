@@ -25,6 +25,8 @@ from tf.transformations import quaternion_from_euler, quaternion_multiply, euler
 from crazyflie_charles.srv import SetFormation, PoseSet
 from crazyflie_driver.msg import Position
 
+from math import sin, cos, pi, sqrt
+
 offset = [0, 0, 0.2]
 
 class FormationManager:
@@ -114,7 +116,8 @@ class FormationManager:
         
         # If in velocity ctrl
         if not self.trajectory_mode and self.formation is not None:
-            self.formation.compute_cf_goals_vel(self.crazyflies, self.swarm_goal_vel)
+            # self.formation.compute_cf_goals_vel(self.crazyflies, self.swarm_goal_vel)
+            self.formation.compute_cf_goals(self.crazyflies, self.swarm_goal)
 
     def set_formation(self, srv_call):
         """Set formation
@@ -184,7 +187,7 @@ class FormationManager:
 
         if self.to_sim:
             # Set initial positions of each CF
-            for (cf_name, cf_attrs), (swarm_id, position) in zip(self.crazyflies.items(), self.start_positions.items()):
+            for (_, cf_attrs), (swarm_id, position) in zip(self.crazyflies.items(), self.start_positions.items()):
                 pose = Pose()
                 pose.position.x = position.x
                 pose.position.y = position.y                
@@ -193,9 +196,7 @@ class FormationManager:
 
                 cf_attrs["set_pose"](pose)
                 cf_attrs["swarm_id"] = swarm_id
-                # print cf_name
-                # print swarm_id
-                # print position
+        
         else:
             #TODO: Pos initial exp
             pass
@@ -374,7 +375,7 @@ class SquareFormation(FormationType):
     def __init__(self, offset=[0, 0, 0]):
         n_cf_supported = [4, 9]
         super(SquareFormation, self).__init__(n_cf_supported, offset=offset)
-
+        
     def compute_start_positions(self):        
         k = int(np.sqrt(self.n_cf)) # Number of CF per side
         l = self.scale/(k-1) # Space between CFs
@@ -390,7 +391,7 @@ class SquareFormation(FormationType):
 
                 self.cf_goals[cf_num] = start_goal
                 cf_num += 1
-        
+    
         return self.cf_goals
 
     def compute_cf_goals(self, crazyflies, swarm_goal):
@@ -400,12 +401,30 @@ class SquareFormation(FormationType):
             crazyflies (dict): Information of each Crazyflie
             swarm_goal (Position): Goal of the swarm
         """
-        for _, cf_attrs in crazyflies.items():
-            cf_attrs["goal"].x = cf_attrs["pose"].pose.position.x + swarm_goal.x
-            cf_attrs["goal"].y = cf_attrs["pose"].pose.position.x + swarm_goal.y
-            cf_attrs["goal"].z = cf_attrs["pose"].pose.position.x + swarm_goal.z
-            # cf_attrs["goal"].yaw = cf_attrs["pose"].pose.position.x + swarm_goal.x
+        # Compute position of all the CF
+        radius = sqrt(0.5)
+        thetas = [225.0, 135.0, 45.0, 315]
+        thetas = [t*pi/180.0 for t in thetas] # Convert to rad
 
+        for i in range(self.n_cf):
+            yaw = swarm_goal.yaw
+            theta = thetas[i] + yaw
+            dX = cos(theta) * radius
+            dY = sin(theta) * radius
+
+            self.cf_goals[i].x = swarm_goal.x + dX
+            self.cf_goals[i].y = swarm_goal.y + dY
+            self.cf_goals[i].z = swarm_goal.z
+            self.cf_goals[i].yaw = yaw
+
+        # Update crazyflies based on swarm ID
+        for _, cf_attrs in crazyflies.items():
+            id = cf_attrs["swarm_id"]
+            cf_attrs["goal"].x = self.cf_goals[id].x
+            cf_attrs["goal"].y = self.cf_goals[id].y
+            cf_attrs["goal"].z = self.cf_goals[id].z
+            cf_attrs["goal"].yaw = self.cf_goals[id].yaw
+            
 class SoloFormation(FormationType):
     def __init__(self, offset=[0, 0, 0]):
         n_cf_supported = [1]
