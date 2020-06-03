@@ -33,34 +33,40 @@ class FormationManager:
         self.n_cf = len(cf_list) #: (int) Number of CF in the swarm
         self.pose_cnt = 0 #: (int) To know when compute pose
 
-        self.to_sim = to_sim
-        self.offset = offset
+        self.to_sim = to_sim #: (bool) Simulation or not
+        self.trajectory_mode = False #: (bool) In trajectory mode, goes to a specified setpoint, In speed mode, controls variation of position
+
         self.rate = rospy.Rate(100)
 
-        self.formations = {"solo": SoloFormation(self.cf_list, self.offset), 
-                           "square": SquareFormation(self.cf_list, self.offset),} #: All possible formations
-        self.formation = None
-        self.start_positions = []
-                
+        self.offset = offset #: (list of float) Swarm center offset
+
+        self.formations = {"solo": SoloFormation(self.offset), 
+                           "square": SquareFormation(self.offset),} #: All possible formations
+        self.formation = None #: (str) Current formation
+
+        self.start_positions = [] #: (list of list of float) Starting position of the formation, independant of CFs
+        
+        self.crazyflies = {} #: (dict of list) Information of each CF
+        
+
+        # Publisher
         self.swarm_pose_publisher = rospy.Publisher('/swarm_pose', Pose, queue_size=1)
         self.swarm_goal_publisher = rospy.Publisher('/swarm_goal', Position, queue_size=1)
         self.swarm_pose = Pose()
         self.swarm_goal = Position()
         self.swarm_goal_vel = Twist()
+
+        # Subscribers
         rospy.Subscriber("/swarm_goal", Position, self.swarm_goal_handler)
         rospy.Subscriber("/swarm_goal_vel", Twist, self.swarm_goal_vel_handler)
-
-        self.crazyflies = {} #: (dict of list) Information of each CF
-
-        self.trajectory_mode = False #: In trajectory mode, goes to a specified setpoint, In speed mode, controls variation of position
-    
 
         # Initialize each CF
         for cf_id in cf_list:
             self.crazyflies[cf_id] = {  "pose": PoseStamped(),    # msg
                                         "goal": Position(),       # msg  
-                                        "set_pose": None,             # service  
-                                        "goal_pub": None}             # publisher
+                                        "swarm_id": 0,            # int, position in the swarm
+                                        "set_pose": None,         # service  
+                                        "goal_pub": None}         # publisher
 
             # Add goal publisher
             self.crazyflies[cf_id]["goal_pub"] = rospy.Publisher('/%s/goal' % cf_id, Position, queue_size=1)
@@ -70,77 +76,21 @@ class FormationManager:
 
             # Find set pose service
             if self.to_sim:
-                rospy.loginfo("Formation: waiting for %s service of %s " % ("set_pose", cf_id))
+                rospy.loginfo("Formation: waiting for services of %s " %  cf_id)
+                # rospy.loginfo("Formation: waiting for %s service of %s " % ("set_pose", cf_id))
                 rospy.wait_for_service('/%s/%s' % (cf_id, "set_pose"))
-                rospy.loginfo("Formation: found %s service of %s" % ("set_pose", cf_id))     
+                # rospy.loginfo("Formation: found %s service of %s" % ("set_pose", cf_id))     
                 self.crazyflies[cf_id]["set_pose"] = rospy.ServiceProxy('/%s/set_pose' % cf_id, PoseSet)
+                rospy.loginfo("Formation: found services of %s " %  cf_id)
+
 
         # Start services
         rospy.Service('/set_formation', SetFormation, self.set_formation)
         rospy.Service('/set_offset', SetFormation, self.set_offset)        # TODO
-        rospy.Service('/set_ctrl_mode', SetFormation, self.set_ctrl_mode)        # TODO
+        rospy.Service('/set_ctrl_mode', SetFormation, self.set_ctrl_mode)  # TODO
         rospy.Service('/update_swarm_goal', Empty, self.update_swarm_goal)
 
-    def set_formation(self, srv_call):
-        """Set formation
-
-        Args:
-            srv_call (SetFormation): Formation to set
-
-        Returns:
-            bool: success
-        """
-        form_to_set = srv_call.formation
-        valid_formation = True
-
-        if form_to_set in self.formations.keys():
-            rospy.loginfo("Formation: Setting formation to %s" % form_to_set)
-            self.formation = self.formations[form_to_set]
-            self.init_formation()
-
-        else:
-            rospy.logerr("Formation: Invalid formation: %s" % form_to_set)
-            valid_formation = False
-
-        return valid_formation
-
-    def init_formation(self):
-        self.formation.check_n()
-        self.start_positions = self.formation.compute_start_positions()
-
-        if self.to_sim:
-            # Set initial positions of each CF
-            for (_, cf_attrs), positions in zip(self.crazyflies.items(), self.start_positions):
-                pose = Pose()
-                pose.position.x = positions[0]
-                pose.position.y = positions[1]                
-                pose.position.z = positions[2]                
-                pose.orientation.w = 1
-
-                cf_attrs["set_pose"](pose)
-
-        else:
-            #TODO: Pos initial exp
-            pass
-        
-        rospy.sleep(0.2)    
-        # Set CF goal to current pose
-        for _, cf_attrs in self.crazyflies.items():
-            cur_position = cf_attrs["pose"].pose
-            cf_attrs["goal"].x = cur_position.position.x
-            cf_attrs["goal"].y = cur_position.position.y
-            cf_attrs["goal"].z = cur_position.position.z
-            cf_attrs["goal"].yaw = yaw_from_quat(cur_position.orientation)
-
-        rospy.sleep(0.2)
-        self.update_swarm_goal()
-        
-    def set_offset(self, srv_call):
-        pass
-    
-    def set_ctrl_mode(self, mode):
-        pass
-
+    # Services and subscriptions
     def pose_handler(self, pose_stamped, cf_id):
         self.crazyflies[cf_id]["pose"] = pose_stamped
         self.pose_cnt += 1
@@ -166,14 +116,35 @@ class FormationManager:
         if not self.trajectory_mode and self.formation is not None:
             self.formation.compute_cf_goals_vel(self.crazyflies, self.swarm_goal_vel)
 
-    def compute_initial_pose(self, srv_call):
-        if self.formation is not None:
-            self.formation.compute_initial_pose()
-    
-    def get_swarm_pose(self):
-        self.swarm_pose = self.formation.compute_swarm_pose(self.crazyflies)
-        return EmptyResponse()
+    def set_formation(self, srv_call):
+        """Set formation
 
+        Args:
+            srv_call (SetFormation): Formation to set
+
+        Returns:
+            bool: success
+        """
+        form_to_set = srv_call.formation
+        valid_formation = True
+
+        if form_to_set in self.formations.keys():
+            rospy.loginfo("Formation: Setting formation to %s" % form_to_set)
+            self.formation = self.formations[form_to_set]
+            self.init_formation()
+
+        else:
+            rospy.logerr("Formation: Invalid formation: %s" % form_to_set)
+            valid_formation = False
+
+        return valid_formation
+
+    def set_offset(self, srv_call):
+        pass
+
+    def set_ctrl_mode(self, mode):
+        pass
+    
     def update_swarm_goal(self, req=None):
         """Update swarm goal to match current position
 
@@ -205,6 +176,52 @@ class FormationManager:
 
         return EmptyResponse()
 
+    # Formation initialization methods
+    def init_formation(self):
+        self.formation.set_n_cf(len(self.cf_list))
+        self.formation.check_n()
+        self.start_positions = self.formation.compute_start_positions()
+
+        if self.to_sim:
+            # Set initial positions of each CF
+            for (cf_name, cf_attrs), (swarm_id, position) in zip(self.crazyflies.items(), self.start_positions.items()):
+                pose = Pose()
+                pose.position.x = position.x
+                pose.position.y = position.y                
+                pose.position.z = position.z                
+                pose.orientation = quat_from_yaw(position.yaw)
+
+                cf_attrs["set_pose"](pose)
+                cf_attrs["swarm_id"] = swarm_id
+                # print cf_name
+                # print swarm_id
+                # print position
+        else:
+            #TODO: Pos initial exp
+            pass
+        
+        rospy.sleep(0.2)    
+        # Set CF goal to current pose
+        for _, cf_attrs in self.crazyflies.items():
+            cur_position = cf_attrs["pose"].pose
+            cf_attrs["goal"].x = cur_position.position.x
+            cf_attrs["goal"].y = cur_position.position.y
+            cf_attrs["goal"].z = cur_position.position.z
+            cf_attrs["goal"].yaw = yaw_from_quat(cur_position.orientation)
+
+        rospy.sleep(0.2)
+        self.update_swarm_goal()
+        
+    def compute_initial_pose(self, srv_call):
+        if self.formation is not None:
+            self.formation.compute_initial_pose()
+    
+    # Control methods
+    def get_swarm_pose(self):
+        self.swarm_pose = self.formation.compute_swarm_pose(self.crazyflies)
+        return EmptyResponse()
+
+    # Publishers
     def publish_cf_goals(self):
         for _, cf_attrs in self.crazyflies.items():
             cf_attrs["goal_pub"].publish(cf_attrs["goal"])        
@@ -223,28 +240,22 @@ class FormationManager:
                 self.publish_swarm_goal()
             self.rate.sleep()
 
-
 class FormationType(object):
-    def __init__(self, cf_list, n_cf_supported=[], offset=[0, 0, 0]):
-        self.cf_list = cf_list
-        self.n_cf = len(cf_list) #: (int) Number of CF in the formation
+    def __init__(self, n_cf_supported=[], offset=[0, 0, 0]):
+        self.n_cf = 0 #: (int) Number of CF in the formation
         
-        # self.cf_goals = {} #: (dict of Pose) Target Pose of all the CF
-        
-        # for each_cf in cf_list:
-        #     p = Pose()
-        #     p.orientation.w = 1
-        #     self.cf_goals[each_cf] = p
-
-        self.swarm_goal = Position()
-        self.swarm_goal.yaw = 0
+        self.cf_goals = {} #: (dict of Position) Target Pose of all the CF
 
         self.n_cf_supported = n_cf_supported #: (list of int) Different number of CF possible for each formation
+        
         self.initial_offset = Pose() #: (Pose): Offset of the center of the formation from 0,0,0
         self.initial_offset.position.x = offset[0]
         self.initial_offset.position.y = offset[1]
         self.initial_offset.position.z = offset[2]
 
+        self.scale = 1.0 #: (float) scale of the formation
+
+    # General methods, valid between formations
     def check_n(self):
         if self.n_cf in self.n_cf_supported and self.n_cf > 0:
             rospy.loginfo("Formation made of %i crazyflies" % self.n_cf)
@@ -254,6 +265,16 @@ class FormationType(object):
     def get_n_cf(self):
         return self.n_cf
 
+    def set_offset(self, x , y, z):
+        self.initial_offset.position.x = x
+        self.initial_offset.position.y = y
+        self.initial_offset.position.z = z
+
+    def set_n_cf(self, n):
+        self.n_cf = n
+        self.check_n
+    
+    # Methods depending on formation
     def compute_start_positions(self):
         pass
 
@@ -320,39 +341,75 @@ class FormationType(object):
 
         
         return swarm_pose
-
-    def set_offset(self, x , y, z):
-        self.initial_offset.position.x = x
-        self.initial_offset.position.y = y
-        self.initial_offset.position.z = z
-
-class SquareFormation(FormationType):
-    def __init__(self, cf_list, offset=[0, 0, 0]):
-        n_cf_supported = [4, 9]
-        super(SquareFormation, self).__init__(cf_list, n_cf_supported, offset=offset)
-
-    def compute_start_positions(self):
-        pose_list = []
         
-        l = 1.0 # Lenght of the square
+class SquareFormation(FormationType):
+    """Square formation
 
-        k = int(np.sqrt(self.n_cf))
-        l = l/(k-1)
+    Args:
+        FormationType ([type]): [description]
+
+    Notes:
+        n_cf supported: 4 or 9
+
+    Layouts:
+
+        y
+        |
+        |
+        |_____x
+
+        1   3
+
+        0   2
+
+        ------
+
+        2   5   8
+
+        1   4   7
+
+        0   3   6   
+
+    """
+    def __init__(self, offset=[0, 0, 0]):
+        n_cf_supported = [4, 9]
+        super(SquareFormation, self).__init__(n_cf_supported, offset=offset)
+
+    def compute_start_positions(self):        
+        k = int(np.sqrt(self.n_cf)) # Number of CF per side
+        l = self.scale/(k-1) # Space between CFs
+
+        cf_num = 0
         for i in range(k):
             for j  in range(k):
-                pose_list.append([i*l, j*l, 0])
+                start_goal = Position()
+                start_goal.x = i*l
+                start_goal.y = j*l
+                start_goal.z = 0
+                start_goal.yaw = 0
 
-        return pose_list
+                self.cf_goals[cf_num] = start_goal
+                cf_num += 1
+        
+        return self.cf_goals
 
-        # for each_cf, position in zip(self.cf_goals.items(), pose_list):
-        #     each_cf[1].position.x = position[0] + self.initial_offset.position.x 
-        #     each_cf[1].position.y = position[1] + self.initial_offset.position.y
-        #     each_cf[1].position.z = position[2] + self.initial_offset.position.z
+    def compute_cf_goals(self, crazyflies, swarm_goal):
+        """Compute goal of each crazyflie based on target position of the swarm
+
+        Args:
+            crazyflies (dict): Information of each Crazyflie
+            swarm_goal (Position): Goal of the swarm
+        """
+        for _, cf_attrs in crazyflies.items():
+            cf_attrs["goal"].x = cf_attrs["pose"].pose.position.x + swarm_goal.x
+            cf_attrs["goal"].y = cf_attrs["pose"].pose.position.x + swarm_goal.y
+            cf_attrs["goal"].z = cf_attrs["pose"].pose.position.x + swarm_goal.z
+            # cf_attrs["goal"].yaw = cf_attrs["pose"].pose.position.x + swarm_goal.x
 
 class SoloFormation(FormationType):
-    def __init__(self, cf_list, offset=[0, 0, 0]):
+    def __init__(self, offset=[0, 0, 0]):
         n_cf_supported = [1]
-        super(SoloFormation, self).__init__(cf_list, n_cf_supported, offset=offset)
+        super(SoloFormation, self).__init__(n_cf_supported, offset=offset)
 
     def compute_start_positions(self):
         return [self.initial_offset.position.x,  self.initial_offset.position.y, self.initial_offset.position.z]
@@ -393,6 +450,10 @@ def yaw_from_quat(quaternion):
                                         quaternion.z,
                                         quaternion.w])
     return yaw
+
+def quat_from_yaw(yaw):
+    x, y, z, w = quaternion_from_euler(0, 0 , yaw)
+    return Quaternion(x, y, z, w)
 
 if __name__ == '__main__':
     # Launch node

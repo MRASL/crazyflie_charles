@@ -60,15 +60,17 @@ class Swarm:
         rospy.Service('/toggle_teleop', srv.Empty, self.toggle_teleop)        # Toggle between manual and auto mode
 
         # Formation services
-        rospy.loginfo("Swarm: waiting for %s service" % "set_formation")
+        rospy.loginfo("Swarm: waiting for services")
+        # rospy.loginfo("Swarm: waiting for %s service" % "set_formation")
         rospy.wait_for_service("set_formation")
-        rospy.loginfo("Swarm: found %s service" % "set_formation")
+        # rospy.loginfo("Swarm: found %s service" % "set_formation")
         self.set_formation = rospy.ServiceProxy("set_formation", SetFormation)
 
-        rospy.loginfo("Swarm: waiting for %s service" % "update_swarm_goal")
+        # rospy.loginfo("Swarm: waiting for %s service" % "update_swarm_goal")
         rospy.wait_for_service("update_swarm_goal")
-        rospy.loginfo("Swarm: found %s service" % "update_swarm_goal")
+        # rospy.loginfo("Swarm: found %s service" % "update_swarm_goal")
         self.update_swarm_goal = rospy.ServiceProxy("update_swarm_goal", srv.Empty)
+        rospy.loginfo("Swarm: services found")
 
         # Publisher
         self.goal_pub = rospy.Publisher('swarm_goal', Position, queue_size=1)
@@ -115,18 +117,19 @@ class Swarm:
             self._link_service(cf_id, "emergency", srv.Empty)
 
         else:
-            # self._link_service(cf_id, "set_pose", PoseSet)
             pass
+            # self._link_service(cf_id, "set_pose", PoseSet)
             # self.crazyflies[cf_id]["initial_pose"] = self.formation.cf_goals[cf_id]
             # self.crazyflies[cf_id]["set_pose"](self.crazyflies[cf_id]["initial_pose"])
 
+        rospy.loginfo("Swarm: waiting services of %s " % cf_id)
         self._link_service(cf_id, "get_pose", PoseRequest)
         self._link_service(cf_id, "take_off", srv.Empty)
         self._link_service(cf_id, "land", srv.Empty)
         self._link_service(cf_id, "hover", srv.Empty)
         self._link_service(cf_id, "stop", srv.Empty)
         self._link_service(cf_id, "toggle_teleop", srv.Empty)
-
+        rospy.loginfo("Swarm: found services of %s " % cf_id)
 
         # CF goal
         # TODO Enlever?
@@ -141,9 +144,9 @@ class Swarm:
             service_name (str): Name of the serviec
             service_type (_): Type of the service
         """
-        rospy.loginfo("Swarm: waiting for %s service of %s " % (service_name, cf_id))
+        # rospy.loginfo("Swarm: waiting for %s service of %s " % (service_name, cf_id))
         rospy.wait_for_service('/%s/%s' % (cf_id, service_name))
-        rospy.loginfo("Swarm: found %s service of %s" % (service_name, cf_id))
+        # rospy.loginfo("Swarm: found %s service of %s" % (service_name, cf_id))
         self.crazyflies[cf_id][service_name] = rospy.ServiceProxy('/%s/%s' % (cf_id, service_name), service_type)
 
     # Setter & getters

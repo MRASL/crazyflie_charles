@@ -179,22 +179,22 @@ class Crazyflie:
             rospy.logerr("Invalid State: %s" % newState)
 
     def take_off(self, req):
-        rospy.loginfo("%s: Take off" % self.cf_id)
+        # rospy.loginfo("%s: Take off" % self.cf_id)
         self._setState("take_off")
         return EmptyResponse_srv()
 
     def hover(self, req):
-        rospy.loginfo("%s: Hover" % self.cf_id)
+        # rospy.loginfo("%s: Hover" % self.cf_id)
         self._setState("hover")
         return EmptyResponse_srv()
 
     def land(self, req):
-        rospy.loginfo("%s: Landing" % self.cf_id)
+        # rospy.loginfo("%s: Landing" % self.cf_id)
         self._setState("land")
         return EmptyResponse_srv()
 
     def stop(self, req):
-        rospy.loginfo("%s: Stoping" % self.cf_id)
+        # rospy.loginfo("%s: Stoping" % self.cf_id)
         self._setState("stop")
         return EmptyResponse_srv()
 
@@ -330,7 +330,6 @@ if __name__ == '__main__':
     # Get params
     cf_id = rospy.get_param("~cf_name", "cf_default")
     to_sim = rospy.get_param("~to_sim", "False")
-    rospy.loginfo('Initialisation %s' % cf_id)
     
     # Initialize cfx
     cf = Crazyflie(cf_id, to_sim)
