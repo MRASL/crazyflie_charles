@@ -208,9 +208,12 @@ class Crazyflie:
 
     # Methods depending on state
     def _take_off(self):
-        dZ = self.goal.z - self.initial_pose.position.z
+        dZ = self.goal.z - self.pose.position.z
+        x_start = self.pose.position.x 
+        y_start = self.pose.position.y
+        z_start = self.pose.position.z
 
-        rospy.loginfo("Going to \n{}".format(self.goal))
+        # rospy.loginfo("Going to \n{}".format(self.goal))
 
         time_range = 1*10
         z_inc = dZ/time_range
@@ -219,16 +222,11 @@ class Crazyflie:
         for i in range(time_range):
             if rospy.is_shutdown() or self._state is not "take_off": break
 
-            z = i*z_inc + self.initial_pose.position.z
+            z = i*z_inc + z_start
 
-            self.cmd_pos(self.goal.x, self.goal.y, z, self.goal.yaw)
+            self.cmd_pos(x_start, y_start, z, self.goal.yaw)
 
             self.rate.sleep()
-            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
-                            (self.goal.x, self.goal.y, z, 
-                            self.pose.position.x, self.pose.position.y, self.pose.position.z))
-
-        rospy.loginfo("Pos reached \n{}".format(self.pose.position))
 
         if self._state is "take_off":
             self.hover(Empty_srv())
@@ -260,11 +258,9 @@ class Crazyflie:
             self.cmd_pos(x_start, y_start, z, 0)
 
             self.rate.sleep()
-            rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
-                            (x_start, y_start, z, 
-                            self.pose.position.x, self.pose.position.y, self.pose.position.z))
 
-        rospy.loginfo("Landed \n{}".format(self.pose.position))
+        self.cmd_pos(self.goal.x, self.goal.y, self.goal.z, self.goal.yaw)
+        self.rate.sleep()
 
         self.stop(Empty_srv())
 

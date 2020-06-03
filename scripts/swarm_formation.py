@@ -18,7 +18,7 @@ TODO:
 """
 
 from geometry_msgs.msg import Pose, Quaternion, PoseStamped, Twist
-from std_srvs.srv import Empty, SetBool
+from std_srvs.srv import Empty, EmptyResponse, SetBool
 import numpy as np
 import rospy
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
@@ -79,7 +79,7 @@ class FormationManager:
         rospy.Service('/set_formation', SetFormation, self.set_formation)
         rospy.Service('/set_offset', SetFormation, self.set_offset)        # TODO
         rospy.Service('/set_ctrl_mode', SetFormation, self.set_ctrl_mode)        # TODO
-        rospy.Service('/compute_initial_pose', Empty, self.compute_initial_pose) # Not used
+        rospy.Service('/update_swarm_goal', Empty, self.update_swarm_goal)
 
     def set_formation(self, srv_call):
         """Set formation
@@ -133,11 +133,7 @@ class FormationManager:
             cf_attrs["goal"].yaw = yaw_from_quat(cur_position.orientation)
 
         rospy.sleep(0.2)
-        self.get_swarm_pose()
-        self.swarm_goal.x = self.swarm_pose.position.x 
-        self.swarm_goal.y = self.swarm_pose.position.y
-        self.swarm_goal.z = self.swarm_pose.position.z 
-        self.swarm_goal.yaw = yaw_from_quat(self.swarm_pose.orientation)
+        self.update_swarm_goal()
         
     def set_offset(self, srv_call):
         pass
@@ -165,7 +161,8 @@ class FormationManager:
         self.swarm_goal.y += self.swarm_goal_vel.linear.y
         self.swarm_goal.z += self.swarm_goal_vel.linear.z
         self.swarm_goal.yaw += self.swarm_goal_vel.angular.z
-
+        
+        # If in velocity ctrl
         if not self.trajectory_mode and self.formation is not None:
             self.formation.compute_cf_goals_vel(self.crazyflies, self.swarm_goal_vel)
 
@@ -175,6 +172,38 @@ class FormationManager:
     
     def get_swarm_pose(self):
         self.swarm_pose = self.formation.compute_swarm_pose(self.crazyflies)
+        return EmptyResponse()
+
+    def update_swarm_goal(self, req=None):
+        """Update swarm goal to match current position
+
+        Args:
+            req (Empty, optional): service. Defaults to None.
+
+        Returns:
+            EmprtyResponse
+
+        Notes:
+            Call from service and in initialisation
+        """
+        # Update swarm position
+        self.get_swarm_pose()
+
+        # Update swarm goal to match current position
+        self.swarm_goal.x = self.swarm_pose.position.x 
+        self.swarm_goal.y = self.swarm_pose.position.y
+        self.swarm_goal.z = self.swarm_pose.position.z 
+        self.swarm_goal.yaw = yaw_from_quat(self.swarm_pose.orientation)
+
+        # Update CF goals to match current position
+        for _, cf_attrs in self.crazyflies.items():
+            cur_position = cf_attrs["pose"].pose
+            cf_attrs["goal"].x = cur_position.position.x
+            cf_attrs["goal"].y = cur_position.position.y
+            cf_attrs["goal"].z = cur_position.position.z
+            cf_attrs["goal"].yaw = yaw_from_quat(cur_position.orientation)
+
+        return EmptyResponse()
 
     def publish_cf_goals(self):
         for _, cf_attrs in self.crazyflies.items():

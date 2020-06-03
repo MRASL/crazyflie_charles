@@ -45,7 +45,7 @@ class Swarm:
         self.cf_list = cf_list
 
         self.swarm_goal = Position()
-        self.swarm_goal.yaw = 0
+        self.swarm_goal_vel = Twist()
 
         # Initialize each Crazyflie
         for each_cf in cf_list:
@@ -59,16 +59,24 @@ class Swarm:
         rospy.Service('/land', srv.Empty, self.land)                        # Land all CFs
         rospy.Service('/toggle_teleop', srv.Empty, self.toggle_teleop)        # Toggle between manual and auto mode
 
+        # Formation services
         rospy.loginfo("Swarm: waiting for %s service" % "set_formation")
         rospy.wait_for_service("set_formation")
         rospy.loginfo("Swarm: found %s service" % "set_formation")
         self.set_formation = rospy.ServiceProxy("set_formation", SetFormation)
 
+        rospy.loginfo("Swarm: waiting for %s service" % "update_swarm_goal")
+        rospy.wait_for_service("update_swarm_goal")
+        rospy.loginfo("Swarm: found %s service" % "update_swarm_goal")
+        self.update_swarm_goal = rospy.ServiceProxy("update_swarm_goal", srv.Empty)
+
         # Publisher
         self.goal_pub = rospy.Publisher('swarm_goal', Position, queue_size=1)
+        self.goal_vel_pub = rospy.Publisher('swarm_goal_vel', Twist, queue_size=1)
 
         # Subscribe
-        rospy.Subscriber("swarm_goal_vel", Twist, self.update_swarm_goal)
+        rospy.Subscriber("swarm_goal", Position, self.swarm_goal_handler)
+        rospy.Subscriber("swarm_goal_vel", Twist, self.swarm_goal_vel_handler)
 
         self.formation = "square"
         self.set_formation(self.formation)
@@ -145,8 +153,45 @@ class Swarm:
             bool: In teleop
         """
         return self._to_teleop
-        
+    
+    # Publisher and subscription\
+    def pub_goal(self):
+        while not rospy.is_shutdown():
+            # self.goal_pub.publish(self.swarm_goal)
+            self.rate.sleep()
+
+    def pub_swarm_goal_vel(self, goal_spd):
+        """Publish new swarm_goal speed
+
+        Args:
+            goal_spd (Twist): Speed variation of goal
+        """
+        self.goal_vel_pub.publish(goal_spd)
+
+    def swarm_goal_handler(self, swarm_goal):
+        self.swarm_goal = swarm_goal
+
+    def swarm_goal_vel_handler(self, swarm_goal_vel):
+        self.swarm_goal_vel = swarm_goal_vel
+
     # Services methods
+    def _call_all_cf_service(self, service_name, service_msg=None):
+        """Call a service for all the CF in the swarm
+
+        Args:
+            service_name (str): Name of the service to call
+            service_msg (srv_msg, optional): Message to send. Defaults to None.
+
+        Returns:
+            srv_res: Response of the service
+        """
+        for _, cf in self.crazyflies.items():
+            if service_msg is None:
+                res = cf[service_name]()
+            else:
+                res = cf[service_name](service_msg)
+        return res
+
     def toggle_teleop(self, req):
         """Toggle teleop mode
 
@@ -186,10 +231,11 @@ class Swarm:
     
     def take_off(self, req):
         rospy.loginfo("Swarm: take off")
-        
+
+        self.update_swarm_goal() 
         goal_var = Twist()
         goal_var.linear.z = 0.5
-        self.update_swarm_goal(goal_var)
+        self.pub_swarm_goal_vel(goal_var)
 
         self._call_all_cf_service("take_off")
         return srv.EmptyResponse()
@@ -197,47 +243,13 @@ class Swarm:
     def land(self, req):
         rospy.loginfo("Swarm: land")
 
+        self.update_swarm_goal()
         goal_var = Twist()
         goal_var.linear.z = GND_HEIGHT - self.swarm_goal.z
-        self.update_swarm_goal(goal_var)
+        self.pub_swarm_goal_vel(goal_var)
 
         self._call_all_cf_service("land")
         return srv.EmptyResponse()
-    
-    def update_swarm_goal(self, goal_spd):
-        """Update swarm_goal based on a change of speed
-
-        Args:
-            goal_spd (Twist): Speed variation of goal
-        """
-        # self.swarm_goal.x += goal_spd.linear.x
-        # self.swarm_goal.y += goal_spd.linear.y
-        # self.swarm_goal.z += goal_spd.linear.z
-        # self.swarm_goal.yaw += goal_spd.angular.z
-
-        pass
-        
-    def _call_all_cf_service(self, service_name, service_msg=None):
-        """Call a service for all the CF in the swarm
-
-        Args:
-            service_name (str): Name of the service to call
-            service_msg (srv_msg, optional): Message to send. Defaults to None.
-
-        Returns:
-            srv_res: Response of the service
-        """
-        for _, cf in self.crazyflies.items():
-            if service_msg is None:
-                res = cf[service_name]()
-            else:
-                res = cf[service_name](service_msg)
-        return res
-
-    def pub_goal(self):
-        while not rospy.is_shutdown():
-            # self.goal_pub.publish(self.swarm_goal)
-            self.rate.sleep()
 
 if __name__ == '__main__':
     # Launch node
