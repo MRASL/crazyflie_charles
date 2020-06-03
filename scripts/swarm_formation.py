@@ -37,6 +37,9 @@ class FormationManager:
 
         self.to_sim = to_sim #: (bool) Simulation or not
         self.trajectory_mode = False #: (bool) In trajectory mode, goes to a specified setpoint, In speed mode, controls variation of position
+                                     # In trajectory mode, follow /swarm_goal, in speed_mode, follows /swarm_goal_vel
+        
+        self.abs_ctrl_mode = False #: In abs ctrl mode, moves in world/ In rel ctrl mode, moves relative to yaw
 
         self.rate = rospy.Rate(100)
 
@@ -109,11 +112,26 @@ class FormationManager:
 
     def swarm_goal_vel_handler(self, goal_vel):
         self.swarm_goal_vel = goal_vel
-        self.swarm_goal.x += self.swarm_goal_vel.linear.x
-        self.swarm_goal.y += self.swarm_goal_vel.linear.y
-        self.swarm_goal.z += self.swarm_goal_vel.linear.z
-        self.swarm_goal.yaw += self.swarm_goal_vel.angular.z
-        
+
+        # Moves relative to world
+        if self.abs_ctrl_mode:
+            self.swarm_goal.x += self.swarm_goal_vel.linear.x
+            self.swarm_goal.y += self.swarm_goal_vel.linear.y
+            self.swarm_goal.z += self.swarm_goal_vel.linear.z
+            self.swarm_goal.yaw += self.swarm_goal_vel.angular.z
+
+        # Moves relative to orientation. X axis in front, y axis on toward the left, z axis up
+        else:
+            Vx = self.swarm_goal_vel.linear.x
+            Vy = self.swarm_goal_vel.linear.y
+            theta = self.swarm_goal.yaw
+            dX = Vx * cos(theta) + Vy * cos(theta + pi/2.0)
+            dY = Vx * sin(theta) + Vy * sin(theta + pi/2.0)
+            self.swarm_goal.x += dX
+            self.swarm_goal.y += dY
+            self.swarm_goal.z += self.swarm_goal_vel.linear.z
+            self.swarm_goal.yaw += self.swarm_goal_vel.angular.z
+
         # If in velocity ctrl
         if not self.trajectory_mode and self.formation is not None:
             # self.formation.compute_cf_goals_vel(self.crazyflies, self.swarm_goal_vel)
