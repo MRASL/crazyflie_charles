@@ -2,6 +2,11 @@
 
 """Generate rviz markers
 
+Notes:
+    Blue markers: Position of a CF
+    Green marker: Position of swarm
+    Red: Goals
+
 :: _Rviz Markers wiki:
     http://wiki.ros.org/rviz/DisplayTypes/Marker
 """
@@ -92,8 +97,8 @@ class RvizMarkers:
         msg.scale.z = 0.03
         msg.color.a = 0.8
         msg.color.r = 0
-        msg.color.g = 0
-        msg.color.b = 1
+        msg.color.g = 1
+        msg.color.b = 0
 
         msg_pose = Marker()
         msg_pose.header.frame_id = "world"
@@ -114,8 +119,8 @@ class RvizMarkers:
         msg_pose.scale.z = 0.01
         msg_pose.color.a = 0.8
         msg_pose.color.r = 0
-        msg_pose.color.g = 0
-        msg_pose.color.b = 1
+        msg_pose.color.g = 1
+        msg_pose.color.b = 0
         
         return [msg, msg_pose]
     
@@ -185,7 +190,7 @@ class RvizMarkers:
         marker_msg.scale.x = 0.1
         marker_msg.scale.y = 0.1
         marker_msg.scale.z = 0.05
-        marker_msg.color.a = 0.7
+        marker_msg.color.a = 1
         marker_msg.color.r = 0
         marker_msg.color.g = 0
         marker_msg.color.b = 1
@@ -204,10 +209,10 @@ class RvizMarkers:
         pose_msg.pose.orientation.y = 0.0
         pose_msg.pose.orientation.z = 0.0
         pose_msg.pose.orientation.w = 1.0
-        pose_msg.scale.x = 0.08
+        pose_msg.scale.x = 0.07
         pose_msg.scale.y = 0.01
         pose_msg.scale.z = 0.01
-        pose_msg.color.a = 1
+        pose_msg.color.a = 0.8
         pose_msg.color.r = 0
         pose_msg.color.g = 0
         pose_msg.color.b = 1
@@ -230,9 +235,9 @@ class RvizMarkers:
         marker_msg.pose.orientation.y = 0.0
         marker_msg.pose.orientation.z = 0.0
         marker_msg.pose.orientation.w = 1.0
-        marker_msg.scale.x = 0.1
-        marker_msg.scale.y = 0.1
-        marker_msg.scale.z = 0.05
+        marker_msg.scale.x = 0.03
+        marker_msg.scale.y = 0.03
+        marker_msg.scale.z = 0.03
         marker_msg.color.a = 0.7
         marker_msg.color.r = 1
         marker_msg.color.g = 0
@@ -252,7 +257,7 @@ class RvizMarkers:
         pose_msg.pose.orientation.y = 0.0
         pose_msg.pose.orientation.z = 0.0
         pose_msg.pose.orientation.w = 1.0
-        pose_msg.scale.x = 0.08
+        pose_msg.scale.x = 0.05
         pose_msg.scale.y = 0.01
         pose_msg.scale.z = 0.01
         pose_msg.color.a = 1
@@ -272,7 +277,18 @@ class RvizMarkers:
         msg_pose.pose.orientation = pose_msg.pose.orientation
 
     def update_cf_goal(self, goal_msg, cf_name):
-        pass
+        msg_sphere, msg_pose = self.cf_goal_msgs[cf_name]
+
+        msg_sphere.pose.position.x = goal_msg.x
+        msg_sphere.pose.position.y = goal_msg.y
+        msg_sphere.pose.position.z = goal_msg.z
+        msg_pose.pose.position = msg_sphere.pose.position
+
+        [x, y, z, w] = quaternion_from_euler(0, 0, goal_msg.yaw)
+        msg_pose.pose.orientation.x = x
+        msg_pose.pose.orientation.y = y
+        msg_pose.pose.orientation.z = z
+        msg_pose.pose.orientation.w = w
 
     def update_swarm_goal(self, goal):
         self.swarm_goal_msg.pose.position.x = goal.x
@@ -287,13 +303,14 @@ class RvizMarkers:
         self.swarm_goal_arrow_msg.pose.orientation.w = w
 
     def update_swarm_pose(self, pose):
-        pass
+        self.swarm_pose_msg.pose.position = pose.position
+        self.swarm_pose_arrow_msg.pose = pose
 
     def publish(self):
         while not rospy.is_shutdown():
-            # # Publish swarm data
-            # self.markerPub.publish(self.swarm_goal_msg)
-            # self.markerPub.publish(self.swarm_goal_arrow_msg)
+            # Publish swarm data
+            self.markerPub.publish(self.swarm_goal_msg)
+            self.markerPub.publish(self.swarm_goal_arrow_msg)
             self.markerPub.publish(self.swarm_pose_msg)
             self.markerPub.publish(self.swarm_pose_arrow_msg)
             
@@ -302,10 +319,10 @@ class RvizMarkers:
                 self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
                 self.markerPub.publish(each_cf_msg[1]) # Publish arrow
 
-            # # Publish all CFs goal
-            # for _, each_cf_msg in self.cf_goal_msgs.items():
-            #     self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
-            #     self.markerPub.publish(each_cf_msg[1]) # Publish arrow
+            # Publish all CFs goal
+            for _, each_cf_msg in self.cf_goal_msgs.items():
+                self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
+                self.markerPub.publish(each_cf_msg[1]) # Publish arrow
             
             self.rate.sleep()
 

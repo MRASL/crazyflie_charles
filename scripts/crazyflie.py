@@ -226,7 +226,7 @@ class Crazyflie:
             self.rate.sleep()
             rospy.loginfo("Goal: (%.2f, %.2f, %.2f) \tPos: (%.2f, %.2f, %.2f)" % 
                             (self.goal.x, self.goal.y, z, 
-                            self.pose.x, self.pose.position.y, self.pose.position.z))
+                            self.pose.position.x, self.pose.position.y, self.pose.position.z))
 
         rospy.loginfo("Pos reached \n{}".format(self.pose.position))
 

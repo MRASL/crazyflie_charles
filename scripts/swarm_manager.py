@@ -210,10 +210,12 @@ class Swarm:
         Args:
             goal_spd (Twist): Speed variation of goal
         """
-        self.swarm_goal.x += goal_spd.linear.x
-        self.swarm_goal.y += goal_spd.linear.y
-        self.swarm_goal.z += goal_spd.linear.z
-        self.swarm_goal.yaw += goal_spd.angular.z
+        # self.swarm_goal.x += goal_spd.linear.x
+        # self.swarm_goal.y += goal_spd.linear.y
+        # self.swarm_goal.z += goal_spd.linear.z
+        # self.swarm_goal.yaw += goal_spd.angular.z
+
+        pass
         
     def _call_all_cf_service(self, service_name, service_msg=None):
         """Call a service for all the CF in the swarm
@@ -234,7 +236,7 @@ class Swarm:
 
     def pub_goal(self):
         while not rospy.is_shutdown():
-            self.goal_pub.publish(self.swarm_goal)
+            # self.goal_pub.publish(self.swarm_goal)
             self.rate.sleep()
 
 if __name__ == '__main__':
