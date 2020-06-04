@@ -316,11 +316,13 @@ class RvizMarkers:
             
             # Publish all CFs pose
             for _, each_cf_msg in self.cf_pose_msgs.items():
+                if rospy.is_shutdown(): break
                 self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
                 self.markerPub.publish(each_cf_msg[1]) # Publish arrow
 
             # Publish all CFs goal
             for _, each_cf_msg in self.cf_goal_msgs.items():
+                if rospy.is_shutdown(): break
                 self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
                 self.markerPub.publish(each_cf_msg[1]) # Publish arrow
             
