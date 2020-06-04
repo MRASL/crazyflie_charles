@@ -13,7 +13,6 @@ Notes:
         - Ligne (X)
 
 TODO:
-    *Prob avec la position initiale 
     *Add possibility to scale formations
     *Change between formations
 """
@@ -219,7 +218,8 @@ class FormationManager:
             #TODO: Pos initial exp
             pass
         
-        rospy.sleep(0.2)    
+        rospy.sleep(0.3)    
+
         # Set CF goal to current pose
         for _, cf_attrs in self.crazyflies.items():
             cur_position = cf_attrs["pose"].pose
@@ -392,7 +392,7 @@ class SquareFormation(FormationType):
 
     """
     def __init__(self, offset=[0, 0, 0]):
-        n_cf_supported = [4, 9]
+        n_cf_supported = []
         super(SquareFormation, self).__init__(n_cf_supported, offset=offset)
         
         self.radius = [] #: Number of different radius in the square
@@ -401,24 +401,20 @@ class SquareFormation(FormationType):
         self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
         self.angle = {} #: (dict of float) Keys: swarm id, Item: Angle(rad) from x axis 
 
+    def check_n(self):
+        # Check if n is a perfect square
+        n = sqrt(self.n_cf)
+
+        if n - int(n) == 0 and self.n_cf > 0:
+            rospy.loginfo("Formation made of %i crazyflies" % self.n_cf)
+        else:
+            rospy.logerr("Unsuported number of CFs")
+
     # Setter
     def set_n_cf(self, n):
         super(SquareFormation, self).set_n_cf(n)
         self.cf_per_side = int(sqrt(self.n_cf)) # Number of CF per side
         self.dist = self.scale/(self.cf_per_side-1) # Space between CFs
-
-        # Useless?? ... :(
-        # if self.cf_per_side % 2 == 0:
-        #     self.n_radius = 0
-        #     max_range = int(self.cf_per_side/2 + 1)
-        #     for n in range(1, max_range):
-        #         self.n_radius += n
-            
-        # else:
-        #     self.n_radius = 1
-        #     max_range = int((self.cf_per_side + 1)/2 + 1)
-        #     for n in range(1, max_range):
-        #         self.n_radius += (2*n - 1)/2
         
     # Computing
     def compute_start_positions(self):        

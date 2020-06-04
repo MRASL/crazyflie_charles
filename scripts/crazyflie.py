@@ -242,6 +242,7 @@ class Crazyflie:
         x_start = self.pose.position.x
         y_start = self.pose.position.y
         z_start = self.pose.position.z
+        yaw_start = self.goal.yaw
 
         dZ =  z_start - self.goal.z
 
@@ -255,11 +256,11 @@ class Crazyflie:
 
             z = z_start - i*z_dec 
 
-            self.cmd_pos(x_start, y_start, z, 0)
+            self.cmd_pos(x_start, y_start, z, yaw_start)
 
             self.rate.sleep()
 
-        self.cmd_pos(self.goal.x, self.goal.y, self.goal.z, self.goal.yaw)
+        self.cmd_pos(self.goal.x, self.goal.y, self.goal.z, yaw_start)
         self.rate.sleep()
 
         self.stop(Empty_srv())
