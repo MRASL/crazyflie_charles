@@ -274,7 +274,7 @@ class Swarm:
 
         next_idx = idx + 1
         if idx == (len(self.formation_list) - 1):
-            next_idx = 1
+            next_idx = 0
 
         self.formation = self.formation_list[next_idx]
         self.set_formation(self.formation)
@@ -284,7 +284,7 @@ class Swarm:
         idx = self.formation_list.index(self.formation)
 
         prev_idx = idx - 1
-        if prev_idx < 1:
+        if prev_idx < 0:
             prev_idx = len(self.formation_list) - 1
 
         self.formation = self.formation_list[prev_idx]
