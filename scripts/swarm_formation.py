@@ -15,6 +15,7 @@ Notes:
 TODO:
     *Add possibility to scale formations
     *Change between formations
+    *Offset
 """
 
 from geometry_msgs.msg import Pose, Quaternion, PoseStamped, Twist
@@ -90,9 +91,11 @@ class FormationManager:
 
         # Start services
         rospy.Service('/set_formation', SetFormation, self.set_formation)
-        rospy.Service('/set_offset', SetFormation, self.set_offset)        # TODO
-        rospy.Service('/set_ctrl_mode', SetFormation, self.set_ctrl_mode)  # TODO
+        rospy.Service('/set_offset', Empty, self.set_offset)        # TODO
+        rospy.Service('/toggle_ctrl_mode', Empty, self.toggle_ctrl_mode) 
         rospy.Service('/update_swarm_goal', Empty, self.update_swarm_goal)
+        rospy.Service('/formation_inc_scale', Empty, self.formation_inc_scale)
+        rospy.Service('/formation_dec_scale', Empty, self.formation_dec_scale)
 
     # Services and subscriptions
     def pose_handler(self, pose_stamped, cf_id):
@@ -162,8 +165,14 @@ class FormationManager:
     def set_offset(self, srv_call):
         pass
 
-    def set_ctrl_mode(self, mode):
-        pass
+    def toggle_ctrl_mode(self, mode):
+        self.abs_ctrl_mode = not self.abs_ctrl_mode
+        if self.abs_ctrl_mode:
+            rospy.loginfo("Formation: Control mode set to absolute")
+        else:
+            rospy.loginfo("Formation: Control mode set to realtive")
+
+        return {}
     
     def update_swarm_goal(self, req=None):
         """Update swarm goal to match current position
@@ -195,6 +204,14 @@ class FormationManager:
             cf_attrs["goal"].yaw = yaw_from_quat(cur_position.orientation)
 
         return EmptyResponse()
+    
+    def formation_inc_scale(self, req):
+        self.formation.change_scale(True)
+        return {}
+
+    def formation_dec_scale(self, req):
+        self.formation.change_scale(False)
+        return {}
 
     # Formation initialization methods
     def init_formation(self):
@@ -273,6 +290,8 @@ class FormationType(object):
         self.initial_offset.position.z = offset[2]
 
         self.scale = 1.0 #: (float) scale of the formation
+        self.min_scale = 0
+        self.max_scale = 5
 
     # General methods, valid between formations
     def check_n(self):
@@ -293,6 +312,18 @@ class FormationType(object):
         self.n_cf = n
         self.check_n
     
+    def change_scale(self, to_inc):
+        if to_inc:
+            self.scale += 0.5
+
+        else:
+            self.scale -= 0.5
+            
+        if self.scale < self.min_scale: self.scale = self.min_scale
+        if self.scale > self.max_scale: self.scale = self.max_scale
+
+        self.update_scale()
+
     # Methods depending on formation
     def compute_start_positions(self):
         pass
@@ -360,7 +391,10 @@ class FormationType(object):
 
         
         return swarm_pose
-        
+    
+    def update_scale(self):
+        pass
+
 class SquareFormation(FormationType):
     """Square formation
 
@@ -395,7 +429,9 @@ class SquareFormation(FormationType):
         n_cf_supported = []
         super(SquareFormation, self).__init__(n_cf_supported, offset=offset)
         
-        self.radius = [] #: Number of different radius in the square
+        self.min_scale = 0.5
+
+        # Attrs specific to square
         self.cf_per_side = 0 #: (float) Number of CF per side
         self.dist = 0 #: (float) Space between CFs
         self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
@@ -421,7 +457,6 @@ class SquareFormation(FormationType):
         cf_num = 0
         center_x = self.scale/2.0
         center_y = self.scale/2.0
-
 
         for i in range(self.cf_per_side):
             for j  in range(self.cf_per_side):
@@ -451,7 +486,6 @@ class SquareFormation(FormationType):
 
                 cf_num += 1
         
-
         return self.cf_goals
 
     def compute_cf_goals(self, crazyflies, swarm_goal):
@@ -481,7 +515,11 @@ class SquareFormation(FormationType):
             cf_attrs["goal"].y = self.cf_goals[id].y
             cf_attrs["goal"].z = self.cf_goals[id].z
             cf_attrs["goal"].yaw = self.cf_goals[id].yaw
-            
+    
+    def update_scale(self):
+        self.dist = self.scale/(self.cf_per_side-1) # Space between CFs
+        self.compute_start_positions()
+
 class SoloFormation(FormationType):
     def __init__(self, offset=[0, 0, 0]):
         n_cf_supported = [1]

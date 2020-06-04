@@ -22,6 +22,12 @@ L1 = 4
 R1 = 5
 L2 = 6
 R2 = 7
+LS = 10
+RS = 11
+
+# - mean buttons are inversed
+PAD_L_R = -9
+PAD_U_D = 10
 
 #! Only cf1 name is supported for teleop TODO #16
 
@@ -70,6 +76,8 @@ class Controller():
         self._buttons = None  #: list: previous state of the buttons
         self._to_teleop = False #: bool: in automatic or teleop
         self.rate = rospy.Rate(100) #: rospy.Rate: Publishing rate 
+        
+        self._buttonsAxes = None #: list: previous sate of the buttons on the axes
 
         # Init services
         self._init_services()
@@ -117,25 +125,38 @@ class Controller():
             rospy.loginfo("Joy: found emergency service")
             self._emergency = rospy.ServiceProxy('emergency', Empty)
 
-        rospy.loginfo("Joy: waiting for toggle_teleop service")
+        rospy.loginfo("Joy: waiting for services")
+
+        # rospy.loginfo("Joy: waiting for toggle_teleop service")
         rospy.wait_for_service('/toggle_teleop')
-        rospy.loginfo("Joy: found toggleTeleop service")
+        # rospy.loginfo("Joy: found toggleTeleop service")
         self._toggleTeleopServ = rospy.ServiceProxy('/toggleTeleop', Empty)
         
-        rospy.loginfo("Joy: waiting for land service")
+        # rospy.loginfo("Joy: waiting for land service")
         rospy.wait_for_service('land')
-        rospy.loginfo("Joy: found land service")
+        # rospy.loginfo("Joy: found land service")
         self._land = rospy.ServiceProxy('land', Empty)
 
-        rospy.loginfo("Joy: waiting for take_off service")
+        # rospy.loginfo("Joy: waiting for take_off service")
         rospy.wait_for_service('take_off')
-        rospy.loginfo("Joy: found take_off service")
+        # rospy.loginfo("Joy: found take_off service")
         self._takeoff = rospy.ServiceProxy('take_off', Empty)
 
-        rospy.loginfo("Joy: waiting for stop service")
+        # rospy.loginfo("Joy: waiting for stop service")
         rospy.wait_for_service('stop')
-        rospy.loginfo("Joy: found stop service")
+        # rospy.loginfo("Joy: found stop service")
         self._stop = rospy.ServiceProxy('stop', Empty)
+
+        rospy.wait_for_service('formation_inc_scale')
+        self._formation_inc_scale = rospy.ServiceProxy('formation_inc_scale', Empty)
+
+        rospy.wait_for_service('formation_dec_scale')
+        self._formation_dec_scale = rospy.ServiceProxy('formation_dec_scale', Empty)
+
+        rospy.wait_for_service('toggle_ctrl_mode')
+        self._toggle_abs_ctrl_mode = rospy.ServiceProxy('toggle_ctrl_mode', Empty)
+
+        rospy.loginfo("Joy: found services")
 
     def _joyChanged(self, data):
         """Called when data is received from the joystick
@@ -145,6 +166,7 @@ class Controller():
         """
         # Read the buttons
         self._getButtons(data.buttons)
+        self._getButtonsAxes(data.axes)
         
         if self.in_teleop():
             self.vel_msg.linear.x = self._getAxis(data.axes, self.axes.x)
@@ -212,8 +234,10 @@ class Controller():
                     if i == R2 and buttonsData[i] == 1:
                         self._stop()
 
-                    # if i == TRIANGLE and buttonsData[i] == 1:
-                    #     print(self._getSwarmPos())
+                    if i == TRIANGLE and buttonsData[i] == 1:
+                        self._toggle_abs_ctrl_mode()
+
+
 
                 # if i == self._L2 and buttonsData[i] == 1:
                 #     value = int(rospy.get_param("ring/headlightEnable"))
@@ -225,6 +249,23 @@ class Controller():
                 #     rospy.loginfo('Head light: %s'  % (not value))
 
         self._buttons = buttonsData
+
+    def _getButtonsAxes(self, axesData):
+        for i in range(0, len(axesData)):
+            if self._buttonsAxes == None or axesData[i] != self._buttonsAxes[i]: # If button changed
+                if not self.in_teleop():
+                    if i == abs(PAD_L_R):
+                        val = axesData[i]
+                        if PAD_L_R < 0: val = val*-1
+
+                        if val == -1: self._formation_dec_scale()
+                        elif val == 1: self._formation_inc_scale()
+
+                    if i == abs(PAD_U_D):
+                        pass
+
+        self._buttonsAxes = axesData
+
 
     def _toggleTeleop(self):
         """Toggle between teleop and automatic mode
