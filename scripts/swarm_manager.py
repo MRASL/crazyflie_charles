@@ -21,7 +21,7 @@ from crazyflie_sim import CrazyflieSim
 
 from geometry_msgs.msg import Pose, Twist, Quaternion
 from std_srvs import srv
-from crazyflie_charles.srv import PoseRequest, PoseSet, SetFormation
+from crazyflie_charles.srv import PoseRequest, PoseSet, SetFormation, GetFormationList
 from crazyflie_driver.msg import Position
 
 TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
@@ -58,6 +58,8 @@ class Swarm:
         rospy.Service('/take_off', srv.Empty, self.take_off)                  # Take off all CFs
         rospy.Service('/land', srv.Empty, self.land)                        # Land all CFs
         rospy.Service('/toggle_teleop', srv.Empty, self.toggle_teleop)        # Toggle between manual and auto mode
+        rospy.Service('/next_swarm_formation', srv.Empty, self.next_swarm_formation) # Change swarm formation
+        rospy.Service('/prev_swarm_formation', srv.Empty, self.prev_swarm_formation) # Change swarm formation
 
         # Formation services
         rospy.loginfo("Swarm: waiting for services")
@@ -70,6 +72,10 @@ class Swarm:
         rospy.wait_for_service("update_swarm_goal")
         # rospy.loginfo("Swarm: found %s service" % "update_swarm_goal")
         self.update_swarm_goal = rospy.ServiceProxy("update_swarm_goal", srv.Empty)
+        
+        rospy.wait_for_service("get_formations_list")
+        self.get_formations_list = rospy.ServiceProxy("get_formations_list", GetFormationList)
+
         rospy.loginfo("Swarm: services found")
 
         # Publisher
@@ -80,6 +86,9 @@ class Swarm:
         rospy.Subscriber("swarm_goal", Position, self.swarm_goal_handler)
         rospy.Subscriber("swarm_goal_vel", Twist, self.swarm_goal_vel_handler)
 
+
+        # Find all possible formations and initialize swarm to 'line'
+        self.formation_list = self.get_formations_list().formations.split(',')
         self.formation = "line"
         self.set_formation(self.formation)
 
@@ -259,6 +268,29 @@ class Swarm:
 
         self._call_all_cf_service("land")
         return srv.EmptyResponse()
+
+    def next_swarm_formation(self, req):
+        idx = self.formation_list.index(self.formation)
+
+        next_idx = idx + 1
+        if idx == (len(self.formation_list) - 1):
+            next_idx = 1
+
+        self.formation = self.formation_list[next_idx]
+        self.set_formation(self.formation)
+        return {}
+
+    def prev_swarm_formation(self, req):
+        idx = self.formation_list.index(self.formation)
+
+        prev_idx = idx - 1
+        if prev_idx < 1:
+            prev_idx = len(self.formation_list) - 1
+
+        self.formation = self.formation_list[prev_idx]
+        self.set_formation(self.formation)
+        return {}
+
 
 if __name__ == '__main__':
     # Launch node

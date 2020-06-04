@@ -23,7 +23,7 @@ from std_srvs.srv import Empty, EmptyResponse, SetBool
 import numpy as np
 import rospy
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
-from crazyflie_charles.srv import SetFormation, PoseSet
+from crazyflie_charles.srv import SetFormation, PoseSet, GetFormationList
 from crazyflie_driver.msg import Position
 
 from math import sin, cos, pi, sqrt, atan, ceil
@@ -100,6 +100,7 @@ class FormationManager:
         rospy.Service('/update_swarm_goal', Empty, self.update_swarm_goal)
         rospy.Service('/formation_inc_scale', Empty, self.formation_inc_scale)
         rospy.Service('/formation_dec_scale', Empty, self.formation_dec_scale)
+        rospy.Service('/get_formations_list', GetFormationList, self.return_formation_list)
 
     # Services and subscriptions
     def pose_handler(self, pose_stamped, cf_id):
@@ -217,6 +218,10 @@ class FormationManager:
         self.formation.change_scale(False)
         return {}
 
+    def return_formation_list(self, req):
+        possible_formations = self.formations.keys() 
+        return {"formations": ','.join(possible_formations) }
+
     # Formation initialization methods
     def init_formation(self):
         self.formation.set_n_cf(len(self.cf_list))
@@ -279,7 +284,7 @@ class FormationManager:
 
 class FormationType(object):
     def __init__(self, n_cf_supported=[], offset=[0, 0, 0]):
-        self.n_cf = 0 #: (int) Number of CF in the formation
+        self.n_cf = 0 #: (int) Number of CF in` the formation
         
         self.cf_goals = {} #: (dict of Position) Target Pose of all the CF
         self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center

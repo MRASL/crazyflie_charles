@@ -156,6 +156,12 @@ class Controller():
         rospy.wait_for_service('toggle_ctrl_mode')
         self._toggle_abs_ctrl_mode = rospy.ServiceProxy('toggle_ctrl_mode', Empty)
 
+        rospy.wait_for_service('next_swarm_formation')
+        self._next_swarm_formation = rospy.ServiceProxy('next_swarm_formation', Empty)
+        
+        rospy.wait_for_service('prev_swarm_formation')
+        self._prev_swarm_formation = rospy.ServiceProxy('prev_swarm_formation', Empty)
+
         rospy.loginfo("Joy: found services")
 
     def _joyChanged(self, data):
@@ -263,7 +269,11 @@ class Controller():
 
                     if i == abs(PAD_L_R):
                         # Change formation
-                        pass
+                        val = axesData[i]
+                        if PAD_L_R < 0: val = val*-1
+
+                        if val == -1: self._prev_swarm_formation()
+                        elif val == 1: self._next_swarm_formation()
 
         self._buttonsAxes = axesData
 
