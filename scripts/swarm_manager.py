@@ -80,7 +80,7 @@ class Swarm:
         rospy.Subscriber("swarm_goal", Position, self.swarm_goal_handler)
         rospy.Subscriber("swarm_goal_vel", Twist, self.swarm_goal_vel_handler)
 
-        self.formation = "square"
+        self.formation = "pyramid"
         self.set_formation(self.formation)
 
     # CF initialization
@@ -237,7 +237,13 @@ class Swarm:
 
         self.update_swarm_goal() 
         goal_var = Twist()
-        goal_var.linear.z = 0.5
+
+        if self.formation == "pyramid":
+            goal_var.linear.z = 1.5
+
+        else:
+            goal_var.linear.z = 0.5
+        
         self.pub_swarm_goal_vel(goal_var)
 
         self._call_all_cf_service("take_off")

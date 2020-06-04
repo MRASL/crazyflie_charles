@@ -46,10 +46,11 @@ class FormationManager:
 
         self.offset = offset #: (list of float) Swarm center offset
 
+        self.formation = None #: (str) Current formation
         self.formations = {"solo": SoloFormation(self.offset), #: All possible formations
                            "square": SquareFormation(self.offset),
-                           "v": VFormation(self.offset)} 
-        self.formation = None #: (str) Current formation
+                           "v": VFormation(self.offset),
+                           "pyramid": PyramidFormation(self.offset),} 
 
         self.start_positions = [] #: (list of list of float) Starting position of the formation, independant of CFs
         
@@ -171,7 +172,7 @@ class FormationManager:
         if self.abs_ctrl_mode:
             rospy.loginfo("Formation: Control mode set to absolute")
         else:
-            rospy.loginfo("Formation: Control mode set to realtive")
+            rospy.loginfo("Formation: Control mode set to relative")
 
         return {}
     
@@ -219,7 +220,7 @@ class FormationManager:
         self.formation.set_n_cf(len(self.cf_list))
         self.formation.check_n()
         self.start_positions = self.formation.compute_start_positions()
-
+        
         if self.to_sim:
             # Set initial positions of each CF
             for (_, cf_attrs), (swarm_id, position) in zip(self.crazyflies.items(), self.start_positions.items()):
@@ -248,10 +249,6 @@ class FormationManager:
 
         rospy.sleep(0.2)
         self.update_swarm_goal()
-        
-    def compute_initial_pose(self, srv_call):
-        if self.formation is not None:
-            self.formation.compute_initial_pose()
     
     # Control methods
     def get_swarm_pose(self):
@@ -261,6 +258,7 @@ class FormationManager:
     # Publishers
     def publish_cf_goals(self):
         for _, cf_attrs in self.crazyflies.items():
+            if rospy.is_shutdown(): break
             cf_attrs["goal_pub"].publish(cf_attrs["goal"])        
 
     def publish_swarm_pose(self):
@@ -284,6 +282,7 @@ class FormationType(object):
         self.cf_goals = {} #: (dict of Position) Target Pose of all the CF
         self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
         self.angle = {} #: (dict of float) Keys: swarm id, Item: Angle(rad) from x axis 
+        self.center_height = {} #: (dict of float) Keys: swarm id, Item: Height from center (<0 -> below swarm center) 
 
         self.n_cf_supported = n_cf_supported #: (list of int) Different number of CF possible for each formation
         
@@ -331,14 +330,15 @@ class FormationType(object):
         """Calculate distance and angle from formation center
 
         Args:
-            cf_position (list of float): Position [x, y]
-            formation_center (list of float): Center position [x, y]
+            cf_position (list of float): Position [x, y, z]
+            formation_center (list of float): Center position [x, y, z]
 
         Returns:
-            list of float: [distance from center, angle from center]
+            list of float: [distance from center, angle from center, height from center]
         """
         dX = cf_position[0] - formation_center[0]
         dY = cf_position[1] - formation_center[1]
+        dZ = cf_position[2] - formation_center[2]
 
         center_dist = sqrt(dX**2 + dY**2)
 
@@ -353,7 +353,7 @@ class FormationType(object):
             if dY > 0: theta = pi/2
             else: theta = -pi/2
 
-        return center_dist, theta
+        return center_dist, theta, dZ
     
     def compute_cf_goals(self, crazyflies, swarm_goal):
         """Compute goal of each crazyflie based on target position of the swarm
@@ -365,18 +365,21 @@ class FormationType(object):
         # Compute position of all the CF
 
         for swarm_id in range(self.n_cf):
+            if rospy.is_shutdown(): break
             yaw = swarm_goal.yaw
             theta = self.angle[swarm_id] + yaw
             dX = cos(theta) * self.center_dist[swarm_id]
             dY = sin(theta) * self.center_dist[swarm_id]
+            dZ = self.center_height[swarm_id]
 
             self.cf_goals[swarm_id].x = swarm_goal.x + dX
             self.cf_goals[swarm_id].y = swarm_goal.y + dY
-            self.cf_goals[swarm_id].z = swarm_goal.z
+            self.cf_goals[swarm_id].z = swarm_goal.z + dZ
             self.cf_goals[swarm_id].yaw = yaw
 
         # Update crazyflies based on swarm ID
         for _, cf_attrs in crazyflies.items():
+            if rospy.is_shutdown(): break
             id = cf_attrs["swarm_id"]
             cf_attrs["goal"].x = self.cf_goals[id].x
             cf_attrs["goal"].y = self.cf_goals[id].y
@@ -498,6 +501,8 @@ class SquareFormation(FormationType):
 
         for i in range(self.cf_per_side):
             for j  in range(self.cf_per_side):
+                if rospy.is_shutdown(): break
+
                 start_goal = Position()
                 start_goal.x = i*self.dist
                 start_goal.y = j*self.dist
@@ -505,9 +510,11 @@ class SquareFormation(FormationType):
                 start_goal.yaw = 0
                 self.cf_goals[cf_num] = start_goal
 
-                center_dist, theta = self.compute_info_from_center([start_goal.x, start_goal.y], [center_x, center_y])
+                center_dist, theta, center_height = self.compute_info_from_center([start_goal.x, start_goal.y, start_goal.z], [center_x, center_y, 0])
                 self.center_dist[cf_num] = center_dist
                 self.angle[cf_num] = theta
+                self.center_height[cf_num] = center_height
+
 
                 cf_num += 1
         
@@ -600,6 +607,8 @@ class VFormation(FormationType):
         swarm_pose = Pose()
 
         for _, cf_attrs in crazyflie_list.items():
+            if rospy.is_shutdown(): break
+
             if cf_attrs["swarm_id"] == 0:
                 pose = cf_attrs["pose"].pose
 
@@ -614,6 +623,8 @@ class VFormation(FormationType):
         center_y = self.scale * sin(self.theta/2)
 
         for i in range(self.n_cf):
+            if rospy.is_shutdown(): break
+
             start_goal = Position()
             start_goal.z = 0
             start_goal.yaw = 0
@@ -632,9 +643,10 @@ class VFormation(FormationType):
             start_goal.y = center_y + dY
             self.cf_goals[cf_num] = start_goal
 
-            center_dist, theta = self.compute_info_from_center([start_goal.x, start_goal.y], [center_x, center_y])
+            center_dist, theta, center_height = self.compute_info_from_center([start_goal.x, start_goal.y, 0], [center_x, center_y, 0])
             self.center_dist[cf_num] = center_dist
             self.angle[cf_num] = theta
+            self.center_height[cf_num] = center_height
 
             cf_num += 1
         
@@ -643,6 +655,146 @@ class VFormation(FormationType):
     def update_scale(self):
         self.dist = self.scale/(self.cf_per_side[0]) # Space between CFs
         self.compute_start_positions()
+
+class PyramidFormation(FormationType):
+    """Pyramid formation
+
+    Notes:
+        scale: Height of the pyramid
+        swarm_pose: Same as position of CF 0
+
+    Layouts:
+
+        y
+        |
+        |
+        |_____x
+
+        ------ Top view -----
+        2       3      
+
+            0
+            
+        1       4
+
+        ------ Top view -----
+        6               7
+
+            2       3      
+
+                0
+                
+            1       4
+        
+        5               8
+
+        ------ Side view -----
+                0
+
+            1       4
+
+        5               8
+
+    """
+    def __init__(self, offset=[0, 0, 0]):
+        super(PyramidFormation, self).__init__(offset=offset)
+        
+        self.min_scale = 0.5
+
+        # Attrs specific to square
+        self.n_tier = 0 #: (int) Number of tier in the Pyramid
+        self.tier_dist = 0 #: (float) Distance between each "tier" of the pyramid. Tier 0 at the top
+        self.theta = 45*pi/180 #: (float) Angle between 1-0-4 (see side view)
+        
+    def check_n(self):
+        # Working if n_tot - 1 is a multiple of 4
+        if self.n_cf > 0 and (self.n_cf  - 1) % 4 == 0:
+            rospy.loginfo("Formation made of %i crazyflies" % self.n_cf)
+        else:
+            rospy.logerr("Unsuported number of CFs")
+
+    # Setter
+    def set_n_cf(self, n):
+        super(PyramidFormation, self).set_n_cf(n)
+
+        self.n_tier = (self.n_cf - 1) / 4
+
+        if self.n_tier != 0:
+            self.tier_dist = self.scale/self.n_tier
+        
+    # Computing
+    def compute_swarm_pose(self, crazyflie_list):
+        """Compute pose of the swarm. Center is set at position of CF 0
+
+        Args:
+            crazyflie_list (dict of dict): Attrs of each CF
+        
+        Returns:
+            Pose: Swarm Pose
+        """
+
+        # To simplify, swarm pose is the average of all the poses
+        swarm_pose = Pose()
+
+        for _, cf_attrs in crazyflie_list.items():
+            if rospy.is_shutdown(): break
+
+            if cf_attrs["swarm_id"] == 0:
+                pose = cf_attrs["pose"].pose
+
+                swarm_pose.position = pose.position
+                swarm_pose.orientation = pose.orientation
+        
+        return swarm_pose
+
+    def compute_start_positions(self, landed=True):        
+        cf_num = 0
+        center_x = self.scale * sin(self.theta)
+        center_y = self.scale * cos(self.theta)
+        center_z = self.scale
+
+        tier_poses_sign = [(-1, -1), (-1, 1), (1, 1), (1, -1)] # (dX, dY) sign for each position in tier
+
+        for i in range(self.n_cf):
+            if rospy.is_shutdown(): break
+            start_goal = Position()
+            start_goal.yaw = 0
+            
+            # Find tier information
+            tier_num = ceil(i/4.0)  # i=0 -> tier=0, i=1,2,3,4 -> tier = 1, i=5,6,7,8 -> tier = 2 ...
+            tier_pos = i%4 # Position in the tier
+            square_length = 2*sin(self.theta)*self.tier_dist*tier_num
+
+            # Find goals
+            
+            z_pose = center_z - tier_num * self.tier_dist
+            # To make sure starting position are at ground height
+            if landed:
+                start_goal.z = 0
+            else:
+                start_goal.z = z_pose
+                
+            dX = tier_poses_sign[tier_pos][0]*square_length/2
+            dY = tier_poses_sign[tier_pos][1]*square_length/2
+
+            start_goal.x = center_x + dX
+            start_goal.y = center_y + dY
+            self.cf_goals[cf_num] = start_goal
+
+            # Find distances from center
+            center_dist, theta, center_height = self.compute_info_from_center([start_goal.x, start_goal.y, z_pose], [center_x, center_y, center_z])
+            self.center_dist[cf_num] = center_dist
+            self.angle[cf_num] = theta
+            self.center_height[cf_num] = center_height
+
+            cf_num += 1
+        
+        return self.cf_goals
+    
+    def update_scale(self):
+        self.tier_dist = self.scale/self.n_tier # Space between CFs
+
+        self.compute_start_positions(False)
 
 class SoloFormation(FormationType):
     def __init__(self, offset=[0, 0, 0]):
