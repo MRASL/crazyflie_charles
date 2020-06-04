@@ -254,18 +254,18 @@ class Controller():
         for i in range(0, len(axesData)):
             if self._buttonsAxes == None or axesData[i] != self._buttonsAxes[i]: # If button changed
                 if not self.in_teleop():
-                    if i == abs(PAD_L_R):
+                    if i == abs(PAD_U_D):
                         val = axesData[i]
-                        if PAD_L_R < 0: val = val*-1
+                        if PAD_U_D < 0: val = val*-1
 
                         if val == -1: self._formation_dec_scale()
                         elif val == 1: self._formation_inc_scale()
 
-                    if i == abs(PAD_U_D):
+                    if i == abs(PAD_L_R):
+                        # Change formation
                         pass
 
         self._buttonsAxes = axesData
-
 
     def _toggleTeleop(self):
         """Toggle between teleop and automatic mode
