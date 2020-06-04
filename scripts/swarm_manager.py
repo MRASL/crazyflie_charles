@@ -80,7 +80,7 @@ class Swarm:
         rospy.Subscriber("swarm_goal", Position, self.swarm_goal_handler)
         rospy.Subscriber("swarm_goal_vel", Twist, self.swarm_goal_vel_handler)
 
-        self.formation = "v"
+        self.formation = "square"
         self.set_formation(self.formation)
 
     # CF initialization

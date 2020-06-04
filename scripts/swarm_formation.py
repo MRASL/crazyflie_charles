@@ -26,7 +26,7 @@ from tf.transformations import quaternion_from_euler, quaternion_multiply, euler
 from crazyflie_charles.srv import SetFormation, PoseSet
 from crazyflie_driver.msg import Position
 
-from math import sin, cos, pi, sqrt, atan
+from math import sin, cos, pi, sqrt, atan, ceil
 
 offset = [0, 0, 0.2]
 
@@ -236,7 +236,7 @@ class FormationManager:
             #TODO: Pos initial exp
             pass
         
-        rospy.sleep(0.3)    
+        rospy.sleep(0.5)    
 
         # Set CF goal to current pose
         for _, cf_attrs in self.crazyflies.items():
@@ -562,7 +562,7 @@ class VFormation(FormationType):
         # Attrs specific to square
         self.cf_per_side = [0, 0] #: (float) Number of CF per side. index 0 is right side, 1 is left side
         self.dist = 0 #: (float) Space between CFs
-        self.theta = 30*pi/180 #: (float) Opening of the formation (rad)
+        self.theta = 60*pi/180 #: (float) Opening of the formation (rad)
         
     def check_n(self):
         # All formations are valid
@@ -587,7 +587,7 @@ class VFormation(FormationType):
         
     # Computing
     def compute_swarm_pose(self, crazyflie_list):
-        """Compute pose of the swarm
+        """Compute pose of the swarm. Center is set at position of CF 0
 
         Args:
             crazyflie_list (dict of dict): Attrs of each CF
@@ -599,29 +599,19 @@ class VFormation(FormationType):
         # To simplify, swarm pose is the average of all the poses
         swarm_pose = Pose()
 
-        x = []
-        y = []
-        z = []
-        yaw = []
+        for _, cf_attrs in crazyflie_list.items():
+            if cf_attrs["swarm_id"] == 0:
+                pose = cf_attrs["pose"].pose
 
-        for _, cf_attrs in crazyflie_list.items(): 
-            pose = cf_attrs["pose"].pose
-            x.append(pose.position.x)
-            y.append(pose.position.y)
-            z.append(pose.position.z)
-            yaw.append(yaw_from_quat(pose.orientation))
-
-        swarm_pose.position.x = np.mean(x)
-        swarm_pose.position.y = np.mean(y)
-        swarm_pose.position.z = np.mean(z)
-        swarm_pose.orientation = quat_from_yaw(np.mean(yaw))
+                swarm_pose.position = pose.position
+                swarm_pose.orientation = pose.orientation
         
         return swarm_pose
 
     def compute_start_positions(self):        
         cf_num = 0
         center_x = self.scale * cos(self.theta/2)
-        center_y = self.scale * cos(self.theta/2)
+        center_y = self.scale * sin(self.theta/2)
 
         for i in range(self.n_cf):
             start_goal = Position()
@@ -629,7 +619,7 @@ class VFormation(FormationType):
             start_goal.yaw = 0
 
             # Find row number
-            row_num = i/2  # i = 0 -> row = 0, i = 1 -> row = 1, i = 2 -> row = 1, i = 3 -> row = 2 ...
+            row_num = ceil(i/2.0)  # i = 0 -> row = 0, i = 1 -> row = 1, i = 2 -> row = 1, i = 3 -> row = 2 ...
 
             # Find if above or below center
             sign = -1
