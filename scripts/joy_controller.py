@@ -12,7 +12,6 @@ from geometry_msgs.msg import Pose
 
 from crazyflie_driver.srv import UpdateParams
 from std_srvs.srv import Empty
-from crazyflie_charles.srv import PoseRequest
 
 # Button mapping of DS4
 SQUARE = 0
@@ -71,7 +70,6 @@ class Controller():
         self._buttons = None  #: list: previous state of the buttons
         self._to_teleop = False #: bool: in automatic or teleop
         self.rate = rospy.Rate(100) #: rospy.Rate: Publishing rate 
-        self.swarmInitialPose = Pose() #: Pose: Swarm initial pose
 
         # Init services
         self._init_services()
@@ -85,12 +83,8 @@ class Controller():
             self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
             self.vel_msg = Twist()
         
-        self.goal_publisher = rospy.Publisher("swarm_goal_var", Pose, queue_size=1)
-        self.goal_msg = Pose()
-        self.goal_msg.orientation.x = 0
-        self.goal_msg.orientation.y = 0
-        self.goal_msg.orientation.z = 0
-        self.goal_msg.orientation.w = 0
+        self.goal_vel_publisher = rospy.Publisher("swarm_goal_vel", Twist, queue_size=1)
+        self.goal_vel_msg = Twist()
 
         # Axis parameters
         self.axes = Axes()
@@ -107,6 +101,7 @@ class Controller():
         self.axes.x.max_goal = rospy.get_param("~x_goal_max", 0.05)
         self.axes.y.max_goal = rospy.get_param("~y_goal_max", 0.05)
         self.axes.z.max_goal = rospy.get_param("~z_goal_max", 0.05)
+        self.axes.yaw.max_goal = rospy.get_param("~yaw_goal_max", 0.05)
 
     def _init_services(self):
         """Init services
@@ -122,8 +117,8 @@ class Controller():
             rospy.loginfo("Joy: found emergency service")
             self._emergency = rospy.ServiceProxy('emergency', Empty)
 
-        rospy.loginfo("Joy: waiting for toggleTeleop service")
-        rospy.wait_for_service('/toggleTeleop')
+        rospy.loginfo("Joy: waiting for toggle_teleop service")
+        rospy.wait_for_service('/toggle_teleop')
         rospy.loginfo("Joy: found toggleTeleop service")
         self._toggleTeleopServ = rospy.ServiceProxy('/toggleTeleop', Empty)
         
@@ -132,20 +127,15 @@ class Controller():
         rospy.loginfo("Joy: found land service")
         self._land = rospy.ServiceProxy('land', Empty)
 
-        rospy.loginfo("Joy: waiting for takeoff service")
-        rospy.wait_for_service('takeoff')
-        rospy.loginfo("Joy: found takeoff service")
-        self._takeoff = rospy.ServiceProxy('takeoff', Empty)
+        rospy.loginfo("Joy: waiting for take_off service")
+        rospy.wait_for_service('take_off')
+        rospy.loginfo("Joy: found take_off service")
+        self._takeoff = rospy.ServiceProxy('take_off', Empty)
 
         rospy.loginfo("Joy: waiting for stop service")
         rospy.wait_for_service('stop')
         rospy.loginfo("Joy: found stop service")
         self._stop = rospy.ServiceProxy('stop', Empty)
-
-        # rospy.loginfo("Joy: waiting for getSwarmPos service")
-        # rospy.wait_for_service('getSwarmPose')
-        # rospy.loginfo("Joy: found getSwarmPose service")
-        # self._getSwarmPos = rospy.ServiceProxy('getSwarmPose', PoseRequest)
 
     def _joyChanged(self, data):
         """Called when data is received from the joystick
@@ -163,9 +153,10 @@ class Controller():
             self.vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw)
         
         else:
-            self.goal_msg.position.x = self._getAxis(data.axes, self.axes.x, False)
-            self.goal_msg.position.y = self._getAxis(data.axes, self.axes.y, False)
-            self.goal_msg.position.z = self._getAxis(data.axes, self.axes.z, False)
+            self.goal_vel_msg.linear.x = self._getAxis(data.axes, self.axes.x, False)
+            self.goal_vel_msg.linear.y = self._getAxis(data.axes, self.axes.y, False)
+            self.goal_vel_msg.linear.z = self._getAxis(data.axes, self.axes.z, False)
+            self.goal_vel_msg.angular.z = self._getAxis(data.axes, self.axes.yaw, False)
 
     def _getAxis(self, axesData, axisToRead, measureVel=True):
         """Find the value of the axis
@@ -221,8 +212,8 @@ class Controller():
                     if i == R2 and buttonsData[i] == 1:
                         self._stop()
 
-                    if i == TRIANGLE and buttonsData[i] == 1:
-                        print(self._getSwarmPos())
+                    # if i == TRIANGLE and buttonsData[i] == 1:
+                    #     print(self._getSwarmPos())
 
                 # if i == self._L2 and buttonsData[i] == 1:
                 #     value = int(rospy.get_param("ring/headlightEnable"))
@@ -270,7 +261,7 @@ class Controller():
                 self.vel_publisher.publish(self.vel_msg)
 
             else:
-                self.goal_publisher.publish(self.goal_msg)
+                self.goal_vel_publisher.publish(self.goal_vel_msg)
 
             self.rate.sleep()
 
