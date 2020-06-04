@@ -50,7 +50,9 @@ class FormationManager:
         self.formations = {"solo": SoloFormation(self.offset), #: All possible formations
                            "square": SquareFormation(self.offset),
                            "v": VFormation(self.offset),
-                           "pyramid": PyramidFormation(self.offset),} 
+                           "pyramid": PyramidFormation(self.offset),
+                           "circle": CircleFormation(self.offset),
+                           "line": CircleFormation(self.offset),} 
 
         self.start_positions = [] #: (list of list of float) Starting position of the formation, independant of CFs
         
@@ -796,6 +798,89 @@ class PyramidFormation(FormationType):
 
         self.compute_start_positions(False)
 
+class CircleFormation(FormationType):
+    """Circle formation
+
+    Notes:
+        n_cf supported: X
+        scale: Radius of circle
+
+    Layouts:
+
+        y
+        |
+        |
+        |_____x
+
+            2
+
+        3   0   1
+            
+            4 
+
+    """
+    def __init__(self, offset=[0, 0, 0]):
+        n_cf_supported = []
+        super(CircleFormation, self).__init__(n_cf_supported, offset=offset)
+        
+        self.min_scale = 0.5
+
+        self.angle_between_cf = 0 #: Angle between each CF (rad)
+
+    def check_n(self):
+        # Check if n is a perfect square
+
+        if self.n_cf > 0:
+            rospy.loginfo("Formation: Formation made of %i crazyflies" % self.n_cf)
+        else:
+            rospy.logerr("Formation: Unsuported number of CFs")
+
+    # Setter
+    def set_n_cf(self, n):
+        super(CircleFormation, self).set_n_cf(n)
+
+        self.angle_between_cf = (2*pi)/(self.n_cf - 1)
+        
+    # Computing
+    def compute_start_positions(self):        
+        cf_num = 0
+        center_x = self.scale
+        center_y = self.scale
+        center_z = 0
+
+        for i in range(self.n_cf):
+            if rospy.is_shutdown(): break
+
+            start_goal = Position()
+            start_goal.yaw = 0
+            dZ = 0
+            
+            if i == 0:
+                dX = 0
+                dY = 0
+            else:
+                angle = i*self.angle_between_cf
+                dX = self.scale*cos(angle)
+                dY = self.scale*sin(angle)
+            
+            start_goal.x = center_x + dX             
+            start_goal.y = center_y + dY
+            start_goal.z = center_z + dZ
+
+            self.cf_goals[cf_num] = start_goal
+
+            center_dist, theta, center_height = self.compute_info_from_center([start_goal.x, start_goal.y, start_goal.z], [center_x, center_y, 0])
+            self.center_dist[cf_num] = center_dist
+            self.angle[cf_num] = theta
+            self.center_height[cf_num] = center_height
+
+            cf_num += 1
+        
+        return self.cf_goals
+    
+    def update_scale(self):
+        self.compute_start_positions()
+    
 class SoloFormation(FormationType):
     def __init__(self, offset=[0, 0, 0]):
         n_cf_supported = [1]
