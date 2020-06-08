@@ -3,19 +3,125 @@
 """Script to generate trajectories of multiple agents
 
 Etapes:
-    1 - Trajectoire pour un agent
-    2 - Trajectoire pour plus d'un agent
-    3 - Ajouter des obstacles?
-
+    - Avec acceleration constantes
+    1 - [x] Trajectoire pour un agent, horizon 1
+    2 - [x] Plot de la trajectoire
+    3 - [ ] Trajectoire pour un agent, horizon > 1
+    4 - [ ] Plot de l'horizon 
+    5 - [ ] Trajectoire pour plus d'un agent
+    
+    6 - [ ] Determiner la meilleur accel, sans collision
+    7 - [ ] Determiner s'il a des collisions
+    8 - [ ] Optimiser l'accel avec collision
+    
 TODO:
     *
 """
-from numpy import array, dot
+import numpy as np
+from numpy import array, dot, transpose, hstack, vstack
 from qpsolvers import solve_qp
+from trajectory_plotting import plot_traj
 
 # Test pour une trajectoire, sans collision
 pos_initial = array([1., 1., 1.])
 pose_final = array([2., 2., 2.])
+
+# Variables globales
+time = 5 # secondes, pour les tests
+h = 0.05 # Seconds per time step
+Kmax = int(time/h)
+
+
+def algo():
+    """Algorithme
+    
+    In: Initial and final positions (p0, pf)
+    Out: Positon, Velocity and acceleration trajectories
+
+    Variables:
+        S: Concatenation of the lastest predicted positions for all agents
+        x_i[k]: Positions and velocity of agent i at time step k
+        a_i[k]: Acceleration of agent i at time step k
+
+
+    Code:
+    Init all predictions(p0, pf)
+        Set S as a straight line to goal
+        set all x[0]
+
+    kt = 0, at_goal = False
+
+    while not at_goal and kt < Kmax:
+        for each_agent:
+            a_i[k|kt]_pred = Build&SolveQP(x_i[kt], a_i[kt - 1], S)   # Check for collision
+
+            if QP feasible:
+                x_i[k+1|kt]_pred = GetStates(x_i[kt], a_i[k|kt]_pred)
+                S_i = p_i[k+1|kt]_pred
+                x_i[kt+1|kt], a_i[kt] = x_i[k|kt]_pred, a_i[0|kt]_pred
+
+        checkGoal
+        kt += 1
+
+    # algo pour optimiser le goal...
+
+    return [p, v, a]
+    
+    """
+    n_agents = 1
+    # Positions
+    pose_initial = array([[0.0, 0.0, 0.0]]).T
+    # pose_final = array([2., 2., 2.])  # Commencer par fixer l'accel
+
+    all_positions = np.zeros((3, n_agents)) # Latest predicted position of each agent
+    
+    k_t = 0
+
+    # Initialisation
+    x = vstack((pose_initial, np.zeros((3, 1))))  # H concatenation of [p, v].T of agent i
+    """list of float: Position and speed at each time step. structure: [x0, y0, z0, vx0, vy0, vz0; x1, y1, z1, vx1, vy1, vz1; ...].T """
+
+    # a_pred = array([[0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0]]).T
+    a_cst = array([[0.5, 0, 0]]).T
+
+    for i in range(Kmax):
+        # Determine acceleration
+        # a_cur = a_pred[i*3: i*3+3, 0].reshape(3, 1) # Cst acceleration for testing
+        a_cur = a_cst
+        x_cur = x[:, -1].reshape(6, 1)
+    
+        # If new acceleration feasible
+        x_pred = get_states(x_cur, a_cur) # Find new state
+
+        p_pred = x_pred[0:3, 0]
+        all_positions[:, 0] = p_pred # Update latest position
+        x = hstack((x, x_pred))
+
+        k_t += 1
+    
+
+    return x
+
+def get_states(x, u):
+    """Calculate the new state based on accel input
+
+    Args:
+        x (np.array, 6x1): Current state
+        u (np.array, 3x1): Predicted acceleration
+
+    Returns:
+        x_pred (np.array, 6x1): Predicted state
+    """
+
+    A1 = hstack((np.eye(3), np.eye(3)*h))
+    A2 = hstack((np.zeros((3, 3)), np.eye(3)))
+    A = vstack((A1, A2))
+
+    B = vstack( ( (h**2/2)*np.eye(3), h*np.eye(3) ) )
+
+    x_pred = dot(A, x) + dot(B, u)
+
+    return x_pred
 
 def solve():
     M = array([[1., 2., 0.], [-8., 3., 2.], [0., 1., 1.]])
@@ -30,6 +136,10 @@ def solve():
     print("QP solution: x = {}".format(x))
 
 
-
 if __name__ == '__main__':
-    solve()
+    x = algo()
+    
+    print "Final pos: {}".format(x[0:2, -1])
+    plot_traj(x, h)
+
+    # solve()

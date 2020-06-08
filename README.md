@@ -5,8 +5,8 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
 ## Liens intéressants
 
 - [Documentation du labo](https://mrasl.gitbooks.io/documentation/UAV/bitcraze-crazyflie.html)
-
 - [Tutoriel Git](https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository)
+- [Google docstring](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
 
 ### Recherches
 - [Documentation](/Documentation/Summary.md)
