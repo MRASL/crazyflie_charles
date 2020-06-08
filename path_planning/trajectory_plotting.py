@@ -33,7 +33,7 @@ class TrajPlot:
         self.circle.center = (self.x[0, 0], self.x[1, 0])
         self.time_text.set_text('')
 
-        return self.circle, self.line, self.time_text
+        return [self.circle, self.line, self.time_text]
 
     def animate(self, i):
         data = self.x[:, i]
@@ -53,7 +53,7 @@ class TrajPlot:
         time = i*self.h
         self.time_text.set_text("Time (sec): %.1f" % time)
 
-        return self.line, self.circle, self.time_text
+        return [self.line, self.circle, self.time_text]
 
     def run(self):
         anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
