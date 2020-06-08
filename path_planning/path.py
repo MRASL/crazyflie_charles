@@ -6,7 +6,7 @@ Etapes:
     - Avec acceleration constantes
     1 - [x] Trajectoire pour un agent, horizon 1
     2 - [x] Plot de la trajectoire
-    3 - [ ] Trajectoire pour un agent, horizon > 1
+    3 - [x] Trajectoire pour un agent, horizon > 1
     4 - [ ] Plot de l'horizon 
     5 - [ ] Trajectoire pour plus d'un agent
     
@@ -27,10 +27,10 @@ pos_initial = array([1., 1., 1.])
 pose_final = array([2., 2., 2.])
 
 # Variables globales
-time = 5 # secondes, pour les tests
-h = 0.05 # Seconds per time step
+time = 3 # secondes, pour les tests
+h = 0.5 # Seconds per time step
 Kmax = int(time/h)
-
+k = 3 # Horizon prediction
 
 def algo():
     """Algorithme
@@ -70,17 +70,18 @@ def algo():
     """
     n_agents = 1
     # Positions
-    pose_initial = array([[0.0, 0.0, 0.0]]).T
+    pose_initial = array([0.5, 0.5, 0.0])
     # pose_final = array([2., 2., 2.])  # Commencer par fixer l'accel
 
-    all_positions = np.zeros((3, n_agents)) # Latest predicted position of each agent
+    all_positions = np.zeros((3*k, n_agents)) # Latest predicted position of each agent over horizon
     
     k_t = 0
 
     # Initialisation
-    x = vstack((pose_initial, np.zeros((3, 1))))  # H concatenation of [p, v].T of agent i
-    """list of float: Position and speed at each time step. structure: [x0, y0, z0, vx0, vy0, vz0; x1, y1, z1, vx1, vy1, vz1; ...].T """
-
+    x = np.zeros((6*k, 1))
+    x[0:3, 0] = pose_initial
+    """list of float: Position and speed trajectorie at each time step. structure: [x0, y0, z0, vx0, vy0, vz0; x1, y1, z1, vx1, vy1, vz1; ...].T """
+    
     # a_pred = array([[0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0]]).T
     a_cst = array([[0.5, 0, 0]]).T
 
@@ -88,17 +89,23 @@ def algo():
         # Determine acceleration
         # a_cur = a_pred[i*3: i*3+3, 0].reshape(3, 1) # Cst acceleration for testing
         a_cur = a_cst
-        x_cur = x[:, -1].reshape(6, 1)
+        x_cur = x[0:6, -1].reshape(6, 1)
     
         # If new acceleration feasible
         x_pred = get_states(x_cur, a_cur) # Find new state
+        # print x_pred
 
-        p_pred = x_pred[0:3, 0]
-        all_positions[:, 0] = p_pred # Update latest position
+        slc = slice(0, 3)
+        p_pred = x_pred[slc, 0].reshape(3, 1)
+        for n in range(1, k):
+            slc = slice(n*6, n*6+3)
+            x_k = x_pred[slc, 0].reshape(3, 1)
+            p_pred = vstack((p_pred, x_k))
+
+        all_positions[:, 0] = p_pred.reshape(3*k)
         x = hstack((x, x_pred))
 
-        k_t += 1
-    
+        k_t += 1    
 
     return x
 
@@ -110,18 +117,47 @@ def get_states(x, u):
         u (np.array, 3x1): Predicted acceleration
 
     Returns:
-        x_pred (np.array, 6x1): Predicted state
+        x_pred (np.array, k*6x1): Predicted states over the horizon 
     """
+    N = 6
+    M = 3
 
     A1 = hstack((np.eye(3), np.eye(3)*h))
     A2 = hstack((np.zeros((3, 3)), np.eye(3)))
-    A = vstack((A1, A2))
+    A = vstack((A1, A2)) # 6x6
 
-    B = vstack( ( (h**2/2)*np.eye(3), h*np.eye(3) ) )
+    B = vstack( ( (h**2/2)*np.eye(3), h*np.eye(3) ) ) # 6x3
 
-    x_pred = dot(A, x) + dot(B, u)
+    # Build Lambda matrix
+    Lambda = np.zeros((N*k, M*k)) # 6k x 3k
+    rsl = slice(0, N)
+    Lambda[rsl, :M] = B
+    for i in range(1, k):
+        rsl_p, rsl = rsl, slice(i * N, (i + 1) * N)
+        Lambda[rsl, :M] = dot(A, Lambda[rsl_p, :M])
+        Lambda[rsl, M : (i + 1) * M] = Lambda[rsl_p, : i * M]
 
-    return x_pred
+    # Build A0 matrix
+    N = M = 6
+    A0 = np.zeros((6, 6*k)) # 6 x 6k
+    rsl = slice(0, M)
+    A0[:, rsl] = A.T
+    for i in range(1, k):
+        rsl_p, rsl = rsl, slice(i * M, (i + 1) * M)
+        A0[:, rsl] = dot(A, A0[:, rsl_p].T).T
+    A0 = A0.T
+
+    # Build acc matrix, assuming accc is constant over horizon
+    U = u
+    for i in range(1, k):
+        U = vstack((U, u))
+
+    # Computing predicted trajectory
+    # X_pred = dot(Lambda, U)
+    X_pred = dot(A0, x) + dot(Lambda, U)
+
+    return X_pred
+    # return None
 
 def solve():
     M = array([[1., 2., 0.], [-8., 3., 2.], [0., 1., 1.]])
@@ -135,11 +171,11 @@ def solve():
     x = solve_qp(P, q, G, h, A, b)
     print("QP solution: x = {}".format(x))
 
-
 if __name__ == '__main__':
     x = algo()
     
     print "Final pos: {}".format(x[0:2, -1])
-    plot_traj(x, h)
+    # plot_traj(x, h)
 
+    # get_states(0,0)
     # solve()
