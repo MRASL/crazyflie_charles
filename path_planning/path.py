@@ -7,7 +7,7 @@ Etapes:
     1 - [x] Trajectoire pour un agent, horizon 1
     2 - [x] Plot de la trajectoire
     3 - [x] Trajectoire pour un agent, horizon > 1
-    4 - [ ] Plot de l'horizon 
+    4 - [x] Plot de l'horizon 
     5 - [ ] Trajectoire pour plus d'un agent
     
     6 - [ ] Determiner la meilleur accel, sans collision
@@ -28,9 +28,10 @@ pose_final = array([2., 2., 2.])
 
 # Variables globales
 time = 3 # secondes, pour les tests
-h = 0.5 # Seconds per time step
+h = 0.1 # Seconds per time step
 Kmax = int(time/h)
-k = 3 # Horizon prediction
+horizon_time = 1
+k = int(horizon_time/h) # Horizon prediction
 
 def algo():
     """Algorithme
@@ -70,7 +71,7 @@ def algo():
     """
     n_agents = 1
     # Positions
-    pose_initial = array([0.5, 0.5, 0.0])
+    pose_initial = array([0.5, 0.5, 0.0]).reshape(3, 1)
     # pose_final = array([2., 2., 2.])  # Commencer par fixer l'accel
 
     all_positions = np.zeros((3*k, n_agents)) # Latest predicted position of each agent over horizon
@@ -78,12 +79,14 @@ def algo():
     k_t = 0
 
     # Initialisation
-    x = np.zeros((6*k, 1))
-    x[0:3, 0] = pose_initial
+    x_in = vstack((pose_initial, np.zeros((3, 1))))
+    x = x_in
+    for _ in range(1, k):
+        x = vstack((x, x_in))
     """list of float: Position and speed trajectorie at each time step. structure: [x0, y0, z0, vx0, vy0, vz0; x1, y1, z1, vx1, vy1, vz1; ...].T """
     
     # a_pred = array([[0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0]]).T
-    a_cst = array([[0.5, 0, 0]]).T
+    a_cst = array([[0.5, 0.5, 0]]).T
 
     for i in range(Kmax):
         # Determine acceleration
@@ -175,7 +178,7 @@ if __name__ == '__main__':
     x = algo()
     
     print "Final pos: {}".format(x[0:2, -1])
-    # plot_traj(x, h)
+    plot_traj(x, h)
 
     # get_states(0,0)
     # solve()
