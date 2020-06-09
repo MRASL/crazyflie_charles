@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Module to plot the trajectories of agents.
+
+Circles represent the agents, dashed line the predicted trajectory over the horizon
+
+"""
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -6,8 +11,16 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
-class TrajPlot:
+class TrajPlot(object):
+    """To plot trajectories of agents
+    """
     def __init__(self, x, h):
+        """Init
+
+        Args:
+            x (array): Trajectories
+            h (float): Time step
+        """
         self.x = x # Position and acceleration at each time step
         self.h = h # Time step
         self.n_frame = x.shape[1]
@@ -29,6 +42,8 @@ class TrajPlot:
         self.time_text = self.ax.text(0.02, 0.95, '', transform=self.ax.transAxes)
 
     def init_animation(self):
+        """Initialize animation
+        """
         self.line.set_data([], [])
         self.circle.center = (self.x[0, 0], self.x[1, 0])
         self.time_text.set_text('')
@@ -36,6 +51,11 @@ class TrajPlot:
         return [self.circle, self.line, self.time_text]
 
     def animate(self, i):
+        """Animate
+
+        Args:
+            i (int): Current frame
+        """
         data = self.x[:, i]
         self.circle.center = (data[0], data[1])
 
@@ -56,14 +76,21 @@ class TrajPlot:
         return [self.line, self.circle, self.time_text]
 
     def run(self):
-        anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
-                                    frames=self.n_frame, interval=(self.h*1000), blit=True)
+        """Start animation
+        """
+        _ = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
+                          frames=self.n_frame, interval=(self.h*1000), blit=True)
 
         plt.show()
-    
+
 
 def plot_traj(x, h):
+    """Plot trajectrorie
+
+    Args:
+        x ([type]): Data to plot
+        h ([type]): Time step
+    """
     traj_plot = TrajPlot(x, h)
 
     traj_plot.run()
-    

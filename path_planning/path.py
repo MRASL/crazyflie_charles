@@ -7,35 +7,33 @@ Etapes:
     1 - [x] Trajectoire pour un agent, horizon 1
     2 - [x] Plot de la trajectoire
     3 - [x] Trajectoire pour un agent, horizon > 1
-    4 - [x] Plot de l'horizon 
+    4 - [x] Plot de l'horizon
     5 - [ ] Trajectoire pour plus d'un agent
-    
+
     6 - [ ] Determiner la meilleur accel, sans collision
     7 - [ ] Determiner s'il a des collisions
     8 - [ ] Optimiser l'accel avec collision
-    
+
 TODO:
     *
 """
+import time
 import numpy as np
-from numpy import array, dot, transpose, hstack, vstack
+from numpy import array, dot, hstack, vstack
 from qpsolvers import solve_qp
 from trajectory_plotting import plot_traj
 
-# Test pour une trajectoire, sans collision
-pos_initial = array([1., 1., 1.])
-pose_final = array([2., 2., 2.])
 
-# Variables globales
-time = 3 # secondes, pour les tests
-h = 0.1 # Seconds per time step
-Kmax = int(time/h)
-horizon_time = 1
-k = int(horizon_time/h) # Horizon prediction
+class Agent(object):
+    """Represents a single agent
+    """
+    def __init__(self, start_pos=None, goal=None):
+        """Initialize agent class
 
-
-class Agent():
-    def __init__(self, start_pos=[], goal=[]):
+        Args:
+            start_pos (list of float, optional): Starting position [x, y, z]. Defaults to None.
+            goal (list of float, optional): Target position [x, y, z]. Defaults to None.
+        """
         # Attributes
         self.start_position = array(start_pos).reshape(3, 1) #: 3x1 np.array: Starting position
         self.goal = goal #: 3x1 np.array: Goal
@@ -43,14 +41,24 @@ class Agent():
         # For testing
         self.acc_cst = array([[0.5, 0.5, 0]]).T
 
-        #: np.array of (6*k)x(Kmax): Position and speed trajectorie at each time step. Columns: predicted [p, v], Rows: Each k
-        self.x = None
+        #: np.array of (6*k)x(Kmax): Position and speed trajectorie at each time step.
+        #  Columns: predicted [p, v], Rows: Each k
+        self.positions_data = None
 
     def set_starting_position(self, position):
+        """Set starting position
+
+        Args:
+            position (list of float): [x, y, z]
+        """
         self.start_position = array(position).reshape(3, 1)
 
     def set_accel(self, new_accel):
-        # Only for testing purpose
+        """Set constant acceleration, Only for testing purpose
+
+        Args:
+            new_accel (list of float): [ax, ay, az]
+        """
         self.acc_cst = array([new_accel]).T
 
     def initialize_position(self, n_steps):
@@ -60,74 +68,144 @@ class Agent():
             n_steps (int): Number of time steps of horizon
         """
         x_in = vstack((self.start_position, np.zeros((3, 1))))
-        self.x = x_in
-        for _ in range(1, k):
-            self.x = vstack((self.x, x_in))
+        self.positions_data = x_in
+        for _ in range(1, n_steps):
+            self.positions_data = vstack((self.positions_data, x_in))
 
     def new_state(self, new_state):
-        self.x = hstack((self.x, new_state))
+        """Add new state to list of positions
 
-class TrajectorySolver():
+        Args:
+            new_state (array): Trajectory at time step
+        """
+        self.positions_data = hstack((self.positions_data, new_state))
+
+class TrajectorySolver(object):
+    """To solve trajectories of all agents
+    """
     def __init__(self, agent_list):
+        """Init solver
+
+        Args:
+            agent_list (list of Agnets): Compute trajectory of all agents in the list
+        """
         self.time = 3                   # float: For testing, total time of trajectory
-        self.h = 0.1                    # float: Time steps interval
+        self.step_interval = 0.1        # float: Time steps interval (h)
         self.horizon_time = 1           # float: Horizon to predict trajectory
         self.k_t = 0                    # int: Current time step
-        self.k_max = int(time/h)        # float: Maximum time
-        self.k = int(horizon_time/h)    # float: Number of time steps in horizon
+        self.k_max = int(self.time/self.step_interval) # float: Maximum time
+
+        #: float: Number of time steps in horizon (k)
+        self.steps_in_horizon = int(self.horizon_time/self.step_interval)
 
         self.agents = agent_list        #: list of Agent: All agents
         self.n_agents = len(self.agents)
 
-        self.all_positions = np.zeros((3*k, self.n_agents)) # Latest predicted position of each agent over horizon
+        #: 3k x n_agents array: Latest predicted position of each agent over horizon
+        self.all_positions = np.zeros((3*self.steps_in_horizon, self.n_agents))
+
+        self.A = array([[]])
+        self.B = array([[]])
+        self.A0 = array([[]])
+        self.Lambda = array([[]])
+        self.initialize_matrix()
+
+    def initialize_matrix(self):
+        """Compute matrix used to determine new states
+
+        Notes:
+            A = | I3    h*I3 |
+                | 03    I3   |
+
+            B = | (h**2/2)I3 |
+                |    h*I3    |
+
+                     |     B           03       ..  03 |
+            Lambda = |     AB           B       ..  03 |
+                     | ..                              |
+                     | A**(k-1)B    A**(k-2)B   ..  B  |
+
+            A0 = | A.T  A**2.T  ... (A**k).T |.T
+        """
+
+        # A, 6x6
+        A1 = hstack((np.eye(3), np.eye(3)*self.step_interval))
+        A2 = hstack((np.zeros((3, 3)), np.eye(3)))
+        self.A = vstack((A1, A2)) # 6x6
+
+        # B, 6x3
+        N = 6
+        M = 3
+        self.B = vstack(((self.step_interval**2/2)*np.eye(3),
+                         self.step_interval*np.eye(3))) # 6x3
+
+        # Lambda, 6k x 3k
+        self.Lambda = np.zeros((N*self.steps_in_horizon, M*self.steps_in_horizon))
+        rsl = slice(0, N)
+        self.Lambda[rsl, :M] = self.B
+        for i in range(1, self.steps_in_horizon):
+            rsl_p, rsl = rsl, slice(i * N, (i + 1) * N)
+            self.Lambda[rsl, :M] = dot(self.A, self.Lambda[rsl_p, :M])
+            self.Lambda[rsl, M : (i + 1) * M] = self.Lambda[rsl_p, : i * M]
+
+        # A0, 6x6k
+        N = M = 6
+        self.A0 = np.zeros((6, 6*self.steps_in_horizon))
+        rsl = slice(0, M)
+        self.A0[:, rsl] = self.A.T
+        for i in range(1, self.steps_in_horizon):
+            rsl_p, rsl = rsl, slice(i * M, (i + 1) * M)
+            self.A0[:, rsl] = dot(self.A, self.A0[:, rsl_p].T).T
+        self.A0 = self.A0.T
 
     def initialize(self):
+        """Initialize positions and starting trajectory of all agents
+        """
         for each_agent in self.agents:
-            each_agent.initialize_position(self.k)
+            each_agent.initialize_position(self.steps_in_horizon)
 
         # TODO: Init all_positions as a straight line?
 
     def solve_trajectories(self):
-        # Compute trajectories and acceleration of each agent for the current time step, core of the algorithm
+        """Compute trajectories and acceleration of each agent for the current time step
+
+        Core of the algorithm
+        """
 
         # To test
         agent = self.agents[0]
-        
+
         # Initialisation
         self.initialize()
-        
+
         a_cst = agent.acc_cst
 
         for _ in range(self.k_max):
             # Determine acceleration
             # a_cur = a_pred[i*3: i*3+3, 0].reshape(3, 1) # Cst acceleration for testing
             a_cur = a_cst
-            x_cur = agent.x[0:6, -1].reshape(6, 1)
-        
+            x_cur = agent.positions_data[0:6, -1].reshape(6, 1)
+
             # If new acceleration feasible
-            x_pred = get_states(x_cur, a_cur) # Find new state
+            x_pred = self.predict_trajectory(x_cur, a_cur) # Find new state
 
             # Extract predicted positions
             slc = slice(0, 3)
             p_pred = x_pred[slc, 0].reshape(3, 1)
-            for n in range(1, k):
+            for n in range(1, self. steps_in_horizon):
                 slc = slice(n*6, n*6+3)
                 x_k = x_pred[slc, 0].reshape(3, 1)
                 p_pred = vstack((p_pred, x_k))
-            
+
             # Update all_positions
-            self.all_positions[:, 0] = p_pred.reshape(3*k)
+            self.all_positions[:, 0] = p_pred.reshape(3*self.steps_in_horizon)
 
             agent.new_state(x_pred)
 
-            self.k_t += 1    
-
-    def compute_new_state(self, x, u):
-        # Predict an agent trajectory based on it's position and acceleration
-        pass
+            self.k_t += 1
 
     def build_and_solve_qp(self):
-        # solve quadratic problem
+        """Build and solve Quadratic Problem  """
 
         # Exemple:
         M = array([[1., 2., 0.], [-8., 3., 2.], [0., 1., 1.]])
@@ -139,140 +217,38 @@ class TrajectorySolver():
         b = array([1.])
 
         x = solve_qp(P, q, G, h, A, b)
-        print("QP solution: x = {}".format(x))
-    
+        print "QP solution: x = {}".format(x)
+
     def plot_trajectories(self):
-        plot_traj(self.agents[0].x, self.h)
+        """Plot all computed trajectories
+        """
+        print "Final pos: {}".format(self.agents[0].positions_data[0:2, -1])
+        plot_traj(self.agents[0].positions_data, self.step_interval)
 
-def algo():
-    """Algorithme
-    
-    In: Initial and final positions (p0, pf)
-    Out: Positon, Velocity and acceleration trajectories
+    def predict_trajectory(self, x, u):
+        """Predict an agent trajectory based on it's position and acceleration
 
-    Variables:
-        S: Concatenation of the lastest predicted positions for all agents
-        x_i[k]: Positions and velocity of agent i at time step k
-        a_i[k]: Acceleration of agent i at time step k
+        Args:
+            x (np.array, 6x1): Current state
+            u (np.array, 3x1): Predicted acceleration
 
+        Returns:
+            x_pred (np.array, k*6x1): Predicted states over the horizon
+        """
 
-    Code:
-    Init all predictions(p0, pf)
-        Set S as a straight line to goal
-        set all x[0]
+        # Build acc matrix, assuming accc is constant over horizon
+        U = u
+        for _ in range(1, self.steps_in_horizon):
+            U = vstack((U, u))
 
-    kt = 0, at_goal = False
+        # Computing predicted trajectory
+        X_pred = dot(self.A0, x) + dot(self.Lambda, U)
 
-    while not at_goal and kt < Kmax:
-        for each_agent:
-            a_i[k|kt]_pred = Build&SolveQP(x_i[kt], a_i[kt - 1], S)   # Check for collision
-
-            if QP feasible:
-                x_i[k+1|kt]_pred = GetStates(x_i[kt], a_i[k|kt]_pred)
-                S_i = p_i[k+1|kt]_pred
-                x_i[kt+1|kt], a_i[kt] = x_i[k|kt]_pred, a_i[0|kt]_pred
-
-        checkGoal
-        kt += 1
-
-    # algo pour optimiser le goal...
-
-    return [p, v, a]
-    
-    """
-    n_agents = 1
-    # Positions
-    pose_initial = array([0.5, 0.5, 0.0]).reshape(3, 1)
-    # pose_final = array([2., 2., 2.])  # Commencer par fixer l'accel
-
-    all_positions = np.zeros((3*k, n_agents)) # Latest predicted position of each agent over horizon
-    
-    k_t = 0
-
-    # Initialisation
-    x_in = vstack((pose_initial, np.zeros((3, 1))))
-    x = x_in
-    for _ in range(1, k):
-        x = vstack((x, x_in))
-    """list of float: Position and speed trajectorie at each time step. structure: [x0, y0, z0, vx0, vy0, vz0; x1, y1, z1, vx1, vy1, vz1; ...].T """
-    
-    # a_pred = array([[0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0, 0.1, 0, 0]]).T
-    a_cst = array([[0.5, 0.5, 0]]).T
-
-    for i in range(Kmax):
-        # Determine acceleration
-        # a_cur = a_pred[i*3: i*3+3, 0].reshape(3, 1) # Cst acceleration for testing
-        a_cur = a_cst
-        x_cur = x[0:6, -1].reshape(6, 1)
-    
-        # If new acceleration feasible
-        x_pred = get_states(x_cur, a_cur) # Find new state
-        # print x_pred
-
-        slc = slice(0, 3)
-        p_pred = x_pred[slc, 0].reshape(3, 1)
-        for n in range(1, k):
-            slc = slice(n*6, n*6+3)
-            x_k = x_pred[slc, 0].reshape(3, 1)
-            p_pred = vstack((p_pred, x_k))
-
-        all_positions[:, 0] = p_pred.reshape(3*k)
-        x = hstack((x, x_pred))
-
-        k_t += 1    
-
-    return x
-
-def get_states(x, u):
-    """Calculate the new state based on accel input
-
-    Args:
-        x (np.array, 6x1): Current state
-        u (np.array, 3x1): Predicted acceleration
-
-    Returns:
-        x_pred (np.array, k*6x1): Predicted states over the horizon 
-    """
-    N = 6
-    M = 3
-
-    A1 = hstack((np.eye(3), np.eye(3)*h))
-    A2 = hstack((np.zeros((3, 3)), np.eye(3)))
-    A = vstack((A1, A2)) # 6x6
-
-    B = vstack( ( (h**2/2)*np.eye(3), h*np.eye(3) ) ) # 6x3
-
-    # Build Lambda matrix
-    Lambda = np.zeros((N*k, M*k)) # 6k x 3k
-    rsl = slice(0, N)
-    Lambda[rsl, :M] = B
-    for i in range(1, k):
-        rsl_p, rsl = rsl, slice(i * N, (i + 1) * N)
-        Lambda[rsl, :M] = dot(A, Lambda[rsl_p, :M])
-        Lambda[rsl, M : (i + 1) * M] = Lambda[rsl_p, : i * M]
-
-    # Build A0 matrix
-    N = M = 6
-    A0 = np.zeros((6, 6*k)) # 6 x 6k
-    rsl = slice(0, M)
-    A0[:, rsl] = A.T
-    for i in range(1, k):
-        rsl_p, rsl = rsl, slice(i * M, (i + 1) * M)
-        A0[:, rsl] = dot(A, A0[:, rsl_p].T).T
-    A0 = A0.T
-
-    # Build acc matrix, assuming accc is constant over horizon
-    U = u
-    for i in range(1, k):
-        U = vstack((U, u))
-
-    # Computing predicted trajectory
-    X_pred = dot(A0, x) + dot(Lambda, U)
-
-    return X_pred
-
+        return X_pred
 
 if __name__ == '__main__':
+    start_time = time.time()
+
     a1 = Agent([0.5, 3, 0.5])
     a1.set_accel([0.5, -0.5, 0])
 
@@ -281,11 +257,6 @@ if __name__ == '__main__':
 
     solver = TrajectorySolver([a1])
     solver.solve_trajectories()
+    print "Compute time:", (time.time() - start_time)*1000, "ms"
+
     solver.plot_trajectories()
-
-    
-    # print "Final pos: {}".format(x[0:2, -1])
-    # plot_traj(x, h)
-
-    # get_states(0,0)
-    # solve()

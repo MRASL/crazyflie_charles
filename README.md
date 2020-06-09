@@ -7,6 +7,7 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
 - [Documentation du labo](https://mrasl.gitbooks.io/documentation/UAV/bitcraze-crazyflie.html)
 - [Tutoriel Git](https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository)
 - [Google docstring](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
+- [Python Style Guide](https://www.python.org/dev/peps/pep-0008/#naming-conventions)
 
 ### Recherches
 - [Documentation](/Documentation/Summary.md)
