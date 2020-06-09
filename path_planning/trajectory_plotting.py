@@ -5,7 +5,7 @@ Circles represent the agents, dashed line the predicted trajectory over the hori
 
 """
 
-import numpy as np
+# import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
@@ -14,83 +14,124 @@ plt.style.use('seaborn-pastel')
 class TrajPlot(object):
     """To plot trajectories of agents
     """
-    def __init__(self, x, h):
+    def __init__(self, agent_list, time_step):
         """Init
 
         Args:
             x (array): Trajectories
             h (float): Time step
         """
-        self.x = x # Position and acceleration at each time step
-        self.h = h # Time step
-        self.n_frame = x.shape[1]
+        self.agents = agent_list # Position and acceleration at each time step
+        self.n_agents = len(self.agents)
+        self.time_step = time_step # Time step
+
+        #: int: Number of frame, corresponds to number of column
+        self.n_frame = self.agents[0].positions_data.shape[1]
 
         self.fig = plt.figure()
         self.fig.set_dpi(100)
         self.fig.set_size_inches(7, 7)
-        self.ax = plt.axes(xlim=(-0.5, 5), ylim=(-0.5, 5))
-        self.ax.set_title('Trajectories')
-        self.ax.set_xlabel('x (m)')
-        self.ax.set_ylabel('y (m)')
+        self.axe = plt.axes(xlim=(-0.5, 5), ylim=(-0.5, 5))
+        self.axe.set_title('Trajectories')
+        self.axe.set_xlabel('x (m)')
+        self.axe.set_ylabel('y (m)')
+
+        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k']
+        self.animated_objects = [] # List of all objects to animate
+        self.init_animated_objects()
+
+    def init_animated_objects(self):
+        """Creates all objects to animate.
+
+        Each agent has a circle (current position) and dashed line (predicted trajectory)
+
+        Notes:
+            Structure of animated object. Idx:
+                0: circle of agent 1
+                1: line of agent 1
+                2: circle of agent 2
+                3: line of agent 2
+                ...
+                -1: time text
+
+        """
+        for _, color in zip(self.agents, self.color_list):
+            circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
+            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)
+
+            self.axe.add_patch(circle)
+
+            self.animated_objects.append(circle)
+            self.animated_objects.append(line)
 
 
-        self.line, = self.ax.plot([], [], lw=2, linestyle='dashed', color='b')
-
-        self.circle = Circle((0, 0), 0.15, fc='b', alpha=0.8)
-        self.ax.add_patch(self.circle)
-
-        self.time_text = self.ax.text(0.02, 0.95, '', transform=self.ax.transAxes)
+        # Add time_text
+        self.time_text = self.axe.text(0.02, 0.95, '', transform=self.axe.transAxes)
+        self.animated_objects.append(self.time_text)
 
     def init_animation(self):
         """Initialize animation
         """
-        self.line.set_data([], [])
-        self.circle.center = (self.x[0, 0], self.x[1, 0])
-        self.time_text.set_text('')
+        for i in range(self.n_agents):
+            agent = self.agents[i]
 
-        return [self.circle, self.line, self.time_text]
+            # Circle
+            self.animated_objects[2*i].center = (agent.positions_data[0, 0],
+                                                 agent.positions_data[1, 0])
 
-    def animate(self, i):
+            # Line
+            self.animated_objects[2*i+1].set_data([], [])
+
+        # Set text
+        self.animated_objects[-1].set_text('')
+
+        return self.animated_objects
+
+    def animate(self, frame):
         """Animate
 
         Args:
-            i (int): Current frame
+            frame (int): Current frame
         """
-        data = self.x[:, i]
-        self.circle.center = (data[0], data[1])
 
-        x_data = []
-        y_data = []
-        z_data = []
+        for i in range(self.n_agents):
+            agent = self.agents[i]
+            data = agent.positions_data[:, frame]
 
-        for k in range(int(len(data)/6)):
-            x_data.append(data[6*k])
-            y_data.append(data[6*k + 1])
-            z_data.append(data[6*k + 2])
+            # Circle
+            self.animated_objects[2*i].center = (data[0], data[1])
 
-        self.line.set_data(x_data, y_data)
+            x_data = []
+            y_data = []
+            z_data = []
 
-        time = i*self.h
+            for k in range(int(len(data)/6)):
+                x_data.append(data[6*k])
+                y_data.append(data[6*k + 1])
+                z_data.append(data[6*k + 2])
+
+            self.animated_objects[2*i + 1].set_data(x_data, y_data)
+
+        time = frame*self.time_step
         self.time_text.set_text("Time (sec): %.1f" % time)
 
-        return [self.line, self.circle, self.time_text]
+        return self.animated_objects
 
     def run(self):
         """Start animation
         """
         _ = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
-                          frames=self.n_frame, interval=(self.h*1000), blit=True)
+                          frames=self.n_frame, interval=(self.time_step*1000), blit=True)
 
         plt.show()
 
 
-def plot_traj(x, h):
+def plot_traj(agent_list, time_step):
     """Plot trajectrorie
 
     Args:
-        x ([type]): Data to plot
-        h ([type]): Time step
+        agent_list ([type]): List of agents
+        time_step ([type]): Time step (sec)
     """
-    traj_plot = TrajPlot(x, h)
-
+    traj_plot = TrajPlot(agent_list, time_step)
     traj_plot.run()

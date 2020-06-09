@@ -8,14 +8,12 @@ Etapes:
     2 - [x] Plot de la trajectoire
     3 - [x] Trajectoire pour un agent, horizon > 1
     4 - [x] Plot de l'horizon
-    5 - [ ] Trajectoire pour plus d'un agent
+    5 - [x] Trajectoire pour plus d'un agent
 
     6 - [ ] Determiner la meilleur accel, sans collision
     7 - [ ] Determiner s'il a des collisions
     8 - [ ] Optimiser l'accel avec collision
 
-TODO:
-    *
 """
 import time
 import numpy as np
@@ -91,7 +89,7 @@ class TrajectorySolver(object):
         """
         self.time = 3                   # float: For testing, total time of trajectory
         self.step_interval = 0.1        # float: Time steps interval (h)
-        self.horizon_time = 1           # float: Horizon to predict trajectory
+        self.horizon_time = 1.0         # float: Horizon to predict trajectory
         self.k_t = 0                    # int: Current time step
         self.k_max = int(self.time/self.step_interval) # float: Maximum time
 
@@ -171,38 +169,39 @@ class TrajectorySolver(object):
 
         Core of the algorithm
         """
-
-        # To test
-        agent = self.agents[0]
-
         # Initialisation
         self.initialize()
 
-        a_cst = agent.acc_cst
-
+        # For each time step
         for _ in range(self.k_max):
-            # Determine acceleration
-            # a_cur = a_pred[i*3: i*3+3, 0].reshape(3, 1) # Cst acceleration for testing
-            a_cur = a_cst
-            x_cur = agent.positions_data[0:6, -1].reshape(6, 1)
 
-            # If new acceleration feasible
-            x_pred = self.predict_trajectory(x_cur, a_cur) # Find new state
+            # For each agent
+            for agent in self.agents:
+                # Determine acceleration
+                # a_cur = a_pred[i*3: i*3+3, 0].reshape(3, 1) # Cst acceleration for testing
+                a_cur = agent.acc_cst
+                x_cur = agent.positions_data[0:6, -1].reshape(6, 1)
 
-            # Extract predicted positions
-            slc = slice(0, 3)
-            p_pred = x_pred[slc, 0].reshape(3, 1)
-            for n in range(1, self. steps_in_horizon):
-                slc = slice(n*6, n*6+3)
-                x_k = x_pred[slc, 0].reshape(3, 1)
-                p_pred = vstack((p_pred, x_k))
+                # If new acceleration feasible
+                x_pred = self.predict_trajectory(x_cur, a_cur) # Find new state
 
-            # Update all_positions
-            self.all_positions[:, 0] = p_pred.reshape(3*self.steps_in_horizon)
+                # Extract predicted positions
+                slc = slice(0, 3)
+                p_pred = x_pred[slc, 0].reshape(3, 1)
+                for n in range(1, self. steps_in_horizon):
+                    slc = slice(n*6, n*6+3)
+                    x_k = x_pred[slc, 0].reshape(3, 1)
+                    p_pred = vstack((p_pred, x_k))
 
-            agent.new_state(x_pred)
+                # Update all_positions
+                agent_idx = self.agents.index(agent)
+                self.all_positions[:, agent_idx] = p_pred.reshape(3*self.steps_in_horizon)
+
+                agent.new_state(x_pred)
 
             self.k_t += 1
+
+        self.print_final_positions()
 
     def build_and_solve_qp(self):
         """Build and solve Quadratic Problem  """
@@ -219,11 +218,17 @@ class TrajectorySolver(object):
         x = solve_qp(P, q, G, h, A, b)
         print "QP solution: x = {}".format(x)
 
+    def print_final_positions(self):
+        """Print final position of all agents
+        """
+        for each_agent in self.agents:
+            print "Final pos, agent", self.agents.index(each_agent), ": {}".format(
+                each_agent.positions_data[0:2, -1])
+
     def plot_trajectories(self):
         """Plot all computed trajectories
         """
-        print "Final pos: {}".format(self.agents[0].positions_data[0:2, -1])
-        plot_traj(self.agents[0].positions_data, self.step_interval)
+        plot_traj(self.agents, self.step_interval)
 
     def predict_trajectory(self, x, u):
         """Predict an agent trajectory based on it's position and acceleration
@@ -247,16 +252,19 @@ class TrajectorySolver(object):
         return X_pred
 
 if __name__ == '__main__':
-    start_time = time.time()
+    START_TIME = time.time()
 
-    a1 = Agent([0.5, 3, 0.5])
-    a1.set_accel([0.5, -0.5, 0])
+    A1 = Agent([0.0, 0.0, 0.0])
+    A1.set_accel([0.5, 0, 0])
 
-    a2 = Agent([1.5, 1.5, 1.5])
-    a2.set_accel([-0.5, 0, 0])
+    A2 = Agent([4.0, 4.0, 0.0])
+    A2.set_accel([0, -0.5, 0])
 
-    solver = TrajectorySolver([a1])
-    solver.solve_trajectories()
-    print "Compute time:", (time.time() - start_time)*1000, "ms"
+    A3 = Agent([0.0, 4.0, 0.0])
+    A3.set_accel([1, -1, 0])
 
-    solver.plot_trajectories()
+    SOLVER = TrajectorySolver([A1, A2, A3])
+    SOLVER.solve_trajectories()
+    print "Compute time:", (time.time() - START_TIME)*1000, "ms"
+
+    SOLVER.plot_trajectories()
