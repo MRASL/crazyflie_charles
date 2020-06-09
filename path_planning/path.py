@@ -52,6 +52,8 @@ class Agent(object):
         #  Columns: predicted [p, v], Rows: Each k
         self.states = None
 
+        self.prev_input = [0, 0, 0]
+
     def set_starting_position(self, position):
         """Set starting position
 
@@ -105,7 +107,7 @@ class TrajectorySolver(object):
             agent_list (list of Agnets): Compute trajectory of all agents in the list
         """
         self.time = 5                   # float: For testing, total time of trajectory
-        self.step_interval = 0.1       # float: Time steps interval (h)
+        self.step_interval = 0.2       # float: Time steps interval (h)
         self.horizon_time = 1.0         # float: Horizon to predict trajectory
         self.k_t = 0                    # int: Current time step
         self.k_max = int(self.time/self.step_interval) # float: Maximum time
@@ -138,10 +140,14 @@ class TrajectorySolver(object):
         self.lambda_accel = array([[]])
         self.a0_accel = array([[]])
         self.q_tilde = array([[]])
+        self.r_tilde = array([[]])
+        self.delta = array([[]])
 
         # Constraint matrix
         self.h_constraint = array([[]])
         self.g_constraint = array([[]])
+        self.lb_constraint = self.a_min_mat
+        self.ub_constraint = self.a_max_mat
 
         self.initialize_matrix()
 
@@ -194,22 +200,27 @@ class TrajectorySolver(object):
         self.A0 = self.A0.T
 
         # Build constraints matrix
-        acc_constraint = vstack((self.a_max_mat, -1*self.a_min_mat))
-
-        self.h_constraint = acc_constraint
+        
         for _ in range(1, self.steps_in_horizon):
-            self.h_constraint = vstack((self.h_constraint, acc_constraint))
-        # self.h_constraint = csc_matrix(self.h_constraint)
+            self.lb_constraint = vstack((self.lb_constraint, self.a_min_mat))
+            self.ub_constraint = vstack((self.ub_constraint, self.a_max_mat))
 
-        self.g_constraint = np.zeros((6*self.steps_in_horizon, 3*self.steps_in_horizon))
-        g_mat = vstack((np.eye(3), 1*np.eye(3)))
-        for i in range(self.steps_in_horizon):
-            rows = slice(6*i, (i+1)*6)
-            cols = slice(3*i, (i+1)*3)
-            self.g_constraint[rows, cols] = g_mat
+        # acc_constraint = vstack((self.a_max_mat, -1*self.a_min_mat))
 
-        self.g_constraint = csc_matrix(self.g_constraint)
-    
+        # self.h_constraint = acc_constraint
+        # for _ in range(1, self.steps_in_horizon):
+        #     self.h_constraint = vstack((self.h_constraint, acc_constraint))
+        # # self.h_constraint = csc_matrix(self.h_constraint)
+
+        # self.g_constraint = np.zeros((6*self.steps_in_horizon, 3*self.steps_in_horizon))
+        # g_mat = vstack((np.eye(3), 1*np.eye(3)))
+        # for i in range(self.steps_in_horizon):
+        #     rows = slice(6*i, (i+1)*6)
+        #     cols = slice(3*i, (i+1)*3)
+        #     self.g_constraint[rows, cols] = g_mat
+
+        # self.g_constraint = csc_matrix(self.g_constraint)
+
     def initialize(self):
         """Initialize positions and starting trajectory of all agents
         """
@@ -233,10 +244,11 @@ class TrajectorySolver(object):
             for agent in self.agents:
                 # Determine acceleration input
                 current_state = agent.states[0:6, -1].reshape(6, 1)
-                accel_input = self.solve_accel(current_state, agent.goal)
+                accel_input = self.solve_accel(current_state, agent.goal, agent.prev_input)
 
                 # If new acceleration feasible
                 x_pred = self.predict_trajectory(current_state, accel_input) # Find new state
+                agent.prev_input = accel_input[0:3, 0]
 
                 # Extract predicted positions
                 slc = slice(0, 3)
@@ -256,7 +268,7 @@ class TrajectorySolver(object):
 
         self.print_final_positions()
 
-    def solve_accel(self, initial_state, agent_goal):
+    def solve_accel(self, initial_state, agent_goal, prev_input):
         """Optimize acceleration input for the horizon
 
         Args:
@@ -296,34 +308,59 @@ class TrajectorySolver(object):
             rsl = slice(i*3, (i+1)*3)
             self.q_tilde[rsl, rsl] = q_mat
 
-        # P_d
+        # Goal
         goal_matrix = agent_goal
         for _ in range(1, self.steps_in_horizon):
             goal_matrix = vstack((goal_matrix, agent_goal))
 
+        # P_e = Lambda.T * Q_tilde * Lambda
+        p_error = dot(dot(self.lambda_accel.T, self.q_tilde), self.lambda_accel)
+        p_error = csc_matrix(p_error)
 
+        q_error = -2*(dot(goal_matrix.T, dot(self.q_tilde, self.lambda_accel))-
+                      dot(dot(self.a0_accel, initial_state).T,
+                          dot(self.q_tilde, self.lambda_accel)))
+
+        q_error = q_error.T
+        q_error = q_error.reshape(q_error.shape[0])
 
         # 2 - Control Effort penalty
-        # TODOsolver penalty
-        # TODO
+        self.r_tilde = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
+        r_mat = np.eye(3) # TODO Values of R
+        for i in range(self.steps_in_horizon):
+            rsl = slice(i*3, (i+1)*3)
+            self.r_tilde[rsl, rsl] = r_mat
+        p_effort = self.r_tilde
+
+        # 3 - Input Variaton penalty
+        self.delta = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
         
+        slc = slice(3)
+        self.delta[slc, slc] = np.eye(3)
+        for i in range(self.steps_in_horizon - 1):  # For all rows
+            rows = slice(3*(i+1), (i+2)*3)
+            cols_neg = slice(i*3, (i+1)*3)
+            cols_pos = slice((i+1)*3, (i+2)*3)
+            self.delta[rows, cols_neg] = -1 * np.eye(3)
+            self.delta[rows, cols_pos] = np.eye(3)
+
+        prev_input_mat = np.zeros((3*self.steps_in_horizon, 1))
+        prev_input_mat[0:3, 0] = prev_input
+
+        #TODO Build P and Q for input variation penalty
+
 
         # Solve
-        P = dot(dot(self.lambda_accel.T, self.q_tilde), self.lambda_accel) # Lambda.T * Q_tilde * Lambda
-        P = csc_matrix(P)
+        p_tot = p_error
+        q_tot = q_error
 
-
-        q = -2*( dot(goal_matrix.T, dot(self.q_tilde, self.lambda_accel)) - 
-                 dot(dot(self.a0_accel, initial_state).T, dot(self.q_tilde, self.lambda_accel)))
-
-        q = q.T
-        q = q.reshape(q.shape[0])
-
-        # accel_input = solve_qp(P, q, solver='osqp')
-        accel_input = solve_qp(P, q, G=self.g_constraint, h=self.h_constraint, solver='osqp')
+        accel_input = solve_qp(p_tot, q_tot,
+                               lb=self.lb_constraint,
+                               ub=self.ub_constraint,
+                               solver='osqp')
+        # accel_input = solve_qp(P, q, G=self.g_constraint, h=self.h_constraint, solver='osqp')
 
         accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
-        # print accel_input
         return accel_input
 
     def print_final_positions(self):
@@ -356,29 +393,23 @@ class TrajectorySolver(object):
 if __name__ == '__main__':
     START_TIME = time.time()
 
-    # A1 = Agent([0.0, 2.0, 0.0])
-    # A1.set_goal([4.0, 4.0, 0.0])
-
-    A1 = Agent([0.5, 0.0, 0.0])
+    A1 = Agent([0.0, 2.0, 0.0])
     A1.set_goal([4.0, 4.0, 0.0])
 
+    A2 = Agent([1.0, 4.0, 0.0])
+    A2.set_goal([1.0, 1.0, 0.0])
 
-    A2 = Agent([4.0, 4.0, 0.0])
-    A2.set_accel([0, -0.5, 0])
+    A3 = Agent([3.0, 0.5, 0.0])
+    A3.set_goal([2.0, 2.0, 0.0])
 
-    A3 = Agent([0.0, 4.0, 0.0])
-    A3.set_accel([1, -1, 0])
+    A4 = Agent([4.0, 4.0, 0.0])
+    A4.set_goal([0.0, 4.0, 0.0])
+
 
     # SOLVER = TrajectorySolver([A1])
-    SOLVER = TrajectorySolver([A1, A2, A3])
+    SOLVER = TrajectorySolver([A1, A2, A3, A4])
 
     SOLVER.solve_trajectories()
     print "Compute time:", (time.time() - START_TIME)*1000, "ms"
 
     SOLVER.plot_trajectories()
-
-    # goal = array([4.0, 4.0, 0.0]).reshape(3, 1)
-    # initial_pos = array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(6, 1)
-
-    # SOLVER = TrajectorySolver([])
-    # SOLVER.solve_accel(initial_pos, goal)
