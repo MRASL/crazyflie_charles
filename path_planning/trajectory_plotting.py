@@ -11,6 +11,9 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
+wall_start = (2, 4)
+wall_end = (2, 0)
+
 class TrajPlot(object):
     """To plot trajectories of agents
     """
@@ -26,24 +29,30 @@ class TrajPlot(object):
         self.time_step = time_step # Time step
 
         #: int: Number of frame, corresponds to number of column
-        self.n_frame = self.agents[0].positions_data.shape[1]
+        self.n_frame = self.agents[0].states.shape[1]
 
         self.fig = plt.figure()
         self.fig.set_dpi(100)
         self.fig.set_size_inches(7, 7)
-        self.axe = plt.axes(xlim=(-0.5, 5), ylim=(-0.5, 5))
+        self.axe = plt.axes(xlim=(-1, 5), ylim=(-1, 5))
         self.axe.set_title('Trajectories')
         self.axe.set_xlabel('x (m)')
         self.axe.set_ylabel('y (m)')
 
-        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k']
+        # FOR TESTING, add wall
+        # self.axe.plot([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
+
+        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y']
         self.animated_objects = [] # List of all objects to animate
         self.init_animated_objects()
 
     def init_animated_objects(self):
         """Creates all objects to animate.
 
-        Each agent has a circle (current position) and dashed line (predicted trajectory)
+        Each agent has:
+            - A circle (current position)
+            - A dashed line (predicted trajectory)
+            - An X (goal)
 
         Notes:
             Structure of animated object. Idx:
@@ -55,7 +64,7 @@ class TrajPlot(object):
                 -1: time text
 
         """
-        for _, color in zip(self.agents, self.color_list):
+        for each_agent, color in zip(self.agents, self.color_list):
             circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
             line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)
 
@@ -64,6 +73,10 @@ class TrajPlot(object):
             self.animated_objects.append(circle)
             self.animated_objects.append(line)
 
+            # Draw goal
+            x_goal = each_agent.goal[0]
+            y_goal = each_agent.goal[1]
+            self.axe.scatter(x_goal, y_goal, s=250, c=color, marker='X')
 
         # Add time_text
         self.time_text = self.axe.text(0.02, 0.95, '', transform=self.axe.transAxes)
@@ -76,8 +89,8 @@ class TrajPlot(object):
             agent = self.agents[i]
 
             # Circle
-            self.animated_objects[2*i].center = (agent.positions_data[0, 0],
-                                                 agent.positions_data[1, 0])
+            self.animated_objects[2*i].center = (agent.states[0, 0],
+                                                 agent.states[1, 0])
 
             # Line
             self.animated_objects[2*i+1].set_data([], [])
@@ -96,7 +109,7 @@ class TrajPlot(object):
 
         for i in range(self.n_agents):
             agent = self.agents[i]
-            data = agent.positions_data[:, frame]
+            data = agent.states[:, frame]
 
             # Circle
             self.animated_objects[2*i].center = (data[0], data[1])
@@ -124,7 +137,6 @@ class TrajPlot(object):
                           frames=self.n_frame, interval=(self.time_step*1000), blit=True)
 
         plt.show()
-
 
 def plot_traj(agent_list, time_step):
     """Plot trajectrorie
