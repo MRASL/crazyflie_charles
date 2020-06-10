@@ -165,7 +165,7 @@ class TrajectorySolver(object):
 
         # Error weights
         self.kapa = 1
-        self.error_weight = 1.6
+        self.error_weight = 1.0
         self.effort_weight = 0.1
         self.input_weight = 0.1
 
@@ -176,9 +176,13 @@ class TrajectorySolver(object):
         self.r_min = 0.35                #: m
         self.a_max = 1.0                 #: m/s**2
         self.a_min = -1.0                #: m/s**2
+        self.p_min = [0.0, 0.0, 0.0]
+        self.p_max = [5.0, 5.0, 5.0]
 
-        self.a_max_mat = array([[self.a_max, self.a_max, self.a_max]]).T
         self.a_min_mat = array([[self.a_min, self.a_min, self.a_min]]).T
+        self.a_max_mat = array([[self.a_max, self.a_max, self.a_max]]).T
+        self.p_min_mat = array([self.p_min]).T
+        self.p_max_mat = array([self.p_max]).T
 
         # State matrix
         self.A = array([[]])
@@ -341,9 +345,12 @@ class TrajectorySolver(object):
         self.g_constraint = vstack((self.g_constraint, np.eye(self.steps_in_horizon*3)))
         self.h_constraint = vstack((self.h_constraint, acc_max_mat))
 
-        self.h_constraint = self.h_constraint.reshape(self.h_constraint.shape[0])
-
-        # self.g_constraint = csc_matrix(self.g_constraint)
+        # Positions constraints
+        p_min = self.p_min_mat
+        p_max = self.p_max_mat
+        for _ in range(1, self.steps_in_horizon):
+            self.p_min_mat = vstack((self.p_min_mat, p_min))
+            self.p_max_mat = vstack((self.p_max_mat, p_max))
 
     def initialize(self):
         """Initialize positions and starting trajectory of all agents
@@ -428,17 +435,26 @@ class TrajectorySolver(object):
         p_input = dot(self.delta.T, dot(self.s_tilde, self.delta))
         q_input = -2*dot(self.prev_input_mat.T, dot(self.s_tilde, self.delta))
 
+        # Position constraints
+        g_matrix = self.g_constraint
+        h_matrix = self.h_constraint
+
+        lb_position = self.p_min_mat - dot(self.a0_accel, initial_state)
+        g_matrix = vstack((g_matrix, -1*self.lambda_accel))
+        h_matrix = vstack((h_matrix, -1*lb_position))
+
+        ub_position = self.p_max_mat - dot(self.a0_accel, initial_state)
+        g_matrix = vstack((g_matrix, self.lambda_accel))
+        h_matrix = vstack((h_matrix, ub_position))
 
         # Solve
         p_tot = p_error + p_effort + p_input
         q_tot = (q_error + q_effort + q_input).T
         q_tot = q_tot.reshape(q_tot.shape[0])  # Reshape it to work /w library
-        
-        # print p_tot
-        # print q_tot
 
-        accel_input = solve_qp(p_tot, q_tot, solver='quadprog')
-        # accel_input = solve_qp(p_tot, q_tot, G=self.g_constraint, h=self.h_constraint, solver='quadprog')
+        # accel_input = solve_qp(p_tot, q_tot, solver='quadprog')
+        accel_input = solve_qp(p_tot, q_tot, G=g_matrix, h=h_matrix[:, 0], solver='quadprog')
+        # accel_input = solve_qp(p_tot, q_tot, G=csc_matrix(self.g_constraint), h=self.h_constraint[:, 0], solver='quadprog')
 
         accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
         
@@ -490,7 +506,7 @@ if __name__ == '__main__':
     START_TIME = time.time()
 
     A1 = Agent([0.0, 2.0, 0.0])
-    A1.set_goal([4.0, 4.0, 1.0])
+    A1.set_goal([4.0, 4.0, 0.0])
 
     A2 = Agent([1.0, 4.0, 0.0])
     A2.set_goal([1.0, 1.0, 0.0])
@@ -502,8 +518,8 @@ if __name__ == '__main__':
     A4.set_goal([0.0, 4.0, 0.0])
 
 
-    # SOLVER = TrajectorySolver([A1])
-    SOLVER = TrajectorySolver([A1, A2, A3, A4])
+    SOLVER = TrajectorySolver([A1])
+    # SOLVER = TrajectorySolver([A1, A2, A3, A4])
 
     SOLVER.solve_trajectories()
     print "Compute time:", (time.time() - START_TIME)*1000, "ms"
