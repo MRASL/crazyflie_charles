@@ -19,20 +19,36 @@ Etapes:
 import time
 import numpy as np
 from numpy import array, dot, hstack, vstack
-from numpy.linalg import norm
+from numpy.linalg import norm, inv
 from qpsolvers import solve_qp
 from trajectory_plotting import plot_traj
 from scipy.sparse import csc_matrix
 
 # Add a wall as an obstacle, for collision testing
-wall_start = (2, 0)
-wall_end = (2, 4)
+wall_start = (2, 1)
+wall_end = (2, 3)
 wall_coords = []
 wall_y = np.linspace(wall_start[1], wall_end[1], num=10)
 for y in wall_y:
     wall_coords.append([wall_start[0], y, 0])
 
-GOAL_THRES = 0.005 # 5 mm
+GOAL_THRES = 0.01 # 5 cm
+R_MIN = 0.35
+STEP_INVERVAL = 0.5
+HORIZON_TIME = 1.0
+
+# Each point of the wall is considered as an agent /w cst position over horizon
+all_positions = None
+for each_coord in wall_coords:
+    each_coord_array = array([each_coord]).reshape(3, 1)
+    coord = each_coord_array
+    for each_step in range(1, int(HORIZON_TIME/STEP_INVERVAL)):
+        coord = vstack((coord, each_coord_array))
+
+    if all_positions is None:
+        all_positions = coord
+    else:
+        all_positions = hstack((all_positions, coord))
 
 class Agent(object):
     """Represents a single agent
@@ -49,6 +65,8 @@ class Agent(object):
         self.goal = goal #: 3x1 np.array: Goal
         self.at_goal = False
 
+        self.n_steps = 0 #: int: Number of steps in horizon
+
         # For testing
         self.acc_cst = array([[0.5, 0.5, 0]]).T
 
@@ -57,6 +75,13 @@ class Agent(object):
         self.states = None
 
         self.prev_input = [0, 0, 0]
+
+        self.scaling_matrix = np.diag([1, 1, 2])
+        self.scaling_matrix_inv = inv(self.scaling_matrix)
+
+        self.collision_step = 0 #: Step of prediction where collision happens
+        self.collision_idx = 0 #: int: Index of other agent 
+        self.collision_dist = 0 #: float: Distance between objects at collision, defined as ksi_ij
 
     def set_starting_position(self, position):
         """Set starting position
@@ -90,6 +115,7 @@ class Agent(object):
         Args:
             n_steps (int): Number of time steps of horizon
         """
+        self.n_steps = n_steps
         speed = 0.1
 
         # Compute speeds
@@ -113,7 +139,7 @@ class Agent(object):
         start_pos = vstack((self.start_position, speed))
         self.states = start_pos
         last_pos = start_pos
-        for _ in range(1, n_steps):
+        for _ in range(1, self.n_steps):
             new_pos = last_pos + speed_position
             self.states = vstack((self.states, new_pos))
             last_pos = new_pos
@@ -141,6 +167,31 @@ class Agent(object):
 
         return self.at_goal
 
+    def check_collision(self):
+        """Check current predicted trajectory for collisions.
+
+        Returns:
+            (int, int): Time step of the collision, -1 if no collision; Index of collision object
+        """
+        # TODO Find index of agents within a set radius
+
+        # For each step in horizon
+        for each_step in range(self.n_steps):
+            predicted_pos = self.states[each_step*6: each_step*6+3, -1]
+            rows = slice(3*each_step, 3*(each_step+1))
+            # For each coord of the wall
+            for j in range(all_positions.shape[1]): # Check all agents
+                other_agent_pos = all_positions[rows, j]
+                dist = norm(dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos))
+
+                if dist < R_MIN:
+                    self.collision_step = each_step
+                    self.collision_idx = j
+                    self.collision_dist = dist
+                    return True
+                
+        return False
+
 class TrajectorySolver(object):
     """To solve trajectories of all agents
     """
@@ -150,9 +201,9 @@ class TrajectorySolver(object):
         Args:
             agent_list (list of Agnets): Compute trajectory of all agents in the list
         """
-        self.time = 10                  # float: For testing, total time of trajectory
-        self.step_interval = 0.1        # float: Time steps interval (h)
-        self.horizon_time = 1.0         # float: Horizon to predict trajectory
+        self.time = 10                          # float: For testing, total time of trajectory
+        self.step_interval = STEP_INVERVAL      # float: Time steps interval (h)
+        self.horizon_time = HORIZON_TIME        # float: Horizon to predict trajectory
         self.k_t = 0                    # int: Current time step
         self.k_max = int(self.time/self.step_interval) # float: Maximum time
         self.at_goal = False
@@ -176,8 +227,11 @@ class TrajectorySolver(object):
         self.r_min = 0.35                #: m
         self.a_max = 1.0                 #: m/s**2
         self.a_min = -1.0                #: m/s**2
-        self.p_min = [0.0, 0.0, 0.0]
-        self.p_max = [5.0, 5.0, 5.0]
+
+        p_min = 0.0
+        p_max = 10.0
+        self.p_min = [p_min, p_min, p_min]
+        self.p_max = [p_max, p_max, p_max]
 
         self.a_min_mat = array([[self.a_min, self.a_min, self.a_min]]).T
         self.a_max_mat = array([[self.a_max, self.a_max, self.a_max]]).T
@@ -375,7 +429,9 @@ class TrajectorySolver(object):
             for agent in self.agents:
                 # Determine acceleration input
                 current_state = agent.states[0:6, -1].reshape(6, 1)
-                accel_input = self.solve_accel(current_state, agent.goal, agent.prev_input)
+                accel_input = self.solve_accel(agent, current_state)
+
+                if self.at_goal: break # FOR TESTING
 
                 # If new acceleration feasible
                 x_pred = self.predict_trajectory(current_state, accel_input) # Find new state
@@ -395,22 +451,49 @@ class TrajectorySolver(object):
 
                 agent.new_state(x_pred)
 
-            self.check_goals()
+            # self.check_goals()
 
             self.k_t += 1
 
         self.print_final_positions()
 
-    def solve_accel(self, initial_state, agent_goal, prev_input):
+    def solve_accel(self, agent, initial_state):
         """Optimize acceleration input for the horizon
 
         Args:
+            agent (Agent)
             initial_state (array, 6x1): Initial state of the agent
-            agent_goal (array, 3x1): Goal of the agent
 
         Returns:
             array 3*hor_steps x 1: Acceleration over the trajectory
-        """        
+        """
+        agent_goal = agent.goal
+        prev_input = agent.prev_input
+
+        if not agent.check_collision():
+            accel_input = self.solve_accel_no_coll(initial_state, agent_goal, prev_input)
+        
+        else:
+            accel_input = self.solve_accel_coll(agent, initial_state)
+            self.at_goal = True
+
+        # accel_input = self.solve_accel_no_col(initial_state, agent_goal, prev_input)
+        # print accel_input
+        # print "\n"
+
+        return accel_input
+
+    def solve_accel_no_coll(self, initial_state, agent_goal, prev_input):
+        """Compute acceleration over horizon when no collision are detected
+
+        Args:
+            initial_state (array, 6x1): Initial state
+            agent_goal (array, 3x1): Agent goal
+            prev_input (array, 3x1): Previous acceleration input
+
+        Returns:
+            array, 3k x 1: Acceleration vector
+        """
         # 1 - Trajectory error penalty
         # Goal
         goal_matrix = agent_goal
@@ -454,13 +537,53 @@ class TrajectorySolver(object):
 
         # accel_input = solve_qp(p_tot, q_tot, solver='quadprog')
         accel_input = solve_qp(p_tot, q_tot, G=g_matrix, h=h_matrix[:, 0], solver='quadprog')
-        # accel_input = solve_qp(p_tot, q_tot, G=csc_matrix(self.g_constraint), h=self.h_constraint[:, 0], solver='quadprog')
 
         accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
+
+        return accel_input
+
+    def solve_accel_coll(self, agent, initial_state):
+        """Compute acceleration over horizon when a collision is detected
+
+        Args:
+            agent (Agent)
+            initial_state (array, 6x1): Initial state
+
+        Returns:
+            array, 3k x 1: Acceleration vector
+        """
+        collision_rows = slice(agent.collision_step*3, (agent.collision_step+1)*3)
+        j_position_coll = all_positions[collision_rows, agent.collision_idx]
+
+        collision_rows = slice(agent.collision_step*6, (agent.collision_step*6)+3)
+        agent_position_coll = agent.states[collision_rows, -1]
+
+        #: 3x1 array, v_ij = scaling_matrix**-2 @ (p_i - p_j)
+        v_matrix = dot(inv(dot(agent.scaling_matrix, agent.scaling_matrix)), 
+                       agent_position_coll - j_position_coll)
         
-        # print accel_input
-        # print "\n"
+        #: 3x1 array, rho_ij = r_min*ksi_ik + ksi_ij**2 + v_ij' * p_i
+        rho_matrix = R_MIN*agent.collision_dist + agent.collision_dist**2 + v_matrix.T*agent_position_coll
+
+        mu_matrix = np.zeros((3*(agent.collision_step - 1), 1))
+        mu_matrix = vstack((mu_matrix, v_matrix.reshape(3, 1)))
+        mu_matrix = vstack((mu_matrix, np.zeros((3*(self.steps_in_horizon - agent.collision_step), 1))))
+
+
+        # TODO: Build constraint Matrix
+
         
+        print "Collision step: %i" % agent.collision_step
+        print agent_position_coll
+        print j_position_coll
+
+        print v_matrix
+        print rho_matrix
+        print mu_matrix
+
+        accel_input = None
+
+
         return accel_input
 
     def print_final_positions(self):
@@ -506,7 +629,7 @@ if __name__ == '__main__':
     START_TIME = time.time()
 
     A1 = Agent([0.0, 2.0, 0.0])
-    A1.set_goal([4.0, 4.0, 0.0])
+    A1.set_goal([4.0, 2.0, 0.0])
 
     A2 = Agent([1.0, 4.0, 0.0])
     A2.set_goal([1.0, 1.0, 0.0])

@@ -11,8 +11,8 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
-wall_start = (2, 4)
-wall_end = (2, 0)
+wall_start = (2, 1)
+wall_end = (2, 3)
 
 class TrajPlot(object):
     """To plot trajectories of agents
@@ -40,7 +40,7 @@ class TrajPlot(object):
         self.axe.set_ylabel('y (m)')
 
         # FOR TESTING, add wall
-        # self.axe.plot([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
+        self.axe.plot([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
 
         self.color_list = ['b', 'r', 'g', 'c', 'm', 'y']
         self.animated_objects = [] # List of all objects to animate
