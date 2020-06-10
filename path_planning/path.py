@@ -19,6 +19,7 @@ Etapes:
 import time
 import numpy as np
 from numpy import array, dot, hstack, vstack
+from numpy.linalg import norm
 from qpsolvers import solve_qp
 from trajectory_plotting import plot_traj
 from scipy.sparse import csc_matrix
@@ -30,6 +31,8 @@ wall_coords = []
 wall_y = np.linspace(wall_start[1], wall_end[1], num=10)
 for y in wall_y:
     wall_coords.append([wall_start[0], y, 0])
+
+GOAL_THRES = 0.005 # 5 mm
 
 class Agent(object):
     """Represents a single agent
@@ -44,6 +47,7 @@ class Agent(object):
         # Attributes
         self.start_position = array(start_pos).reshape(3, 1) #: 3x1 np.array: Starting position
         self.goal = goal #: 3x1 np.array: Goal
+        self.at_goal = False
 
         # For testing
         self.acc_cst = array([[0.5, 0.5, 0]]).T
@@ -79,15 +83,40 @@ class Agent(object):
         self.acc_cst = array([new_accel]).T
 
     def initialize_position(self, n_steps):
-        """Initialize position of the agent
+        """Initialize position of the agent.
+
+        Sets first horizon as a straight line to goal at a cst speed
 
         Args:
             n_steps (int): Number of time steps of horizon
         """
-        x_in = vstack((self.start_position, np.zeros((3, 1))))
-        self.states = x_in
+        speed = 0.1
+
+        # Compute speeds
+        dist = norm(self.goal - self.start_position)
+        dist_z = norm(self.goal[2, 0] - self.start_position[2,0])
+
+        speed_z = dist_z * speed / dist
+        dist_xy = np.sqrt(dist**2 - dist_z**2)
+        speed_xy = np.sqrt(speed**2 - speed_z**2)
+
+        dist_x = norm(self.goal[0, 0] - self.start_position[0,0])
+        dist_y = norm(self.goal[1, 0] - self.start_position[1,0])
+
+        speed_x = speed_xy*dist_x/dist
+        speed_y = speed_xy*dist_y/dist
+
+        speed = array([[speed_x, speed_y, speed_z]]).reshape(3, 1)
+        speed_position = vstack((speed, np.zeros((3, 1))))
+
+        # Compute positions
+        start_pos = vstack((self.start_position, speed))
+        self.states = start_pos
+        last_pos = start_pos
         for _ in range(1, n_steps):
-            self.states = vstack((self.states, x_in))
+            new_pos = last_pos + speed_position
+            self.states = vstack((self.states, new_pos))
+            last_pos = new_pos
 
     def new_state(self, new_state):
         """Add new state to list of positions
@@ -96,6 +125,21 @@ class Agent(object):
             new_state (array): Trajectory at time step
         """
         self.states = hstack((self.states, new_state))
+
+    def check_goal(self):
+        """Check if agent is in a small radius around his goal
+
+        Returns:
+            bool: True if goal reached
+        """
+        current_position = self.states[0:3, -1]
+        goal = self.goal.reshape(3)
+        dist = norm(goal - current_position)
+
+        if dist < GOAL_THRES:
+            self.at_goal = True
+
+        return self.at_goal
 
 class TrajectorySolver(object):
     """To solve trajectories of all agents
@@ -106,8 +150,8 @@ class TrajectorySolver(object):
         Args:
             agent_list (list of Agnets): Compute trajectory of all agents in the list
         """
-        self.time = 5                   # float: For testing, total time of trajectory
-        self.step_interval = 0.2       # float: Time steps interval (h)
+        self.time = 10                  # float: For testing, total time of trajectory
+        self.step_interval = 0.1        # float: Time steps interval (h)
         self.horizon_time = 1.0         # float: Horizon to predict trajectory
         self.k_t = 0                    # int: Current time step
         self.k_max = int(self.time/self.step_interval) # float: Maximum time
@@ -119,13 +163,19 @@ class TrajectorySolver(object):
         self.agents = agent_list        #: list of Agent: All agents
         self.n_agents = len(self.agents)
 
+        # Error weights
+        self.kapa = 1
+        self.error_weight = 1.6
+        self.effort_weight = 0.1
+        self.input_weight = 0.1
+
         #: 3k x n_agents array: Latest predicted position of each agent over horizon
         self.all_positions = np.zeros((3*self.steps_in_horizon, self.n_agents))
 
         # Constraints
-        self.r_min = 0.35             #: m
-        self.a_max = 1                #: m/s**2
-        self.a_min = -1*self.a_max    #: m/s**2
+        self.r_min = 0.35                #: m
+        self.a_max = 1.0                 #: m/s**2
+        self.a_min = -1.0                #: m/s**2
 
         self.a_max_mat = array([[self.a_max, self.a_max, self.a_max]]).T
         self.a_min_mat = array([[self.a_min, self.a_min, self.a_min]]).T
@@ -135,13 +185,15 @@ class TrajectorySolver(object):
         self.B = array([[]])
         self.A0 = array([[]])
         self.Lambda = array([[]])
-
-        # Accel matrix
         self.lambda_accel = array([[]])
         self.a0_accel = array([[]])
+
+        # Objective matrix
         self.q_tilde = array([[]])
         self.r_tilde = array([[]])
         self.delta = array([[]])
+        self.prev_input_mat = array([[]])
+        self.s_tilde = array([[]])
 
         # Constraint matrix
         self.h_constraint = array([[]])
@@ -168,11 +220,22 @@ class TrajectorySolver(object):
 
             A0 = | A.T  A**2.T  ... (A**k).T |.T
         """
+        # Build prediction matrix
+        self.build_prediction_matrix()
 
+        # Objective functions
+        self.build_objective_fct_matrix()
+
+        # Build constraints matrix
+        self.build_constraint_matrix()
+
+    def build_prediction_matrix(self):
+        """Build all matrix used to predict trajectories
+        """
         # A, 6x6
-        matrix_A1 = hstack((np.eye(3), np.eye(3)*self.step_interval))
-        matrix_A2 = hstack((np.zeros((3, 3)), np.eye(3)))
-        self.A = vstack((matrix_A1, matrix_A2)) # 6x6
+        matrix_a1 = hstack((np.eye(3), np.eye(3)*self.step_interval))
+        matrix_a2 = hstack((np.zeros((3, 3)), np.eye(3)))
+        self.A = vstack((matrix_a1, matrix_a2)) # 6x6
 
         # B, 6x3
         N = 6
@@ -199,25 +262,86 @@ class TrajectorySolver(object):
             self.A0[:, rsl] = dot(self.A, self.A0[:, rsl_p].T).T
         self.A0 = self.A0.T
 
-        # Build constraints matrix
+        # Lambda accel, 3k x 3k
+        rsl = slice(3)
+        self.lambda_accel = self.Lambda[rsl]
+
+        for i in range(1, self.steps_in_horizon):
+            rsl = slice(i * 6, 6*i + 3) # Select top three rows of block
+            rows = self.Lambda[rsl]
+            self.lambda_accel = vstack((self.lambda_accel, rows))
+
+        # A0 accel, 3k x 6, select first three cols of each block (of the transpose)
+        a0_trans = self.A0.T
+        rsl = slice(3)
+        self.a0_accel = a0_trans[:, rsl]
+        for i in range(1, self.steps_in_horizon):
+            rsl = slice(i * 6, 6*i + 3) # Select every other 3 cols
+            cols = a0_trans[:, rsl]
+            self.a0_accel = hstack((self.a0_accel, cols))
+
+        self.a0_accel = self.a0_accel.T
+
+    def build_objective_fct_matrix(self):
+        """Build all matrix used in objective functions
+        """
+        # 1 - Trajectory error penalty
+        # Q_tilde
+        q_mat = self.error_weight*np.eye(3)
+        self.q_tilde = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
+        for i in range(self.steps_in_horizon - self.kapa, self.steps_in_horizon):
+            rsl = slice(i*3, (i+1)*3)
+            self.q_tilde[rsl, rsl] = q_mat
+
+        # 2 - Control Effort penalty
+        self.r_tilde = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
+        r_mat = self.effort_weight*np.eye(3)
+        for i in range(self.steps_in_horizon):
+            rsl = slice(i*3, (i+1)*3)
+            self.r_tilde[rsl, rsl] = r_mat
+
+        # 3 - Input Variaton penalty
+        self.delta = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
         
+        slc = slice(3)
+        self.delta[slc, slc] = np.eye(3)
+        for i in range(self.steps_in_horizon - 1):  # For all rows
+            rows = slice(3*(i+1), (i+2)*3)
+            cols_neg = slice(i*3, (i+1)*3)
+            cols_pos = slice((i+1)*3, (i+2)*3)
+            self.delta[rows, cols_neg] = -1 * np.eye(3)
+            self.delta[rows, cols_pos] = np.eye(3)
+
+        self.prev_input_mat = np.zeros((3*self.steps_in_horizon, 1))
+
+        self.s_tilde = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
+        s_mat = self.input_weight*np.eye(3)
+        for i in range(self.steps_in_horizon):
+            rsl = slice(i*3, (i+1)*3)
+            self.s_tilde[rsl, rsl] = s_mat
+
+    def build_constraint_matrix(self):
+        """Build all matrix used in constraints
+        """
         for _ in range(1, self.steps_in_horizon):
             self.lb_constraint = vstack((self.lb_constraint, self.a_min_mat))
             self.ub_constraint = vstack((self.ub_constraint, self.a_max_mat))
 
-        # acc_constraint = vstack((self.a_max_mat, -1*self.a_min_mat))
+        acc_min_mat = self.a_min_mat
+        acc_max_mat = self.a_max_mat
+        for _ in range(1, self.steps_in_horizon):
+            acc_min_mat = vstack((acc_min_mat, self.a_min_mat))
+            acc_max_mat = vstack((acc_max_mat, self.a_max_mat))
+        
+        # Add lower bound
+        self.g_constraint = -np.eye(self.steps_in_horizon*3)
+        self.h_constraint = -1*acc_min_mat
 
-        # self.h_constraint = acc_constraint
-        # for _ in range(1, self.steps_in_horizon):
-        #     self.h_constraint = vstack((self.h_constraint, acc_constraint))
-        # # self.h_constraint = csc_matrix(self.h_constraint)
+        # Add upper bound
+        self.g_constraint = vstack((self.g_constraint, np.eye(self.steps_in_horizon*3)))
+        self.h_constraint = vstack((self.h_constraint, acc_max_mat))
 
-        # self.g_constraint = np.zeros((6*self.steps_in_horizon, 3*self.steps_in_horizon))
-        # g_mat = vstack((np.eye(3), 1*np.eye(3)))
-        # for i in range(self.steps_in_horizon):
-        #     rows = slice(6*i, (i+1)*6)
-        #     cols = slice(3*i, (i+1)*3)
-        #     self.g_constraint[rows, cols] = g_mat
+        self.h_constraint = self.h_constraint.reshape(self.h_constraint.shape[0])
 
         # self.g_constraint = csc_matrix(self.g_constraint)
 
@@ -239,7 +363,7 @@ class TrajectorySolver(object):
 
         # For each time step
         while not self.at_goal and self.k_t < self.k_max:
-            
+
             # For each agent
             for agent in self.agents:
                 # Determine acceleration input
@@ -264,6 +388,8 @@ class TrajectorySolver(object):
 
                 agent.new_state(x_pred)
 
+            self.check_goals()
+
             self.k_t += 1
 
         self.print_final_positions()
@@ -277,90 +403,48 @@ class TrajectorySolver(object):
 
         Returns:
             array 3*hor_steps x 1: Acceleration over the trajectory
-        """
+        """        
         # 1 - Trajectory error penalty
-        # Matrix: U, Lambda, Q_tilde, Q, P_d, X_0
-        # Lambda accel, 3k x 3k
-        rsl = slice(3)
-        self.lambda_accel = self.Lambda[rsl]
-   
-        for i in range(1, self.steps_in_horizon):
-            rsl = slice(i * 6, 6*i + 3) # Select top three rows of block
-            rows = self.Lambda[rsl]
-            self.lambda_accel = vstack((self.lambda_accel, rows))
-
-        # A0 accel, 3k x 6, select first three cols of each block (of the transpose)
-        a0_trans = self.A0.T
-        rsl = slice(3)
-        self.a0_accel = a0_trans[:, rsl]
-        for i in range(1, self.steps_in_horizon):
-            rsl = slice(i * 6, 6*i + 3) # Select every other 3 cols
-            cols = a0_trans[:, rsl]
-            self.a0_accel = hstack((self.a0_accel, cols))
-
-        self.a0_accel = self.a0_accel.T
-
-        # Q_tilde
-        kapa = 1
-        q_mat = np.eye(3) # TODO Values of Q?
-        self.q_tilde = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
-        for i in range(self.steps_in_horizon - kapa, self.steps_in_horizon):
-            rsl = slice(i*3, (i+1)*3)
-            self.q_tilde[rsl, rsl] = q_mat
-
         # Goal
         goal_matrix = agent_goal
         for _ in range(1, self.steps_in_horizon):
             goal_matrix = vstack((goal_matrix, agent_goal))
 
         # P_e = Lambda.T * Q_tilde * Lambda
-        p_error = dot(dot(self.lambda_accel.T, self.q_tilde), self.lambda_accel)
-        p_error = csc_matrix(p_error)
+        p_error = 2 * dot(self.lambda_accel.T, dot(self.q_tilde, self.lambda_accel))
+        # p_error = csc_matrix(p_error)
 
         q_error = -2*(dot(goal_matrix.T, dot(self.q_tilde, self.lambda_accel))-
                       dot(dot(self.a0_accel, initial_state).T,
                           dot(self.q_tilde, self.lambda_accel)))
 
-        q_error = q_error.T
-        q_error = q_error.reshape(q_error.shape[0])
-
         # 2 - Control Effort penalty
-        self.r_tilde = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
-        r_mat = np.eye(3) # TODO Values of R
-        for i in range(self.steps_in_horizon):
-            rsl = slice(i*3, (i+1)*3)
-            self.r_tilde[rsl, rsl] = r_mat
         p_effort = self.r_tilde
+        q_effort = 0
 
         # 3 - Input Variaton penalty
-        self.delta = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
-        
-        slc = slice(3)
-        self.delta[slc, slc] = np.eye(3)
-        for i in range(self.steps_in_horizon - 1):  # For all rows
-            rows = slice(3*(i+1), (i+2)*3)
-            cols_neg = slice(i*3, (i+1)*3)
-            cols_pos = slice((i+1)*3, (i+2)*3)
-            self.delta[rows, cols_neg] = -1 * np.eye(3)
-            self.delta[rows, cols_pos] = np.eye(3)
+        self.prev_input_mat[0:3, 0] = prev_input
 
-        prev_input_mat = np.zeros((3*self.steps_in_horizon, 1))
-        prev_input_mat[0:3, 0] = prev_input
-
-        #TODO Build P and Q for input variation penalty
+        p_input = dot(self.delta.T, dot(self.s_tilde, self.delta))
+        q_input = -2*dot(self.prev_input_mat.T, dot(self.s_tilde, self.delta))
 
 
         # Solve
-        p_tot = p_error
-        q_tot = q_error
+        p_tot = p_error + p_effort + p_input
+        q_tot = (q_error + q_effort + q_input).T
+        q_tot = q_tot.reshape(q_tot.shape[0])  # Reshape it to work /w library
+        
+        # print p_tot
+        # print q_tot
 
-        accel_input = solve_qp(p_tot, q_tot,
-                               lb=self.lb_constraint,
-                               ub=self.ub_constraint,
-                               solver='osqp')
-        # accel_input = solve_qp(P, q, G=self.g_constraint, h=self.h_constraint, solver='osqp')
+        accel_input = solve_qp(p_tot, q_tot, solver='quadprog')
+        # accel_input = solve_qp(p_tot, q_tot, G=self.g_constraint, h=self.h_constraint, solver='quadprog')
 
         accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
+        
+        # print accel_input
+        # print "\n"
+        
         return accel_input
 
     def print_final_positions(self):
@@ -369,6 +453,8 @@ class TrajectorySolver(object):
         for each_agent in self.agents:
             print "Final pos, agent", self.agents.index(each_agent), ": {}".format(
                 each_agent.states[0:2, -1])
+
+        print "Time to reach goal: %.2f" % (self.k_t*self.step_interval)
 
     def predict_trajectory(self, current_state, accel):
         """Predict an agent trajectory based on it's position and acceleration
@@ -385,6 +471,16 @@ class TrajectorySolver(object):
 
         return x_pred
 
+    def check_goals(self):
+        """Verify if all agents are in a small radius around their goal
+        """
+        all_goal_reached = True
+        for each_agent in self.agents:
+            if not each_agent.check_goal():
+                all_goal_reached = False
+
+        self.at_goal = all_goal_reached
+
     def plot_trajectories(self):
         """Plot all computed trajectories
         """
@@ -394,7 +490,7 @@ if __name__ == '__main__':
     START_TIME = time.time()
 
     A1 = Agent([0.0, 2.0, 0.0])
-    A1.set_goal([4.0, 4.0, 0.0])
+    A1.set_goal([4.0, 4.0, 1.0])
 
     A2 = Agent([1.0, 4.0, 0.0])
     A2.set_goal([1.0, 1.0, 0.0])
