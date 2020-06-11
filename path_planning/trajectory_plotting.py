@@ -11,8 +11,8 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
-wall_start = (2, 1)
-wall_end = (2, 3)
+wall_start = (2, 1.8)
+wall_end = (2, 1.9)
 
 class TrajPlot(object):
     """To plot trajectories of agents
@@ -39,9 +39,6 @@ class TrajPlot(object):
         self.axe.set_xlabel('x (m)')
         self.axe.set_ylabel('y (m)')
 
-        # FOR TESTING, add wall
-        self.axe.plot([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
-
         self.color_list = ['b', 'r', 'g', 'c', 'm', 'y']
         self.animated_objects = [] # List of all objects to animate
         self.init_animated_objects()
@@ -65,7 +62,7 @@ class TrajPlot(object):
 
         """
         for each_agent, color in zip(self.agents, self.color_list):
-            circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
+            circle = Circle((0, 0), 0.35, alpha=0.8, fc=color)
             line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)
 
             self.axe.add_patch(circle)
@@ -138,7 +135,17 @@ class TrajPlot(object):
 
         plt.show()
 
-def plot_traj(agent_list, time_step):
+    def plot_obstacle(self, coords):
+        x = []
+        y = []
+        for coord in coords:
+            x.append(coord[0])
+            y.append(coord[1])
+
+        self.axe.scatter(x, y, c='k', alpha=1)
+        # self.axe.s([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
+
+def plot_traj(agent_list, time_step, obstacle_coords=[]):
     """Plot trajectrorie
 
     Args:
@@ -146,4 +153,5 @@ def plot_traj(agent_list, time_step):
         time_step ([type]): Time step (sec)
     """
     traj_plot = TrajPlot(agent_list, time_step)
+    traj_plot.plot_obstacle(obstacle_coords)
     traj_plot.run()
