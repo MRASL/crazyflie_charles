@@ -10,9 +10,9 @@ Etapes:
     4 - [x] Plot de l'horizon
     5 - [x] Trajectoire pour plus d'un agent
 
-    6 - [ ] Add acceleration computing, no collision, one agent
-    7 - [ ] Path planning, fix object collision, one agent
-    8 - [ ] Path planning, fix object collision, N agents
+    6 - [x] Add acceleration computing, no collision, one agent
+    7 - [x] Path planning, fix object collision, one agent
+    8 - [x] Path planning, fix object collision, N agents
     9 - [ ] Path planning, collision between agents
 """
 
@@ -30,15 +30,28 @@ R_MIN = 0.35
 STEP_INVERVAL = 0.1
 HORIZON_TIME = 1.0
 
-ERROR_WEIGHT = 0.5
-EFFORT_WEIGHT = 0.1
-INPUT_WEIGHT = 0.1
-RELAX_WEIGHT = 10
+ERROR_WEIGHT = 1
+EFFORT_WEIGHT = 0.01
+INPUT_WEIGHT = 0.01
+RELAX_WEIGHT = 5
 RELAX_MIN = -1
 
+AVOID_COLLISIONS = True
+
 # Add a wall as an obstacle, for collision testing
-WALL_START = (2.0, 2.0)
-WALL_END = (2.0, 2.0)
+ADD_WALL = True 
+# WALL_START = (2.0, 1.5)
+# WALL_END = (2.0, 2.5)
+
+# WALL_START = (2.0, 1.5)
+# WALL_END = (2.0, 1.9)
+
+# WALL_START = (2.0, 2.1)
+# WALL_END = (2.0, 2.5)
+
+WALL_START = (2.0, 1.9)
+WALL_END = (2.0, 1.9)
+
 WALL_COORDS = []
 WALL_Y = np.linspace(WALL_START[1], WALL_END[1], num=1)
 for y in WALL_Y:
@@ -143,6 +156,16 @@ class Agent(object):
         speed_x = speed_xy*dist_x/dist
         speed_y = speed_xy*dist_y/dist
 
+        # Check signs
+        if self.goal[0, 0] - self.start_position[0,0] < 0:
+            speed_x = -speed_x
+
+        if self.goal[1, 0] - self.start_position[1,0] < 0:
+            speed_y = -speed_y
+
+        if self.goal[2, 0] - self.start_position[2,0] < 0:
+            speed_z = -speed_z
+
         speed = array([[speed_x, speed_y, speed_z]]).reshape(3, 1)
         speed_position = vstack((speed, np.zeros((3, 1))))
 
@@ -207,7 +230,7 @@ class Agent(object):
                     if dist < self.collision_check_radius:
                         self.close_agents[j] = dist
 
-                    if dist < R_MIN:
+                    if dist < R_MIN and not collision_detected:
                         self.collision_step = each_step
                         collision_detected = True
 
@@ -228,7 +251,9 @@ class TrajectorySolver(object):
         self.k_t = 0                    # int: Current time step
         self.k_max = int(self.time/self.step_interval) # float: Maximum time
         self.at_goal = False
-        self.in_collision = False   # bool: Collision detected between two agents, trajectory invalid
+        
+        # bool: Collision detected between two agents, trajectory invalid
+        self.in_collision = False  
 
         #: float: Number of time steps in horizon (k)
         self.steps_in_horizon = int(self.horizon_time/self.step_interval)
@@ -239,7 +264,6 @@ class TrajectorySolver(object):
         # Set idx of all agents
         for i in range(self.n_agents):
             self.agents[i].agent_idx = i
-
 
         # Error weights
         self.kapa = 1
@@ -254,15 +278,17 @@ class TrajectorySolver(object):
 
         #: 3k x n_agents array: Latest predicted position of each agent over horizon
         self.all_agents_positions = np.zeros((3*self.steps_in_horizon, self.n_agents))
-        self.all_agents_positions = hstack((self.all_agents_positions, OBSTACLE_POSITIONS))
+
+        if ADD_WALL:
+            self.all_agents_positions = hstack((self.all_agents_positions, OBSTACLE_POSITIONS))
 
         # Constraints
         self.r_min = 0.35                #: m
         self.a_max = 1.0                 #: m/s**2
         self.a_min = -1.0                #: m/s**2
 
-        p_min = 0.0
-        p_max = 10.0
+        p_min = -1.0
+        p_max = 7.0
         self.p_min = [p_min, p_min, p_min]
         self.p_max = [p_max, p_max, p_max]
 
@@ -292,9 +318,9 @@ class TrajectorySolver(object):
         self.lb_constraint = self.a_min_mat
         self.ub_constraint = self.a_max_mat
 
-        self.initialize_matrix()
+        self.initialize_matrices()
 
-    def initialize_matrix(self):
+    def initialize_matrices(self):
         """Compute matrix used to determine new states
 
         Notes:
@@ -312,15 +338,15 @@ class TrajectorySolver(object):
             A0 = | A.T  A**2.T  ... (A**k).T |.T
         """
         # Build prediction matrix
-        self.build_prediction_matrix()
+        self.build_prediction_matrices()
 
         # Objective functions
-        self.build_objective_fct_matrix()
+        self.build_objective_fct_matrices()
 
         # Build constraints matrix
-        self.build_constraint_matrix()
+        self.build_constraint_matrices()
 
-    def build_prediction_matrix(self):
+    def build_prediction_matrices(self):
         """Build all matrix used to predict trajectories
         """
         # A, 6x6
@@ -373,7 +399,7 @@ class TrajectorySolver(object):
 
         self.a0_accel = self.a0_accel.T
 
-    def build_objective_fct_matrix(self):
+    def build_objective_fct_matrices(self):
         """Build all matrix used in objective functions
         """
         # 1 - Trajectory error penalty
@@ -411,7 +437,7 @@ class TrajectorySolver(object):
             rsl = slice(i*3, (i+1)*3)
             self.s_tilde[rsl, rsl] = s_mat
 
-    def build_constraint_matrix(self):
+    def build_constraint_matrices(self):
         """Build all matrix used in constraints
         """
         for _ in range(1, self.steps_in_horizon):
@@ -444,6 +470,18 @@ class TrajectorySolver(object):
         """
         for each_agent in self.agents:
             each_agent.initialize_position(self.steps_in_horizon)
+
+            # Set initial trajectory
+            slc = slice(0, 3)
+            traj = each_agent.states[:, -1]
+
+            p_traj = traj[slc].reshape(3, 1)
+            for i in range(1, self. steps_in_horizon):
+                slc = slice(i*6, i*6+3)
+                p_k = traj[slc].reshape(3, 1)
+                p_traj = vstack((p_traj, p_k))
+
+            self.all_agents_positions[:, each_agent.agent_idx] = p_traj[:, 0]
 
     def solve_trajectories(self):
         """Compute trajectories and acceleration of each agent for the current time step
@@ -503,29 +541,34 @@ class TrajectorySolver(object):
         prev_input = agent.prev_input
 
         avoid_collision = agent.check_collisions(self.all_agents_positions)
+        if AVOID_COLLISIONS:
+            if not avoid_collision:
+                p, q, g, h = self.solve_accel_no_coll(initial_state, agent_goal, prev_input)
+            
+            else:
+                p, q, g, h = self.solve_accel_coll(agent, initial_state)
 
-        if not avoid_collision:
-            p, q, g, h = self.solve_accel_no_coll(initial_state, agent_goal, prev_input)
-        
+            if self.in_collision:
+                print "IN COLLISION, ABORTING"
+                return None
+
         else:
-            p, q, g, h = self.solve_accel_coll(agent, initial_state)
-
-        if self.in_collision:
-            print "IN COLLISION, ABORTING"
-            return None
+            p, q, g, h = self.solve_accel_no_coll(initial_state, agent_goal, prev_input)
 
         try:
             # accel_input = solve_qp(p_tot, q_tot, solver='quadprog')
             accel_input = solve_qp(p, q, G=g, h=h[:, 0], solver='quadprog')
-        except:
+        except Exception as e:
             self.in_collision = True
-            print "NO SOL"
+            print e
+            print "NO SOLUTION"
             return None
 
-        if avoid_collision:
-            print "Relaxation:"
-            print accel_input[3*self.steps_in_horizon:]
-            accel_input = accel_input[0:3*self.steps_in_horizon]
+        # if avoid_collision:
+        #     print "Relaxation:"
+        #     print accel_input[3*self.steps_in_horizon:]
+        
+        accel_input = accel_input[0:3*self.steps_in_horizon]
 
         accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
 
@@ -742,10 +785,16 @@ if __name__ == '__main__':
     A4 = Agent([4.0, 4.0, 0.0])
     A4.set_goal([0.0, 4.0, 0.0])
 
+    A5 = Agent([0.0, 0.0, 0.0])
+    A5.set_goal([4.0, 4.0, 0.0])
+
+    A6 = Agent([4.0, 4.0, 0.0])
+    A6.set_goal([0.0, 0.0, 0.0])
 
     SOLVER = TrajectorySolver([A1])
     # SOLVER = TrajectorySolver([A1, A2])
     # SOLVER = TrajectorySolver([A1, A2, A3, A4])
+    # SOLVER = TrajectorySolver([A5, A6])
 
     SOLVER.solve_trajectories()
     print "Compute time:", (time.time() - START_TIME)*1000, "ms"

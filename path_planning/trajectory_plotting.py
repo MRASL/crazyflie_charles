@@ -11,8 +11,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
-wall_start = (2, 1.8)
-wall_end = (2, 1.9)
+wait_for_input = True
 
 class TrajPlot(object):
     """To plot trajectories of agents
@@ -29,7 +28,7 @@ class TrajPlot(object):
         self.time_step = time_step # Time step
 
         #: int: Number of frame, corresponds to number of column
-        self.n_frame = self.agents[0].states.shape[1]
+        self.n_frame = self.agents[-1].states.shape[1]
 
         self.fig = plt.figure()
         self.fig.set_dpi(100)
@@ -62,8 +61,8 @@ class TrajPlot(object):
 
         """
         for each_agent, color in zip(self.agents, self.color_list):
-            circle = Circle((0, 0), 0.35, alpha=0.8, fc=color)
-            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)
+            circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
+            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color, marker='o')
 
             self.axe.add_patch(circle)
 
@@ -125,6 +124,9 @@ class TrajPlot(object):
         time = frame*self.time_step
         self.time_text.set_text("Time (sec): %.1f" % time)
 
+        if wait_for_input:
+            raw_input("")
+
         return self.animated_objects
 
     def run(self):
@@ -136,16 +138,19 @@ class TrajPlot(object):
         plt.show()
 
     def plot_obstacle(self, coords):
-        x = []
-        y = []
+        "Plot obstacle"
+        x_data = []
+        y_data = []
         for coord in coords:
-            x.append(coord[0])
-            y.append(coord[1])
+            x_data.append(coord[0])
+            y_data.append(coord[1])
 
-        self.axe.scatter(x, y, c='k', alpha=1)
-        # self.axe.s([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
+        # self.axe.plot(x_data, y_data, c='k', alpha=1, marker='o', s=0.35)
+        # self.axe.plot([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
+        c = Circle((coords[0][0], coords[0][1]), 0.35, alpha=0.8, fc='k')
+        self.axe.add_patch(c)
 
-def plot_traj(agent_list, time_step, obstacle_coords=[]):
+def plot_traj(agent_list, time_step, obstacle_coords=None):
     """Plot trajectrorie
 
     Args:
