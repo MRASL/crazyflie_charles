@@ -11,7 +11,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
-wait_for_input = True
+wait_for_input = False
 
 class TrajPlot(object):
     """To plot trajectories of agents

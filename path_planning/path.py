@@ -19,7 +19,7 @@ Etapes:
 import time
 import numpy as np
 from numpy import array, dot, hstack, vstack
-from numpy.linalg import norm, inv
+from numpy.linalg import norm, inv, matrix_power
 from qpsolvers import solve_qp
 from trajectory_plotting import plot_traj
 # from scipy.sparse import csc_matrix
@@ -31,10 +31,11 @@ STEP_INVERVAL = 0.1
 HORIZON_TIME = 1.0
 
 ERROR_WEIGHT = 1
-EFFORT_WEIGHT = 0.01
-INPUT_WEIGHT = 0.01
-RELAX_WEIGHT = 5
-RELAX_MIN = -1
+EFFORT_WEIGHT = 0.001
+INPUT_WEIGHT = 0.001
+RELAX_WEIGHT_SQ = 50
+RELAX_WEIGHT_LIN = -5*10e-4
+RELAX_MIN = -10
 
 AVOID_COLLISIONS = True
 
@@ -49,8 +50,8 @@ ADD_WALL = True
 # WALL_START = (2.0, 2.1)
 # WALL_END = (2.0, 2.5)
 
-WALL_START = (2.0, 1.9)
-WALL_END = (2.0, 1.9)
+WALL_START = (2.0, 1.99)
+WALL_END = (2.0, 1.99)
 
 WALL_COORDS = []
 WALL_Y = np.linspace(WALL_START[1], WALL_END[1], num=1)
@@ -273,8 +274,8 @@ class TrajectorySolver(object):
 
         self.relaxation_max_bound = 0
         self.relaxation_min_bound = RELAX_MIN
-        self.relaxation_weight_p = RELAX_WEIGHT
-        self.relaxation_weight_q = RELAX_WEIGHT
+        self.relaxation_weight_p = RELAX_WEIGHT_SQ
+        self.relaxation_weight_q = RELAX_WEIGHT_LIN
 
         #: 3k x n_agents array: Latest predicted position of each agent over horizon
         self.all_agents_positions = np.zeros((3*self.steps_in_horizon, self.n_agents))
@@ -558,15 +559,13 @@ class TrajectorySolver(object):
         try:
             # accel_input = solve_qp(p_tot, q_tot, solver='quadprog')
             accel_input = solve_qp(p, q, G=g, h=h[:, 0], solver='quadprog')
-        except Exception as e:
+        except ValueError as e:
             self.in_collision = True
-            print e
-            print "NO SOLUTION"
+            print "ERROR: No solution with constraints"
             return None
 
-        # if avoid_collision:
-        #     print "Relaxation:"
-        #     print accel_input[3*self.steps_in_horizon:]
+        if avoid_collision:
+            print "\t Relaxation: {}".format(accel_input[3*self.steps_in_horizon:] )
         
         accel_input = accel_input[0:3*self.steps_in_horizon]
 
@@ -666,28 +665,27 @@ class TrajectorySolver(object):
         q_aug = np.concatenate([q_no_coll, np.zeros((n_collisions))])
 
         # Agent position at collision time step
-        collision_rows = slice(agent.collision_step*6, (agent.collision_step*6)+3)
-        agent_position_coll = agent.states[collision_rows, -1]
+        collision_rows = slice(agent.collision_step*3, (agent.collision_step+1)*3)
+        agent_position_coll = self.all_agents_positions[collision_rows, agent.agent_idx]
 
         for agent_j_idx, dist  in agent.close_agents.items():
             collision_idx = collisions_list.index(agent_j_idx) 
 
             # Other agent position at collision time step
-            collision_rows = slice(agent.collision_step*3, (agent.collision_step+1)*3)
             other_position_coll = self.all_agents_positions[collision_rows, agent_j_idx] # Position of the other agent at collision step
 
             # Build matrices
             #: 3x1 array, v_ij = scaling_matrix**-2 @ (p_i - p_j)
-            v_matrix = dot(inv(dot(agent.scaling_matrix, agent.scaling_matrix)), 
-                        agent_position_coll - other_position_coll)
+            v_matrix = dot(matrix_power(agent.scaling_matrix, 2), 
+                           agent_position_coll - other_position_coll)
             
             #: 1x1 array, rho_ij = r_min*ksi_ik + ksi_ij**2 + v_ij' * p_i
             rho_constraint = R_MIN*dist + dist**2 + dot(v_matrix.T, agent_position_coll)
             
             #: 3k x 1 array
-            mu_matrix = np.zeros((3*(agent.collision_step - 1), 1))
+            mu_matrix = np.zeros((3*(agent.collision_step), 1))
             mu_matrix = vstack((mu_matrix, v_matrix.reshape(3, 1)))
-            mu_matrix = vstack((mu_matrix, np.zeros((3*(self.steps_in_horizon - agent.collision_step), 1))))
+            mu_matrix = vstack((mu_matrix, np.zeros((3*(self.steps_in_horizon - agent.collision_step - 1), 1))))
 
             # Contraintes
             accel_constraint = dot(mu_matrix.T, self.lambda_accel)[0]
@@ -776,8 +774,8 @@ if __name__ == '__main__':
     A1 = Agent([0.0, 2.0, 0.0])
     A1.set_goal([4.0, 2.0, 0.0])
 
-    A2 = Agent([4.0, 1.5, 0.0])
-    A2.set_goal([0.0, 2.0, 0.0])
+    A2 = Agent([4.0, 1.85, 0.0])
+    A2.set_goal([0.0, 1.85, 0.0])
 
     A3 = Agent([3.0, 0.5, 0.0])
     A3.set_goal([2.0, 2.0, 0.0])
