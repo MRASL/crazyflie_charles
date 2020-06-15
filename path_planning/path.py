@@ -12,13 +12,22 @@ Exemple:
     A1 = Agent([0.0, 2.0, 0.0])
     A1.set_goal([4.0, 2.0, 0.0])
 
-    A2 = Agent([4.0, 1.9999, 0.0])
-    A2.set_goal([0.0, 1.9999, 0.0])
+    A2 = Agent([4.0, 1.9999, 0.0], goal=[0.0, 1.9999, 0.0])
 
     solver = TrajectorySolver([A1, A2])
-    solver.solve_trajectories()
-    solver.plot_trajectories()
+    solver.set_obstacle(obstacles)
 
+    solver.set_wait_for_input(False)
+    solver.set_slow_rate(1.0)
+
+    solver.solve_trajectories()
+
+
+TODO:
+    * Fix lignes droites
+    * Test avec plusieurs agents
+    * Augmenter eps_max quand sol est pas trouvee
+    * Test en z
 """
 
 import numpy as np
@@ -36,7 +45,7 @@ R_MIN = 0.35
 STEP_INVERVAL = 0.1
 HORIZON_TIME = 1.0
 
-ERROR_WEIGHT = 5
+ERROR_WEIGHT = 10
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 50
@@ -83,7 +92,7 @@ class Agent(object):
 
         self.all_agents_traj = None
 
-        self.collision_check_radius = 3
+        self.collision_check_radius = 5
 
     def set_starting_position(self, position):
         """Set starting position
@@ -127,26 +136,26 @@ class Agent(object):
 
         # Compute speeds
         dist = norm(self.goal - self.start_position)
-        dist_z = norm(self.goal[2, 0] - self.start_position[2,0])
+        dist_z = norm(self.goal[2, 0] - self.start_position[2, 0])
 
         speed_z = dist_z * speed / dist
         # dist_xy = np.sqrt(dist**2 - dist_z**2)
         speed_xy = np.sqrt(speed**2 - speed_z**2)
 
-        dist_x = norm(self.goal[0, 0] - self.start_position[0,0])
-        dist_y = norm(self.goal[1, 0] - self.start_position[1,0])
+        dist_x = norm(self.goal[0, 0] - self.start_position[0, 0])
+        dist_y = norm(self.goal[1, 0] - self.start_position[1, 0])
 
         speed_x = speed_xy*dist_x/dist
         speed_y = speed_xy*dist_y/dist
 
         # Check signs
-        if self.goal[0, 0] - self.start_position[0,0] < 0:
+        if self.goal[0, 0] - self.start_position[0, 0] < 0:
             speed_x = -speed_x
 
-        if self.goal[1, 0] - self.start_position[1,0] < 0:
+        if self.goal[1, 0] - self.start_position[1, 0] < 0:
             speed_y = -speed_y
 
-        if self.goal[2, 0] - self.start_position[2,0] < 0:
+        if self.goal[2, 0] - self.start_position[2, 0] < 0:
             speed_z = -speed_z
 
         speed = array([[speed_x, speed_y, speed_z]]).reshape(3, 1)
@@ -162,6 +171,11 @@ class Agent(object):
             last_pos = new_pos
 
     def set_all_traj(self, all_trajectories):
+        """Set last predicted trajectories of all agents
+
+        Args:
+            all_trajectories (6*k x n_agents array)
+        """
         self.all_agents_traj = all_trajectories
 
     def new_state(self, new_state):
@@ -227,7 +241,7 @@ class Agent(object):
 
                     self.close_agents[j] = dist  # Set agent distance at collision
 
-                if collision_detected: 
+                if collision_detected:
                     break
 
         return collision_detected
@@ -459,7 +473,7 @@ class TrajectorySolver(object):
 
         # 3 - Input Variaton penalty
         self.delta = np.zeros((3*self.steps_in_horizon, 3*self.steps_in_horizon))
-        
+
         slc = slice(3)
         self.delta[slc, slc] = np.eye(3)
         for i in range(self.steps_in_horizon - 1):  # For all rows
@@ -489,7 +503,7 @@ class TrajectorySolver(object):
         for _ in range(1, self.steps_in_horizon):
             acc_min_mat = vstack((acc_min_mat, self.a_min_mat))
             acc_max_mat = vstack((acc_max_mat, self.a_max_mat))
-        
+
         # Add lower bound
         self.g_constraint = -np.eye(self.steps_in_horizon*3)
         self.h_constraint = -1*acc_min_mat
@@ -734,7 +748,7 @@ class TrajectorySolver(object):
 
         Returns:
             array, 3k x 1: Acceleration vector
-        """   
+        """
         # Check number of close agents
         collisions_list = agent.close_agents.keys() # list of int: Idx of all other agents colliding
         n_collisions = len(collisions_list)
@@ -748,8 +762,30 @@ class TrajectorySolver(object):
             self.in_collision = True
             return 0, 0, 0, 0
 
+        # Agent start_position at collision time step
+        agent_goal = np.copy(agent.goal)
+        start_rows = slice(0, 3)
+        agent_start_pos = self.all_agents_traj[start_rows, agent.agent_idx]
+        agent_dy = agent_goal[1, 0] - agent_start_pos[1]
+        agent_dx = agent_goal[0, 0] - agent_start_pos[0]
+        goal_line = agent_dy/agent_dx
+
+        # Check if an agent is on a direct line to goal
+        for agent_idx in agent.close_agents:
+            # Other agent position
+            other_start_pos = self.all_agents_traj[start_rows, agent_idx]
+
+            other_dx = other_start_pos[0] - agent_start_pos[0]
+            other_dy = other_start_pos[1] - agent_start_pos[1]
+            other_line = other_dy/other_dx if other_dx != 0 else 0
+
+            if goal_line - other_line < 0.01:
+                agent_goal[1, 0] += 0.5 if agent_dx > 0 else -0.5
+
         # Get no collision problem
-        p_no_coll, q_no_coll, g_no_coll, h_no_coll = self.solve_accel_no_coll(initial_state, agent.goal, agent.prev_input)
+        p_no_coll, q_no_coll, g_no_coll, h_no_coll = self.solve_accel_no_coll(initial_state,
+                                                                              agent_goal,
+                                                                              agent.prev_input)
 
         # Augment matrices
         g_coll = np.c_[g_no_coll, np.zeros((g_no_coll.shape[0], n_collisions))]
@@ -763,27 +799,30 @@ class TrajectorySolver(object):
         agent_position_coll = self.all_agents_traj[collision_rows, agent.agent_idx]
 
         for agent_j_idx, dist in agent.close_agents.items():
-            collision_idx = collisions_list.index(agent_j_idx) 
+            collision_idx = collisions_list.index(agent_j_idx)
 
             # Other agent position at collision time step
-            other_position_coll = self.all_agents_traj[collision_rows, agent_j_idx] # Position of the other agent at collision step
+            other_position_coll = self.all_agents_traj[collision_rows, agent_j_idx]
 
             # Build matrices
             #: 3x1 array, v_ij = scaling_matrix**-2 @ (p_i - p_j)
-            v_matrix = dot(matrix_power(agent.scaling_matrix, 2), 
+            v_matrix = dot(matrix_power(agent.scaling_matrix, 2),
                            agent_position_coll - other_position_coll)
-            
+
             #: 1x1 array, rho_ij = r_min*ksi_ik + ksi_ij**2 + v_ij' * p_i
             rho_constraint = R_MIN*dist + dist**2 + dot(v_matrix.T, agent_position_coll)
-            
+
             #: 3k x 1 array
             mu_matrix = np.zeros((3*(agent.collision_step), 1))
             mu_matrix = vstack((mu_matrix, v_matrix.reshape(3, 1)))
-            mu_matrix = vstack((mu_matrix, np.zeros((3*(self.steps_in_horizon - agent.collision_step - 1), 1))))
+            mu_matrix = vstack((mu_matrix,
+                                np.zeros((3*(self.steps_in_horizon - agent.collision_step - 1),
+                                          1))))
 
             # Contraintes
             accel_constraint = dot(mu_matrix.T, self.lambda_accel)[0]
-            h_relaxation_const = rho_constraint - dot(mu_matrix.T, dot(self.a0_accel, initial_state))[0, 0]
+            h_relaxation_const = rho_constraint - dot(mu_matrix.T,
+                                                      dot(self.a0_accel, initial_state))[0, 0]
 
             other_agents_mat = np.zeros((n_collisions))
             other_agents_mat[collision_idx] = 1*dist
@@ -791,7 +830,6 @@ class TrajectorySolver(object):
             g_relaxation_const = hstack((-1*accel_constraint, other_agents_mat))
 
             # Add constraints
-
             g_coll = vstack((g_coll, g_relaxation_const))
             h_coll = vstack((h_coll, -h_relaxation_const))
 
@@ -805,7 +843,6 @@ class TrajectorySolver(object):
             h_coll = np.r_[h_coll, array([[self.relaxation_max_bound]])]
             h_coll = np.r_[h_coll, array([[-self.relaxation_min_bound]])]
 
-        
         # Add relaxation penalty
         total_size = 3*self.steps_in_horizon + n_collisions
         p_relaxation = np.zeros((total_size, total_size))
@@ -846,6 +883,32 @@ class TrajectorySolver(object):
 
         self.at_goal = all_goal_reached
 
+    def compute_agents_dist(self):
+        """Print distance of each agent at new position
+        """
+
+        scaling_matrix = np.diag([1, 1, 2])
+        scaling_matrix_inv = inv(scaling_matrix)
+
+        if IN_DEBUG:
+            print "\n\t Distances between agents"
+
+        for i in range(self.all_agents_traj.shape[1]):
+            if IN_DEBUG:
+                print "\t Agent %i" % i
+
+            pos_agent = self.all_agents_traj[0:3, i]
+
+            for j in range(self.n_agents):
+                if j != i:
+                    pos_col = self.all_agents_traj[0:3, j]
+
+                    dist = norm(dot(scaling_matrix_inv, pos_agent - pos_col))
+                    self.agents_distances.append(dist)
+
+                    if IN_DEBUG:
+                        print "\t\t From agent %i: %.2f" % (j, dist)
+
     # UI and printing methods
     def print_final_positions(self):
         """Print final position of all agents
@@ -872,29 +935,3 @@ class TrajectorySolver(object):
             self.trajectory_plotter.plot_obstacle(self.obstacle_positions)
 
         self.trajectory_plotter.run()
-
-    def compute_agents_dist(self):
-        """Print distance of each agent at new position
-        """
-
-        scaling_matrix = np.diag([1, 1, 2])
-        scaling_matrix_inv = inv(scaling_matrix)
-
-        if IN_DEBUG:
-            print "\n\t Distances between agents"
-
-        for i in range(self.all_agents_traj.shape[1]):
-            if IN_DEBUG:
-                print "\t Agent %i" % i
-
-            pos_agent = self.all_agents_traj[0:3, i]
-
-            for j in range(self.n_agents):
-                if j != i:
-                    pos_col = self.all_agents_traj[0:3, j]
-
-                    dist = norm(dot(scaling_matrix_inv, pos_agent - pos_col))
-                    self.agents_distances.append(dist)
-
-                    if IN_DEBUG:
-                        print "\t\t From agent %i: %.2f" % (j, dist)

@@ -51,6 +51,13 @@ class TrajPlot(object):
         self.wait_for_input = to_wait
 
     def set_slow_rate(self, slow_rate):
+        """Set slow rate of animation.
+
+        Rate of 1 is real time. Rate of 2 is twice slower
+
+        Args:
+            slow_rate (float): Rate of slow
+        """
         self.slow_rate = slow_rate
 
     def init_animated_objects(self):
@@ -146,7 +153,8 @@ class TrajPlot(object):
         self.n_frame = self.agents[-1].states.shape[1]
 
         _ = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
-                          frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate), blit=True)
+                          frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),
+                          blit=True)
 
         plt.show()
 
@@ -158,4 +166,4 @@ class TrajPlot(object):
             x_data.append(coord[0])
             y_data.append(coord[1])
 
-        self.axe.plot(x_data, y_data, c='k', alpha=1, lw=5)#,marker='o')
+        self.axe.plot(x_data, y_data, c='k', alpha=1, lw=5, marker='o')
