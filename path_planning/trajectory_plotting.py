@@ -11,6 +11,8 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
+SAVE_ANIMATION = False
+
 class TrajPlot(object):
     """To plot trajectories of agents
     """
@@ -80,7 +82,7 @@ class TrajPlot(object):
         """
         for each_agent, color in zip(self.agents, self.color_list):
             circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
-            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color, marker='o')
+            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color) #, marker='o')
 
             self.axe.add_patch(circle)
 
@@ -152,9 +154,13 @@ class TrajPlot(object):
         """
         self.n_frame = self.agents[-1].states.shape[1]
 
-        _ = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
-                          frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),
-                          blit=True)
+        anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
+                             frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),
+                             blit=True)
+
+        if SAVE_ANIMATION:
+            anim.save('path_planning_demo.mp4', fps=int(1/self.time_step),
+                      extra_args=['-vcodec', 'libx264'])
 
         plt.show()
 

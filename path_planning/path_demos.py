@@ -16,13 +16,14 @@ def demo():
     # agents, obstacles = demo_two_agents()
     # agents, obstacles = demo_wall()
     # agents, obstacles = corners_2()
-    agents, obstacles = corners_4()
+    # agents, obstacles = corners_4()
+    agents, obstacles = six_agent()
 
     solver = TrajectorySolver(agents)
     solver.set_obstacle(obstacles)
 
     solver.set_wait_for_input(False)
-    solver.set_slow_rate(1.0)
+    solver.set_slow_rate(3.0)
 
     solver.solve_trajectories()
 
@@ -59,7 +60,7 @@ def corners_2():
     return [a_1, a_2], []
 
 def corners_4():
-    """Two agents trading spots, starting from opposite corners
+    """Four agents, starting from opposite corners
     """
     a_1 = Agent(start_pos=[0.0, 4.0, 0.0], goal=[4.0, 0.0, 0.0])
     a_2 = Agent(start_pos=[4.0, 0.0, 0.0], goal=[0.0, 4.0, 0.0])
@@ -67,6 +68,19 @@ def corners_4():
     a_4 = Agent(start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
 
     return [a_1, a_2, a_3, a_4], []
+
+def six_agent():
+    """Six agents
+    """
+    a_1 = Agent(start_pos=[0.0, 0.0, 0.0], goal=[1.5, 3.0, 0.0])
+    a_2 = Agent(start_pos=[2.0, 0.0, 0.0], goal=[0.0, 4.0, 0.0])
+    a_3 = Agent(start_pos=[1.0, 2.5, 0.0], goal=[4.0, 0.0, 0.0])
+    a_4 = Agent(start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
+    # a_5 = Agent(start_pos=[2.5, 2.5, 0.0], goal=[4.0, 2.5, 0.0])
+    # a_6 = Agent(start_pos=[3.0, 3.0, 0.0], goal=[0.5, 0.0, 0.0])
+
+    return [a_1, a_2, a_3, a_4], []
+    # return [a_1, a_2, a_3, a_4, a_5, a_6], []
 
 def compute_obstacle(position, n_pts):
     """Compute coordinates of a wall

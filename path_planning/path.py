@@ -92,7 +92,7 @@ class Agent(object):
 
         self.all_agents_traj = None
 
-        self.collision_check_radius = 5
+        self.collision_check_radius = 3
 
     def set_starting_position(self, position):
         """Set starting position
