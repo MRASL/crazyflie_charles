@@ -158,5 +158,5 @@ def plot_traj(agent_list, time_step, obstacle_coords=None):
         time_step ([type]): Time step (sec)
     """
     traj_plot = TrajPlot(agent_list, time_step)
-    traj_plot.plot_obstacle(obstacle_coords)
+    # traj_plot.plot_obstacle(obstacle_coords)
     traj_plot.run()
