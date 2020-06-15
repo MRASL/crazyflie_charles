@@ -11,12 +11,10 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
-wait_for_input = False
-
 class TrajPlot(object):
     """To plot trajectories of agents
     """
-    def __init__(self, agent_list, time_step):
+    def __init__(self, agent_list, time_step, wait_for_input=False):
         """Init
 
         Args:
@@ -26,9 +24,11 @@ class TrajPlot(object):
         self.agents = agent_list # Position and acceleration at each time step
         self.n_agents = len(self.agents)
         self.time_step = time_step # Time step
+        self.wait_for_input = wait_for_input
 
         #: int: Number of frame, corresponds to number of column
         self.n_frame = self.agents[-1].states.shape[1]
+        self.slow_rate = 1  #: int: To slow animation
 
         self.fig = plt.figure()
         self.fig.set_dpi(100)
@@ -41,6 +41,17 @@ class TrajPlot(object):
         self.color_list = ['b', 'r', 'g', 'c', 'm', 'y']
         self.animated_objects = [] # List of all objects to animate
         self.init_animated_objects()
+
+    def set_wait_for_input(self, to_wait):
+        """To wait or not for input before switching frame
+
+        Args:
+            to_wait (bool): To wait
+        """
+        self.wait_for_input = to_wait
+
+    def set_slow_rate(self, slow_rate):
+        self.slow_rate = slow_rate
 
     def init_animated_objects(self):
         """Creates all objects to animate.
@@ -124,7 +135,7 @@ class TrajPlot(object):
         time = frame*self.time_step
         self.time_text.set_text("Time (sec): %.1f" % time)
 
-        if wait_for_input:
+        if self.wait_for_input:
             raw_input("")
 
         return self.animated_objects
@@ -132,8 +143,10 @@ class TrajPlot(object):
     def run(self):
         """Start animation
         """
+        self.n_frame = self.agents[-1].states.shape[1]
+
         _ = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
-                          frames=self.n_frame, interval=(self.time_step*1000), blit=True)
+                          frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate), blit=True)
 
         plt.show()
 
@@ -145,18 +158,4 @@ class TrajPlot(object):
             x_data.append(coord[0])
             y_data.append(coord[1])
 
-        # self.axe.plot(x_data, y_data, c='k', alpha=1, marker='o', s=0.35)
-        # self.axe.plot([wall_start[0], wall_end[0]], [wall_start[1], wall_end[1]], lw=5, color='k')
-        c = Circle((coords[0][0], coords[0][1]), 0.35, alpha=0.8, fc='k')
-        self.axe.add_patch(c)
-
-def plot_traj(agent_list, time_step, obstacle_coords=None):
-    """Plot trajectrorie
-
-    Args:
-        agent_list ([type]): List of agents
-        time_step ([type]): Time step (sec)
-    """
-    traj_plot = TrajPlot(agent_list, time_step)
-    # traj_plot.plot_obstacle(obstacle_coords)
-    traj_plot.run()
+        self.axe.plot(x_data, y_data, c='k', alpha=1, lw=5)#,marker='o')
