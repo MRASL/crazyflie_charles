@@ -318,8 +318,8 @@ class TrajectorySolver(object):
         self.a_max = 1.0                 #: m/s**2
         self.a_min = -1.0                #: m/s**2
 
-        p_min = -5.0
-        p_max = 10.0
+        p_min = -1.0
+        p_max = 100.0
         self.p_min = [p_min, p_min, p_min]
         self.p_max = [p_max, p_max, p_max]
 
@@ -375,6 +375,14 @@ class TrajectorySolver(object):
             slow_rate (float): Change rate of animation
         """
         self.trajectory_plotter.set_slow_rate(slow_rate)
+
+    def set_arena_max(self, max_val):
+        """Set x and y axes limits
+
+        Args:
+            max_val(int): Maximum value, same for x and y
+        """
+        self.trajectory_plotter.set_axes_limits((-1, max_val), (-1, max_val))
 
     # Setup methods
     def initialize(self):
