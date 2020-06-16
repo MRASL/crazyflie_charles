@@ -11,10 +11,12 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 plt.style.use('seaborn-pastel')
 
+SAVE_ANIMATION = False
+
 class TrajPlot(object):
     """To plot trajectories of agents
     """
-    def __init__(self, agent_list, time_step):
+    def __init__(self, agent_list, time_step, wait_for_input=False):
         """Init
 
         Args:
@@ -24,26 +26,49 @@ class TrajPlot(object):
         self.agents = agent_list # Position and acceleration at each time step
         self.n_agents = len(self.agents)
         self.time_step = time_step # Time step
+        self.wait_for_input = wait_for_input
 
         #: int: Number of frame, corresponds to number of column
-        self.n_frame = self.agents[0].positions_data.shape[1]
+        self.n_frame = self.agents[-1].states.shape[1]
+        self.slow_rate = 1  #: int: To slow animation
 
         self.fig = plt.figure()
         self.fig.set_dpi(100)
         self.fig.set_size_inches(7, 7)
-        self.axe = plt.axes(xlim=(-0.5, 5), ylim=(-0.5, 5))
+        self.axe = plt.axes(xlim=(-1, 5), ylim=(-1, 5))
         self.axe.set_title('Trajectories')
         self.axe.set_xlabel('x (m)')
         self.axe.set_ylabel('y (m)')
 
-        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k']
+        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k', 'b', 'r', 'g', 'c', 'm', 'y', 'k']
         self.animated_objects = [] # List of all objects to animate
         self.init_animated_objects()
+
+    def set_wait_for_input(self, to_wait):
+        """To wait or not for input before switching frame
+
+        Args:
+            to_wait (bool): To wait
+        """
+        self.wait_for_input = to_wait
+
+    def set_slow_rate(self, slow_rate):
+        """Set slow rate of animation.
+
+        Rate of 1 is real time. Rate of 2 is twice slower
+
+        Args:
+            slow_rate (float): Rate of slow
+        """
+        self.slow_rate = slow_rate
 
     def init_animated_objects(self):
         """Creates all objects to animate.
 
-        Each agent has a circle (current position) and dashed line (predicted trajectory)
+        Each agent has:
+            - A circle (current position)
+            - A dashed line (predicted trajectory)
+            - An X (goal)
 
         Notes:
             Structure of animated object. Idx:
@@ -55,15 +80,19 @@ class TrajPlot(object):
                 -1: time text
 
         """
-        for _, color in zip(self.agents, self.color_list):
+        for each_agent, color in zip(self.agents, self.color_list):
             circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
-            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)
+            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
 
             self.axe.add_patch(circle)
 
             self.animated_objects.append(circle)
             self.animated_objects.append(line)
 
+            # Draw goal
+            x_goal = each_agent.goal[0]
+            y_goal = each_agent.goal[1]
+            self.axe.scatter(x_goal, y_goal, s=250, c=color, marker='X')
 
         # Add time_text
         self.time_text = self.axe.text(0.02, 0.95, '', transform=self.axe.transAxes)
@@ -76,8 +105,8 @@ class TrajPlot(object):
             agent = self.agents[i]
 
             # Circle
-            self.animated_objects[2*i].center = (agent.positions_data[0, 0],
-                                                 agent.positions_data[1, 0])
+            self.animated_objects[2*i].center = (agent.states[0, 0],
+                                                 agent.states[1, 0])
 
             # Line
             self.animated_objects[2*i+1].set_data([], [])
@@ -96,7 +125,7 @@ class TrajPlot(object):
 
         for i in range(self.n_agents):
             agent = self.agents[i]
-            data = agent.positions_data[:, frame]
+            data = agent.states[:, frame]
 
             # Circle
             self.animated_objects[2*i].center = (data[0], data[1])
@@ -115,23 +144,32 @@ class TrajPlot(object):
         time = frame*self.time_step
         self.time_text.set_text("Time (sec): %.1f" % time)
 
+        if self.wait_for_input:
+            raw_input("")
+
         return self.animated_objects
 
     def run(self):
         """Start animation
         """
-        _ = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
-                          frames=self.n_frame, interval=(self.time_step*1000), blit=True)
+        self.n_frame = self.agents[-1].states.shape[1]
+
+        anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
+                             frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),
+                             blit=True)
+
+        if SAVE_ANIMATION:
+            anim.save('path_planning_demo.mp4', fps=int(1/self.time_step),
+                      extra_args=['-vcodec', 'libx264'])
 
         plt.show()
 
+    def plot_obstacle(self, coords):
+        "Plot obstacle"
+        x_data = []
+        y_data = []
+        for coord in coords:
+            x_data.append(coord[0])
+            y_data.append(coord[1])
 
-def plot_traj(agent_list, time_step):
-    """Plot trajectrorie
-
-    Args:
-        agent_list ([type]): List of agents
-        time_step ([type]): Time step (sec)
-    """
-    traj_plot = TrajPlot(agent_list, time_step)
-    traj_plot.run()
+        self.axe.plot(x_data, y_data, c='k', alpha=1, lw=5, marker='o')
