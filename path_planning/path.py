@@ -40,17 +40,34 @@ from trajectory_plotting import TrajPlot
 IN_DEBUG = False
 
 # Global attributes
+# # pour 7
+# GOAL_THRES = 0.01 # 5 cm
+# R_MIN = 0.35
+# STEP_INVERVAL = 0.1
+# HORIZON_TIME = 2.0
+# COLL_RADIUS = 2
+
+# ERROR_WEIGHT = 10
+# EFFORT_WEIGHT = 0.001
+# INPUT_WEIGHT = 0.001
+# RELAX_WEIGHT_SQ = 50
+# RELAX_WEIGHT_LIN = -5*10e-4
+# RELAX_MIN = -0.5
+# RELAX_INC = 0.1
+
+# pour 4
 GOAL_THRES = 0.01 # 5 cm
 R_MIN = 0.35
 STEP_INVERVAL = 0.1
-HORIZON_TIME = 2.0
+HORIZON_TIME = 1.0
+COLL_RADIUS = 3
 
 ERROR_WEIGHT = 10
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 50
 RELAX_WEIGHT_LIN = -5*10e-4
-RELAX_MIN = -0.5
+RELAX_MIN = -5
 RELAX_INC = 0.1
 
 AVOID_COLLISIONS = True
@@ -71,7 +88,7 @@ class Agent(object):
         self.set_starting_position(start_pos) #: 3x1 np.array: Starting position
         self.set_goal(goal) #: 3x1 np.array: Goal
 
-        self.collision_check_radius = 2
+        self.collision_check_radius = COLL_RADIUS
         self.at_goal = False
         self.agent_idx = 0 #: Index of agent in positions
         self.n_steps = 0 #: int: Number of steps in horizon
