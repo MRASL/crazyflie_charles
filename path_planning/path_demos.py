@@ -4,10 +4,10 @@
 """
 
 import time
-import numpy as np
-from numpy import array
-from numpy.linalg import norm
 import random as rand
+import numpy as np
+from numpy import array, mean
+from numpy.linalg import norm
 
 from path import Agent, TrajectorySolver
 
@@ -28,8 +28,7 @@ def demo():
     # agents = six_agents()
     # agents = seven_agents()
     # agents = nine_agents()
-
-    agents, arena_max = random_pos(9, 0.5)
+    agents, arena_max = random_pos(4, 1)
 
     solver = TrajectorySolver(agents)
     solver.set_obstacle(obstacles)
@@ -204,6 +203,39 @@ def find_position_at_dist(max_coord, min_dist, other_positions):
 
     return position
 
+def algo_performance(n_agents, density, n_tests):
+    """Check algorithm performances"""
+
+    time_list = []
+    res_list = []
+
+    for i in range(1, n_tests + 1):
+        start_time = time.time()
+
+        agents = []
+
+        agents, arena_max = random_pos(n_agents, density)
+
+        solver = TrajectorySolver(agents, verbose=False)
+        solver.set_arena_max(arena_max)
+
+        res = solver.solve_trajectories()
+        compute_time = (time.time() - start_time)*1000
+
+        time_list.append(compute_time)
+        res_list.append(res)
+
+        print "Test %i:" % i
+        print "\tResult: %s" % res
+        print "\tCompute time: %.2f ms" % compute_time
+
+    time_average = mean(time_list)
+    success_average = res_list.count(True)/float(len(res_list))*100
+
+    print '\n'
+    print 'Success rate: %.2f%%' % success_average
+    print 'Compute time average: %.2f ms' % time_average
+
 if __name__ == '__main__':
-    demo()
-    # random_pos(5, 1)
+    # demo()
+    algo_performance(4, 1, 5)  #: n_agents, density, n_tests

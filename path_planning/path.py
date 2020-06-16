@@ -40,35 +40,35 @@ from trajectory_plotting import TrajPlot
 IN_DEBUG = False
 
 # Global attributes
-# # pour 7
-# GOAL_THRES = 0.01 # 5 cm
-# R_MIN = 0.35
-# STEP_INVERVAL = 0.1
-# HORIZON_TIME = 2.0
-# COLL_RADIUS = 2
-
-# ERROR_WEIGHT = 10
-# EFFORT_WEIGHT = 0.001
-# INPUT_WEIGHT = 0.001
-# RELAX_WEIGHT_SQ = 50
-# RELAX_WEIGHT_LIN = -5*10e-4
-# RELAX_MIN = -0.5
-# RELAX_INC = 0.1
-
-# pour 4
+# pour 7
 GOAL_THRES = 0.01 # 5 cm
 R_MIN = 0.35
 STEP_INVERVAL = 0.1
-HORIZON_TIME = 1.0
-COLL_RADIUS = 3
+HORIZON_TIME = 2.0
+COLL_RADIUS = 2
 
 ERROR_WEIGHT = 10
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 50
 RELAX_WEIGHT_LIN = -5*10e-4
-RELAX_MIN = -5
+RELAX_MIN = -0.5
 RELAX_INC = 0.1
+
+# # pour 4
+# GOAL_THRES = 0.01 # 5 cm
+# R_MIN = 0.35
+# STEP_INVERVAL = 0.1
+# HORIZON_TIME = 1.0
+# COLL_RADIUS = 3
+
+# ERROR_WEIGHT = 10
+# EFFORT_WEIGHT = 0.001
+# INPUT_WEIGHT = 0.001
+# RELAX_WEIGHT_SQ = 50
+# RELAX_WEIGHT_LIN = -5*10e-4
+# RELAX_MIN = -5
+# RELAX_INC = 0.1
 
 AVOID_COLLISIONS = True
 
@@ -266,13 +266,16 @@ class Agent(object):
 class TrajectorySolver(object):
     """To solve trajectories of all agents
     """
-    def __init__(self, agent_list):
+    def __init__(self, agent_list, verbose=True):
         """Init solver
 
         Args:
             agent_list (list of Agnets): Compute trajectory of all agents in the list
         """
-        print "Initializing solver..."
+        self.verbose = verbose
+
+        if self.verbose:
+            print "Initializing solver..."
 
         self.time = 10                          # float: For testing, total time of trajectory
         self.step_interval = STEP_INVERVAL      # float: Time steps interval (h)
@@ -329,10 +332,10 @@ class TrajectorySolver(object):
         self.p_max_mat = array([self.p_max]).T
 
         # State matrix
-        self.A = array([[]])
-        self.B = array([[]])
-        self.A0 = array([[]])
-        self.Lambda = array([[]])
+        self.a_mat = array([[]])
+        self.b_mat = array([[]])
+        self.a0_mat = array([[]])
+        self.lambda_mat = array([[]])
         self.lambda_accel = array([[]])
         self.a0_accel = array([[]])
 
@@ -357,7 +360,8 @@ class TrajectorySolver(object):
         # Debug
         self.agents_distances = []
 
-        print "Solver ready"
+        if self.verbose:
+            print "Solver ready"
 
     # Options methods
     def set_wait_for_input(self, to_wait):
@@ -435,44 +439,44 @@ class TrajectorySolver(object):
         # A, 6x6
         matrix_a1 = hstack((np.eye(3), np.eye(3)*self.step_interval))
         matrix_a2 = hstack((np.zeros((3, 3)), np.eye(3)))
-        self.A = vstack((matrix_a1, matrix_a2)) # 6x6
+        self.a_mat = vstack((matrix_a1, matrix_a2)) # 6x6
 
         # B, 6x3
-        N = 6
-        M = 3
-        self.B = vstack(((self.step_interval**2/2)*np.eye(3),
-                         self.step_interval*np.eye(3))) # 6x3
+        n_dim = 6
+        m_dim = 3
+        self.b_mat = vstack(((self.step_interval**2/2)*np.eye(3),
+                             self.step_interval*np.eye(3))) # 6x3
 
         # Lambda, 6k x 3k
-        self.Lambda = np.zeros((N*self.steps_in_horizon, M*self.steps_in_horizon))
-        rsl = slice(0, N)
-        self.Lambda[rsl, :M] = self.B
+        self.lambda_mat = np.zeros((n_dim*self.steps_in_horizon, m_dim*self.steps_in_horizon))
+        rsl = slice(0, n_dim)
+        self.lambda_mat[rsl, :m_dim] = self.b_mat
         for i in range(1, self.steps_in_horizon):
-            rsl_p, rsl = rsl, slice(i * N, (i + 1) * N)
-            self.Lambda[rsl, :M] = dot(self.A, self.Lambda[rsl_p, :M])
-            self.Lambda[rsl, M : (i + 1) * M] = self.Lambda[rsl_p, : i * M]
+            rsl_p, rsl = rsl, slice(i * n_dim, (i + 1) * n_dim)
+            self.lambda_mat[rsl, :m_dim] = dot(self.a_mat, self.lambda_mat[rsl_p, :m_dim])
+            self.lambda_mat[rsl, m_dim : (i + 1) * m_dim] = self.lambda_mat[rsl_p, : i * m_dim]
 
         # A0, 6k x 6
-        N = M = 6
-        self.A0 = np.zeros((6, 6*self.steps_in_horizon))
-        rsl = slice(0, M)
-        self.A0[:, rsl] = self.A.T
+        n_dim = m_dim = 6
+        self.a0_mat = np.zeros((6, 6*self.steps_in_horizon))
+        rsl = slice(0, m_dim)
+        self.a0_mat[:, rsl] = self.a_mat.T
         for i in range(1, self.steps_in_horizon):
-            rsl_p, rsl = rsl, slice(i * M, (i + 1) * M)
-            self.A0[:, rsl] = dot(self.A, self.A0[:, rsl_p].T).T
-        self.A0 = self.A0.T
+            rsl_p, rsl = rsl, slice(i * m_dim, (i + 1) * m_dim)
+            self.a0_mat[:, rsl] = dot(self.a_mat, self.a0_mat[:, rsl_p].T).T
+        self.a0_mat = self.a0_mat.T
 
         # Lambda accel, 3k x 3k
         rsl = slice(3)
-        self.lambda_accel = self.Lambda[rsl]
+        self.lambda_accel = self.lambda_mat[rsl]
 
         for i in range(1, self.steps_in_horizon):
             rsl = slice(i * 6, 6*i + 3) # Select top three rows of block
-            rows = self.Lambda[rsl]
+            rows = self.lambda_mat[rsl]
             self.lambda_accel = vstack((self.lambda_accel, rows))
 
         # A0 accel, 3k x 6, select first three cols of each block (of the transpose)
-        a0_trans = self.A0.T
+        a0_trans = self.a0_mat.T
         rsl = slice(3)
         self.a0_accel = a0_trans[:, rsl]
         for i in range(1, self.steps_in_horizon):
@@ -584,8 +588,13 @@ class TrajectorySolver(object):
         """Compute trajectories and acceleration of each agent for the current time step
 
         Core of the algorithm
+
+        Returns:
+            bool: If the algorithm was succesfull
         """
-        print "Solving trajectories..."
+        if self.verbose:
+            print "Solving trajectories..."
+
         # For each time step
         while not self.at_goal and self.k_t < self.k_max and not self.in_collision:
             if IN_DEBUG:
@@ -613,8 +622,8 @@ class TrajectorySolver(object):
                 # Extract predicted positions
                 slc = slice(0, 3)
                 p_pred = x_pred[slc, 0].reshape(3, 1)
-                for n in range(1, self. steps_in_horizon):
-                    slc = slice(n*6, n*6+3)
+                for n_dim in range(1, self. steps_in_horizon):
+                    slc = slice(n_dim*6, n_dim*6+3)
                     x_k = x_pred[slc, 0].reshape(3, 1)
                     p_pred = vstack((p_pred, x_k))
 
@@ -634,6 +643,8 @@ class TrajectorySolver(object):
             self.k_t += 1
 
         self.print_final_positions()
+
+        return not self.in_collision
 
     def solve_accel(self, agent, initial_state):
         """Optimize acceleration input for the horizon
@@ -658,8 +669,9 @@ class TrajectorySolver(object):
                                                                           initial_state,
                                                                           avoid_collision)
         except TypeError:
-            print ''
-            print "ERROR: In collision"
+            if self.verbose:
+                print ''
+                print "ERROR: In collision"
             return None
 
         # Solve optimization problem, increase max relaxation if no solution is found
@@ -680,11 +692,12 @@ class TrajectorySolver(object):
                 else:
                     self.in_collision = True
                     find_solution = False
-                    print ''
-                    err_msg = ", Check max space"
-                    if relax_max < -10:
-                        err_msg = ", Max relaxation reached"
-                    print "ERROR: No solution in constraints %s" % err_msg
+                    if self.verbose:
+                        print ''
+                        err_msg = ", Check max space"
+                        if relax_max < -10:
+                            err_msg = ", Max relaxation reached"
+                        print "ERROR: No solution in constraints %s" % err_msg
                     return None
 
         if IN_DEBUG and avoid_collision:
@@ -804,7 +817,8 @@ class TrajectorySolver(object):
 
         # Collision at step 0 mean two agents collided
         if agent.collision_step == 0:
-            print "Agent %i in collision" % agent.agent_idx
+            if self.verbose:
+                print "Agent %i in collision" % agent.agent_idx
             self.in_collision = True
             return 0, 0, 0, 0
 
@@ -915,7 +929,7 @@ class TrajectorySolver(object):
             x_pred (np.array, k*6x1): Predicted states over the horizon
         """
         # Computing predicted trajectory
-        x_pred = dot(self.A0, current_state) + dot(self.Lambda, accel)
+        x_pred = dot(self.a0_mat, current_state) + dot(self.lambda_mat, accel)
 
         return x_pred
 
@@ -959,20 +973,20 @@ class TrajectorySolver(object):
     def print_final_positions(self):
         """Print final position of all agents
         """
+        if self.verbose:
+            if not self.in_collision:
+                print "\nTrajectory succesfull"
+                if self.agents_distances:
+                    print "Minimal distance between agents: %.2f" % min(self.agents_distances)
 
-        if not self.in_collision:
-            print "\nTrajectory succesfull"
-            if self.agents_distances:
-                print "Minimal distance between agents: %.2f" % min(self.agents_distances)
+                for each_agent in self.agents:
+                    print "Final pos, agent", self.agents.index(each_agent), ": {}".format(
+                        each_agent.states[0:2, -1])
 
-            for each_agent in self.agents:
-                print "Final pos, agent", self.agents.index(each_agent), ": {}".format(
-                    each_agent.states[0:2, -1])
+                print "Time to reach goal: %.2f" % (self.k_t*self.step_interval)
 
-            print "Time to reach goal: %.2f" % (self.k_t*self.step_interval)
-
-        else:
-            print "Trajectory failed"
+            else:
+                print "Trajectory failed"
 
     def plot_trajectories(self):
         """Plot all computed trajectories
