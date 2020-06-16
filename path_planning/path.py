@@ -37,23 +37,39 @@ from qpsolvers import solve_qp
 from trajectory_plotting import TrajPlot
 # from scipy.sparse import csc_matrix
 
-IN_DEBUG = False
+IN_DEBUG = True
 
 # Global attributes
-# pour 7
+MAX_TIME = 15
+
 GOAL_THRES = 0.01 # 5 cm
 R_MIN = 0.35
 STEP_INVERVAL = 0.1
 HORIZON_TIME = 2.0
-COLL_RADIUS = 2
+COLL_RADIUS = 2*R_MIN
 
 ERROR_WEIGHT = 10
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 50
 RELAX_WEIGHT_LIN = -5*10e-4
-RELAX_MIN = -0.5
+RELAX_MIN = -5
 RELAX_INC = 0.1
+
+# # pour 7
+# GOAL_THRES = 0.01 # 5 cm
+# R_MIN = 0.35
+# STEP_INVERVAL = 0.1
+# HORIZON_TIME = 2.0
+# COLL_RADIUS = 2
+
+# ERROR_WEIGHT = 10
+# EFFORT_WEIGHT = 0.001
+# INPUT_WEIGHT = 0.001
+# RELAX_WEIGHT_SQ = 50
+# RELAX_WEIGHT_LIN = -5*10e-4
+# RELAX_MIN = -0.5
+# RELAX_INC = 0.1
 
 # # pour 4
 # GOAL_THRES = 0.01 # 5 cm
@@ -221,33 +237,28 @@ class Agent(object):
     def check_collisions(self):
         """Check current predicted trajectory for collisions.
 
+        1 - For all predicted trajectory, check distance of all the other agents
+            2 - If distance < Rmin: In collision
+                3 - If collision: Find all close agents
+
         Returns:
             (int, int): Time step of the collision, -1 if no collision; Index of collision object
         """
         collision_detected = False
         n_agents = self.all_agents_traj.shape[1]
 
-        # Find all agents currrently within a small radius
         self.close_agents = {}
-        agent_position = self.all_agents_traj[0:3, self.agent_idx]
-        for j in range(n_agents): # Check all agents
-            if j != self.agent_idx:
-                other_agent_pos = self.all_agents_traj[0:3, j]
-                dist = norm(dot(self.scaling_matrix_inv, agent_position - other_agent_pos))
 
-                if dist < self.collision_check_radius:
-                    self.close_agents[j] = None
+        # Find time step of collision
+        for each_step in range(self.n_steps):
 
-        # Check if there is a collision
-        if self.close_agents:  # If there are nearby agents
-            for each_step in range(self.n_steps):
+            # Predicted position of agent at time_step
+            predicted_pos = self.all_agents_traj[each_step*3: (each_step+1)*3, self.agent_idx]
+            rows = slice(3*each_step, 3*(each_step+1))
 
-                # Predicted position of agent at time_step
-                predicted_pos = self.all_agents_traj[each_step*3: (each_step+1)*3, self.agent_idx]
-                rows = slice(3*each_step, 3*(each_step+1))
-
-                # At time step, check distance of other close agents
-                for j in self.close_agents:
+            # At time step, check distance of other agents
+            for j in range(n_agents):
+                if j != self.agent_idx:
                     # Position of the other agent at time step
                     other_agent_pos = self.all_agents_traj[rows, j]
                     dist = norm(dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos))
@@ -255,11 +266,23 @@ class Agent(object):
                     if dist < R_MIN and not collision_detected:
                         self.collision_step = each_step
                         collision_detected = True
+                        break
 
-                    self.close_agents[j] = dist  # Set agent distance at collision
+        # Find all close agents at collision
+        if collision_detected:
+            # Predicted position of agent at time_step
+            coll_rows = slice(3*self.collision_step, 3*(self.collision_step+1))
+            coll_pos = self.all_agents_traj[coll_rows, self.agent_idx]
 
-                if collision_detected:
-                    break
+            # At collision, check distance of other agents
+            for j in range(n_agents):
+                if j != self.agent_idx:
+                    # Position of the other agent at collision
+                    other_agent_pos = self.all_agents_traj[coll_rows, j]
+                    dist = norm(dot(self.scaling_matrix_inv, coll_pos - other_agent_pos))
+
+                    if dist < self.collision_check_radius:
+                        self.close_agents[j] = dist  # Set agent distance at collision
 
         return collision_detected
 
@@ -277,7 +300,7 @@ class TrajectorySolver(object):
         if self.verbose:
             print "Initializing solver..."
 
-        self.time = 10                          # float: For testing, total time of trajectory
+        self.time = MAX_TIME                          # float: For testing, total time of trajectory
         self.step_interval = STEP_INVERVAL      # float: Time steps interval (h)
         self.horizon_time = HORIZON_TIME        # float: Horizon to predict trajectory
         self.k_t = 0                    # int: Current time step
@@ -605,9 +628,6 @@ class TrajectorySolver(object):
 
             # For each agent
             for agent in self.agents:
-                if IN_DEBUG:
-                    print "\t Agent %i" % agent.agent_idx
-
                 # Determine acceleration input
                 current_state = agent.states[0:6, -1].reshape(6, 1)
                 accel_input = self.solve_accel(agent, current_state)
@@ -637,9 +657,6 @@ class TrajectorySolver(object):
             self.all_agents_traj[:, :] = new_trajectories[:, :] # Update all agents trajectories
 
             self.compute_agents_dist()
-            if IN_DEBUG:
-                print '\n'
-
             self.k_t += 1
 
         self.print_final_positions()
@@ -659,6 +676,9 @@ class TrajectorySolver(object):
 
         # Check if there is a collision
         avoid_collision = agent.check_collisions()  #: True if trajectory in collision
+
+        if avoid_collision and IN_DEBUG:
+            print "\t Agent %i" % agent.agent_idx
 
         # Build optimization problem: 1/2 x.T * p_mat * x + q_mat.T * x  s.t. g_mat*x <= h_mat
         if not AVOID_COLLISIONS: # Just for testing, option to deactivate collisions
@@ -727,8 +747,8 @@ class TrajectorySolver(object):
         prev_input = agent.prev_input
 
         if not avoid_collision:
-            if IN_DEBUG:
-                print "\t\t No collision detected"
+            # if IN_DEBUG:
+            #     print "\t\t No collision detected"
 
             p_mat, q_mat, g_mat, h_mat = self.solve_accel_no_coll(initial_state,
                                                                   agent_goal,
@@ -828,9 +848,9 @@ class TrajectorySolver(object):
         agent_start_pos = self.all_agents_traj[start_rows, agent.agent_idx]
         agent_dy = agent_goal[1, 0] - agent_start_pos[1]
         agent_dx = agent_goal[0, 0] - agent_start_pos[0]
-        goal_line = agent_dy/agent_dx
+        goal_line = agent_dy/agent_dx if agent_dx != 0 else 0
 
-        # Check if an agent is on a direct line to goal
+        # Check if an agent is on a direct line to goal, used to avoid deadlocks
         for agent_idx in agent.close_agents:
             # Other agent position
             other_start_pos = self.all_agents_traj[start_rows, agent_idx]
@@ -866,7 +886,7 @@ class TrajectorySolver(object):
 
             # Build matrices
             #: 3x1 array, v_ij = scaling_matrix**-2 @ (p_i - p_j)
-            v_matrix = dot(matrix_power(agent.scaling_matrix, 2),
+            v_matrix = dot(matrix_power(agent.scaling_matrix, -2),
                            agent_position_coll - other_position_coll)
 
             #: 1x1 array, rho_ij = r_min*ksi_ik + ksi_ij**2 + v_ij' * p_i
@@ -950,12 +970,12 @@ class TrajectorySolver(object):
         scaling_matrix = np.diag([1, 1, 2])
         scaling_matrix_inv = inv(scaling_matrix)
 
-        if IN_DEBUG:
-            print "\n\t Distances between agents"
+        # if IN_DEBUG:
+        #     print "\n\t Distances between agents"
 
         for i in range(self.all_agents_traj.shape[1]):
-            if IN_DEBUG:
-                print "\t Agent %i" % i
+            # if IN_DEBUG:
+            #     print "\t Agent %i" % i
 
             pos_agent = self.all_agents_traj[0:3, i]
 
@@ -966,8 +986,8 @@ class TrajectorySolver(object):
                     dist = norm(dot(scaling_matrix_inv, pos_agent - pos_col))
                     self.agents_distances.append(dist)
 
-                    if IN_DEBUG:
-                        print "\t\t From agent %i: %.2f" % (j, dist)
+                    # if IN_DEBUG:
+                    #     print "\t\t From agent %i: %.2f" % (j, dist)
 
     # UI and printing methods
     def print_final_positions(self):

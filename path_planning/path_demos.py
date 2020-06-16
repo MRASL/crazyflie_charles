@@ -23,12 +23,15 @@ def demo():
     # Choose demo to execute
     # agents = demo_two_agents()
     # agents, obstacles = demo_wall()
+
     # agents = corners_2()
     # agents = corners_4()
-    # agents = six_agents()
+    # agents = corners_6()
+
     # agents = seven_agents()
     # agents = nine_agents()
-    agents, arena_max = random_pos(4, 1)
+
+    agents, arena_max = random_pos(12, 1)
 
     solver = TrajectorySolver(agents)
     solver.set_obstacle(obstacles)
@@ -92,6 +95,20 @@ def six_agents():
     a_6 = Agent(start_pos=[3.2, 3.2, 0.0], goal=[0.5, 0.0, 0.0])
 
     return [a_1, a_2, a_3, a_4, a_5, a_6]
+
+def corners_6():
+    """Six agents, starting from opposite corners
+    """
+    a_1 = Agent(start_pos=[0.0, 4.0, 0.0], goal=[4.0, 0.0, 0.0])
+    a_2 = Agent(start_pos=[4.0, 0.0, 0.0], goal=[0.0, 4.0, 0.0])
+    a_3 = Agent(start_pos=[0.0, 0.0, 0.0], goal=[4.0, 4.0, 0.0])
+    a_4 = Agent(start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
+
+    a_5 = Agent(start_pos=[2.0, 0.0, 0.0], goal=[2.0, 4.0, 0.0])
+    # a_6 = Agent(start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
+
+
+    return [a_1, a_2, a_3, a_4, a_5]
 
 def seven_agents():
     """Seven agents
@@ -210,7 +227,7 @@ def algo_performance(n_agents, density, n_tests):
     res_list = []
 
     for i in range(1, n_tests + 1):
-        start_time = time.time()
+        print "Test %i:" % i
 
         agents = []
 
@@ -219,13 +236,13 @@ def algo_performance(n_agents, density, n_tests):
         solver = TrajectorySolver(agents, verbose=False)
         solver.set_arena_max(arena_max)
 
+        start_time = time.time()
         res = solver.solve_trajectories()
         compute_time = (time.time() - start_time)*1000
 
         time_list.append(compute_time)
         res_list.append(res)
 
-        print "Test %i:" % i
         print "\tResult: %s" % res
         print "\tCompute time: %.2f ms" % compute_time
 
@@ -237,5 +254,13 @@ def algo_performance(n_agents, density, n_tests):
     print 'Compute time average: %.2f ms' % time_average
 
 if __name__ == '__main__':
-    # demo()
-    algo_performance(4, 1, 5)  #: n_agents, density, n_tests
+    demo()
+    # algo_performance(9, 1, 10)  #: n_agents, density, n_tests
+
+    # Results (4, 1, 10):
+    # 80%, 3075
+    # 50%, 2201
+    # 70%, 2211
+
+    # Results (9, 1, 10):
+    # 0%, 8444
