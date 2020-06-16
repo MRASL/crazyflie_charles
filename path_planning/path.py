@@ -43,14 +43,15 @@ IN_DEBUG = False
 GOAL_THRES = 0.01 # 5 cm
 R_MIN = 0.35
 STEP_INVERVAL = 0.1
-HORIZON_TIME = 1.0
+HORIZON_TIME = 2.0
 
 ERROR_WEIGHT = 10
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 50
 RELAX_WEIGHT_LIN = -5*10e-4
-RELAX_MIN = -10
+RELAX_MIN = -0.5
+RELAX_INC = 0.1
 
 AVOID_COLLISIONS = True
 
@@ -70,6 +71,7 @@ class Agent(object):
         self.set_starting_position(start_pos) #: 3x1 np.array: Starting position
         self.set_goal(goal) #: 3x1 np.array: Goal
 
+        self.collision_check_radius = 2
         self.at_goal = False
         self.agent_idx = 0 #: Index of agent in positions
         self.n_steps = 0 #: int: Number of steps in horizon
@@ -91,8 +93,6 @@ class Agent(object):
         self.collision_step = 0 #: Step of prediction where collision happens
 
         self.all_agents_traj = None
-
-        self.collision_check_radius = 3
 
     def set_starting_position(self, position):
         """Set starting position
@@ -255,6 +255,8 @@ class TrajectorySolver(object):
         Args:
             agent_list (list of Agnets): Compute trajectory of all agents in the list
         """
+        print "Initializing solver..."
+
         self.time = 10                          # float: For testing, total time of trajectory
         self.step_interval = STEP_INVERVAL      # float: Time steps interval (h)
         self.horizon_time = HORIZON_TIME        # float: Horizon to predict trajectory
@@ -299,8 +301,8 @@ class TrajectorySolver(object):
         self.a_max = 1.0                 #: m/s**2
         self.a_min = -1.0                #: m/s**2
 
-        p_min = -1.0
-        p_max = 7.0
+        p_min = -5.0
+        p_max = 10.0
         self.p_min = [p_min, p_min, p_min]
         self.p_max = [p_max, p_max, p_max]
 
@@ -337,6 +339,8 @@ class TrajectorySolver(object):
 
         # Debug
         self.agents_distances = []
+
+        print "Solver ready"
 
     # Options methods
     def set_wait_for_input(self, to_wait):
@@ -556,7 +560,7 @@ class TrajectorySolver(object):
 
         Core of the algorithm
         """
-
+        print "Solving trajectories..."
         # For each time step
         while not self.at_goal and self.k_t < self.k_max and not self.in_collision:
             if IN_DEBUG:
@@ -633,14 +637,30 @@ class TrajectorySolver(object):
             print "ERROR: In collision"
             return None
 
-        # Solve optimization problem
-        try:
-            accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
-        except ValueError:
-            self.in_collision = True
-            print ''
-            print "ERROR: No solution in constraints"
-            return None
+        # Solve optimization problem, increase max relaxation if no solution is found
+        relax_max = self.relaxation_min_bound
+        find_solution = True
+        while find_solution:
+            try:
+                accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
+                find_solution = False
+            except ValueError:
+                if relax_max > -10 and avoid_collision:
+                    relax_max -= RELAX_INC
+                    n_coll = int((h_mat.shape[0] - self.steps_in_horizon*3*4)/3)
+
+                    for i in range(n_coll):
+                        h_mat[(-1 - i*3), 0] = -relax_max
+
+                else:
+                    self.in_collision = True
+                    find_solution = False
+                    print ''
+                    err_msg = ", Check max space"
+                    if relax_max < -10:
+                        err_msg = ", Max relaxation reached"
+                    print "ERROR: No solution in constraints %s" % err_msg
+                    return None
 
         if IN_DEBUG and avoid_collision:
             print "\t\t Relaxation: {}".format(accel_input[3*self.steps_in_horizon:])
@@ -759,6 +779,7 @@ class TrajectorySolver(object):
 
         # Collision at step 0 mean two agents collided
         if agent.collision_step == 0:
+            print "Agent %i in collision" % agent.agent_idx
             self.in_collision = True
             return 0, 0, 0, 0
 

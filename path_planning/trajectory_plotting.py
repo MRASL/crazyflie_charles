@@ -40,7 +40,7 @@ class TrajPlot(object):
         self.axe.set_xlabel('x (m)')
         self.axe.set_ylabel('y (m)')
 
-        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y']
+        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k', 'b', 'r', 'g', 'c', 'm', 'y', 'k']
         self.animated_objects = [] # List of all objects to animate
         self.init_animated_objects()
 
@@ -82,7 +82,7 @@ class TrajPlot(object):
         """
         for each_agent, color in zip(self.agents, self.color_list):
             circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
-            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color) #, marker='o')
+            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
 
             self.axe.add_patch(circle)
 
