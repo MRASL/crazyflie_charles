@@ -44,6 +44,9 @@ class TrajPlot(object):
         self.animated_objects = [] # List of all objects to animate
         self.init_animated_objects()
 
+    def __del__(self):
+        plt.close()
+
     # Setters
     def set_wait_for_input(self, to_wait):
         """To wait or not for input before switching frame

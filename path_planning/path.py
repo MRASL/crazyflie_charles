@@ -33,11 +33,12 @@ TODO:
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv, matrix_power
+import scipy.interpolate
 from qpsolvers import solve_qp
 from trajectory_plotting import TrajPlot
 # from scipy.sparse import csc_matrix
 
-IN_DEBUG = True
+IN_DEBUG = False
 
 # Global attributes
 MAX_TIME = 15
@@ -47,6 +48,8 @@ R_MIN = 0.35
 STEP_INVERVAL = 0.1
 HORIZON_TIME = 2.0
 COLL_RADIUS = 2*R_MIN
+KAPPA = 3
+INTERP_STEP = 0.01
 
 ERROR_WEIGHT = 100
 EFFORT_WEIGHT = 0.001
@@ -127,6 +130,7 @@ class Agent(object):
 
         self.all_agents_traj = None
 
+    # Setter
     def set_starting_position(self, position):
         """Set starting position
 
@@ -145,14 +149,23 @@ class Agent(object):
         if goal is not None:
             self.goal = array(goal).reshape(3, 1)
 
-    def set_accel(self, new_accel):
-        """Set constant acceleration, Only for testing purpose
+    def set_all_traj(self, all_trajectories):
+        """Set last predicted trajectories of all agents
 
         Args:
-            new_accel (list of float): [ax, ay, az]
+            all_trajectories (6*k x n_agents array)
         """
-        self.acc_cst = array([new_accel]).T
+        self.all_agents_traj = all_trajectories
 
+    def add_state(self, new_state):
+        """Add new state to list of positions
+
+        Args:
+            new_state (array): Trajectory at time step
+        """
+        self.states = hstack((self.states, new_state))
+
+    # Initialization
     def initialize_position(self, n_steps, all_agents_traj):
         """Initialize position of the agent.
 
@@ -203,22 +216,7 @@ class Agent(object):
             self.states = vstack((self.states, new_pos))
             last_pos = new_pos
 
-    def set_all_traj(self, all_trajectories):
-        """Set last predicted trajectories of all agents
-
-        Args:
-            all_trajectories (6*k x n_agents array)
-        """
-        self.all_agents_traj = all_trajectories
-
-    def new_state(self, new_state):
-        """Add new state to list of positions
-
-        Args:
-            new_state (array): Trajectory at time step
-        """
-        self.states = hstack((self.states, new_state))
-
+    # Compute methods
     def check_goal(self):
         """Check if agent is in a small radius around his goal
 
@@ -286,6 +284,28 @@ class Agent(object):
 
         return collision_detected
 
+    def interpolate_traj(self, time_step_initial, time_step_interp):
+        """Interpolate the trajectory for smoother paths
+
+        Not yet implemeted.
+
+        Args:
+            time_step_initial (float): Period between samples
+            time_step_interp (float): Period between interpolation samples
+        """
+        n_sample = self.states.shape[1]
+        n_sample_interp = n_sample*time_step_initial/time_step_interp
+
+
+        end_time = n_sample*time_step_initial
+
+        # traj_time = np.linspace(0, end_time, n_sample, endpoint=False)
+        # traj_time_interp = np.linspace(0, end_time, n_sample_interp, endpoint=False)
+
+        # traj_x = self.states[0, :]
+        # traj_y = self.states[1, :]
+        # traj_z = self.states[2, :]
+
 class TrajectorySolver(object):
     """To solve trajectories of all agents
     """
@@ -303,6 +323,7 @@ class TrajectorySolver(object):
         self.time = MAX_TIME                          # float: For testing, total time of trajectory
         self.step_interval = STEP_INVERVAL      # float: Time steps interval (h)
         self.horizon_time = HORIZON_TIME        # float: Horizon to predict trajectory
+        self.interp_time_step = INTERP_STEP
         self.k_t = 0                    # int: Current time step
         self.k_max = int(self.time/self.step_interval) # float: Maximum time
         self.at_goal = False
@@ -321,7 +342,7 @@ class TrajectorySolver(object):
             self.agents[i].agent_idx = i
 
         # Error weights
-        self.kapa = 1
+        self.kapa = KAPPA
         self.error_weight = ERROR_WEIGHT
         self.effort_weight = EFFORT_WEIGHT
         self.input_weight = INPUT_WEIGHT
@@ -652,7 +673,7 @@ class TrajectorySolver(object):
                 agent_idx = self.agents.index(agent)
                 new_trajectories[:, agent_idx] = p_pred.reshape(3*self.steps_in_horizon)
 
-                agent.new_state(x_pred)
+                agent.add_state(x_pred)
 
             self.check_goals()
             self.all_agents_traj[:, :] = new_trajectories[:, :] # Update all agents trajectories
@@ -662,7 +683,11 @@ class TrajectorySolver(object):
 
         self.print_final_positions()
 
-        return not self.in_collision
+        if self.at_goal:
+            for each_agent in self.agents:
+                each_agent.interpolate_traj(self.step_interval, self.interp_time_step)
+
+        return self.at_goal
 
     def solve_accel(self, agent, initial_state):
         """Optimize acceleration input for the horizon
@@ -995,7 +1020,7 @@ class TrajectorySolver(object):
         """Print final position of all agents
         """
         if self.verbose:
-            if not self.in_collision:
+            if self.at_goal:
                 print "\nTrajectory succesfull"
                 if self.agents_distances:
                     print "Minimal distance between agents: %.2f" % min(self.agents_distances)
@@ -1006,8 +1031,11 @@ class TrajectorySolver(object):
 
                 print "Time to reach goal: %.2f" % (self.k_t*self.step_interval)
 
+            elif self.in_collision:
+                print "Trajectory failed: Collision"
+
             else:
-                print "Trajectory failed"
+                print "Trajectory failed: Max time reached"
 
     def plot_trajectories(self):
         """Plot all computed trajectories
