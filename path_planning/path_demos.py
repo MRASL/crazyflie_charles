@@ -14,7 +14,6 @@ from path import Agent, TrajectorySolver
 def demo():
     """Launch trajectories tests
     """
-    start_time = time.time()
 
     agents = []
     obstacles = []
@@ -23,6 +22,7 @@ def demo():
     # Choose demo to execute
     # agents = demo_two_agents()
     # agents, obstacles = demo_wall()
+    # agents, obstacles = through_wall()
 
     # agents = corners_2()
     # agents = corners_4()
@@ -31,8 +31,9 @@ def demo():
     # agents = seven_agents()
     # agents = nine_agents()
 
-    agents, arena_max = random_pos(12, 1)
+    agents, arena_max = random_pos(10, 1)
 
+    start_time = time.time()
     solver = TrajectorySolver(agents)
     solver.set_obstacle(obstacles)
 
@@ -59,9 +60,20 @@ def demo_wall():
     """Wall"""
     a_1 = Agent(start_pos=[0.0, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
 
-    obs_coords = compute_obstacle([[2.0, 2.0, 0.], [2.0, 2.0, 0.0]], 1)
+    obs_coords = compute_obstacle([[(2.0, -1.0, 0.), (2.0, 3.5, 0.0)]], 15)
 
     return [a_1], obs_coords
+
+def through_wall():
+    """Wall"""
+    a_1 = Agent(start_pos=[0.0, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
+
+    a_2 = Agent(start_pos=[5.0, 2.0, 0.0], goal=[0.0, 2.0, 0.0])
+
+    obs_coords = compute_obstacle([[(2.0, -1.0, 0.), (2.0, 1.5, 0.0)],
+                                   [(2.0, 2.5, 0.), (2.0, 5.0, 0.0)]], 30)
+
+    return [a_1, a_2], obs_coords
 
 def corners_2():
     """Two agents trading spots, starting from opposite corners
@@ -140,27 +152,31 @@ def nine_agents():
 
     return [a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8]
 
-def compute_obstacle(position, n_pts):
+def compute_obstacle(positions, n_pts):
     """Compute coordinates of a wall
 
     Args:
-        position (list of list): [obstacle_start, obstacle_end] , [x, y, z]
+        position (list of list of list): [[obstacle1_start, obstacle1_end], [obstacle2]]; [x, y, z]
         n_pts (int): Number of pts
 
     Returns:
         list: All coords of wall
     """
-    obstacle_start = position[0]
-    obstacle_end = position[1]
+    all_coords = []
+    for each_obstacle in positions:
+        obstacle_start = each_obstacle[0]
+        obstacle_end = each_obstacle[1]
 
-    coords = []
-    obstacle_x = np.linspace(obstacle_start[0], obstacle_end[0], num=n_pts)
-    obstacle_y = np.linspace(obstacle_start[1], obstacle_end[1], num=n_pts)
+        coords = []
+        obstacle_x = np.linspace(obstacle_start[0], obstacle_end[0], num=n_pts)
+        obstacle_y = np.linspace(obstacle_start[1], obstacle_end[1], num=n_pts)
 
-    for (x_coord, y_coord) in zip(obstacle_x, obstacle_y):
-        coords.append([x_coord, y_coord, 0])
+        for (x_coord, y_coord) in zip(obstacle_x, obstacle_y):
+            coords.append([x_coord, y_coord, 0])
 
-    return coords
+        all_coords.append(coords)
+
+    return all_coords
 
 def random_pos(n_agents, density):
     """Compute starting and final positions of agents
@@ -198,6 +214,8 @@ def find_position_at_dist(max_coord, min_dist, other_positions):
     Make sure the position is farther than min_dist from other positions and in the cube
     (0, 0, 0) -> (max_coord, max_coord, max_coord)
 
+    Fails if no solution is found after 50 iterations
+
     Args:
         max_coord (float): Max coordinate possible [m]
         min_dist (float): Min distance [m]
@@ -207,7 +225,11 @@ def find_position_at_dist(max_coord, min_dist, other_positions):
         3x1 array: Random position
     """
     pos_found = False
+    count = 0
     while not pos_found:
+        if count == 50:
+            raise RuntimeError('No valid position found, try decreasing density')
+
         position = array([rand.random(), rand.random(), 0.0])
         position = position*max_coord
         pos_found = True
@@ -217,6 +239,8 @@ def find_position_at_dist(max_coord, min_dist, other_positions):
 
             if dist < min_dist:
                 pos_found = False
+
+        count += 1
 
     return position
 
@@ -254,13 +278,16 @@ def algo_performance(n_agents, density, n_tests):
     print 'Compute time average: %.2f ms' % time_average
 
 if __name__ == '__main__':
-    demo()
-    # algo_performance(9, 1, 10)  #: n_agents, density, n_tests
+    # demo()
+    algo_performance(4, 1, 20)  #: n_agents, density, n_tests
 
     # Results (4, 1, 10):
     # 80%, 3075
     # 50%, 2201
     # 70%, 2211
+
+    # Updated algo (4, 1, 20):
+    # 100%, 737
 
     # Results (9, 1, 10):
     # 0%, 8444

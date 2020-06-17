@@ -34,11 +34,11 @@ class TrajPlot(object):
 
         self.fig = plt.figure()
         self.fig.set_dpi(100)
-        self.fig.set_size_inches(7, 7)
         self.axes = plt.axes(xlim=(-1, 5), ylim=(-1, 5))
         self.axes.set_title('Trajectories')
         self.axes.set_xlabel('x (m)')
         self.axes.set_ylabel('y (m)')
+        self.axes.set_aspect('equal', adjustable='box')
 
         self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k']
         self.animated_objects = [] # List of all objects to animate
@@ -180,12 +180,13 @@ class TrajPlot(object):
 
         plt.show()
 
-    def plot_obstacle(self, coords):
+    def plot_obstacle(self, obstacles):
         "Plot obstacle"
-        x_data = []
-        y_data = []
-        for coord in coords:
-            x_data.append(coord[0])
-            y_data.append(coord[1])
+        for each_obstacle in obstacles:
+            x_data = []
+            y_data = []
+            for coord in each_obstacle:
+                x_data.append(coord[0])
+                y_data.append(coord[1])
 
-        self.axes.plot(x_data, y_data, c='k', alpha=1, lw=5, marker='o')
+            self.axes.plot(x_data, y_data, c='k', alpha=1, lw=5, marker='o')

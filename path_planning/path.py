@@ -48,7 +48,7 @@ STEP_INVERVAL = 0.1
 HORIZON_TIME = 2.0
 COLL_RADIUS = 2*R_MIN
 
-ERROR_WEIGHT = 10
+ERROR_WEIGHT = 100
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 50
@@ -345,7 +345,7 @@ class TrajectorySolver(object):
         self.a_min = -1.0                #: m/s**2
 
         p_min = -1.0
-        p_max = 100.0
+        p_max = 5.0
         self.p_min = [p_min, p_min, p_min]
         self.p_max = [p_max, p_max, p_max]
 
@@ -585,26 +585,27 @@ class TrajectorySolver(object):
         if obstacle_positions: # If not empty
             self.has_fix_obstacle = True
             self.obstacle_positions = obstacle_positions
-            # self.n_agents += len(obstacle_positions)
 
-            # Each point of the wall is considered as an agent /w cst position over horizon
-            obstacle_trajectories = None
-            for each_coord in self.obstacle_positions:
-                each_coord_array = array([each_coord]).reshape(3, 1)
-                coord = each_coord_array
-                for _ in range(1, self.steps_in_horizon):
-                    coord = vstack((coord, each_coord_array))
+            for each_obstacle in self.obstacle_positions:
 
-                if obstacle_trajectories is None:
-                    obstacle_trajectories = coord
-                else:
-                    obstacle_trajectories = hstack((obstacle_trajectories, coord))
+                # Each point of the wall is considered as an agent /w cst position over horizon
+                obstacle_trajectories = None
+                for each_obstacle_pos in each_obstacle:
+                    each_coord_array = array([each_obstacle_pos]).reshape(3, 1)
+                    coord = each_coord_array
+                    for _ in range(1, self.steps_in_horizon):
+                        coord = vstack((coord, each_coord_array))
 
-            self.all_agents_traj = hstack((self.all_agents_traj, obstacle_trajectories))
+                    if obstacle_trajectories is None:
+                        obstacle_trajectories = coord
+                    else:
+                        obstacle_trajectories = hstack((obstacle_trajectories, coord))
 
-            # Update all agents informations
-            for agent in self.agents:
-                agent.set_all_traj(self.all_agents_traj)
+                self.all_agents_traj = hstack((self.all_agents_traj, obstacle_trajectories))
+
+        # Update all agents informations
+        for agent in self.agents:
+            agent.set_all_traj(self.all_agents_traj)
 
     # Trajectory solvers
     def solve_trajectories(self):
