@@ -34,16 +34,17 @@ class TrajPlot(object):
 
         self.fig = plt.figure()
         self.fig.set_dpi(100)
-        self.fig.set_size_inches(7, 7)
-        self.axe = plt.axes(xlim=(-1, 5), ylim=(-1, 5))
-        self.axe.set_title('Trajectories')
-        self.axe.set_xlabel('x (m)')
-        self.axe.set_ylabel('y (m)')
+        self.axes = plt.axes(xlim=(-1, 5), ylim=(-1, 5))
+        self.axes.set_title('Trajectories')
+        self.axes.set_xlabel('x (m)')
+        self.axes.set_ylabel('y (m)')
+        self.axes.set_aspect('equal', adjustable='box')
 
-        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k', 'b', 'r', 'g', 'c', 'm', 'y', 'k']
+        self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k']
         self.animated_objects = [] # List of all objects to animate
         self.init_animated_objects()
 
+    # Setters
     def set_wait_for_input(self, to_wait):
         """To wait or not for input before switching frame
 
@@ -62,6 +63,17 @@ class TrajPlot(object):
         """
         self.slow_rate = slow_rate
 
+    def set_axes_limits(self, xlim, ylim):
+        """Set x and y axes limits
+
+        Args:
+            xlim (tuple): (xmin, xmax)
+            ylim (tuple): (ymin, ymax)
+        """
+        self.axes.set_xlim(xlim)
+        self.axes.set_ylim(ylim)
+
+    # Animation
     def init_animated_objects(self):
         """Creates all objects to animate.
 
@@ -80,11 +92,13 @@ class TrajPlot(object):
                 -1: time text
 
         """
-        for each_agent, color in zip(self.agents, self.color_list):
+        color_idx = 0
+        for each_agent in self.agents:
+            color = self.color_list[color_idx%len(self.color_list)]
             circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
-            line, = self.axe.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
+            line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
 
-            self.axe.add_patch(circle)
+            self.axes.add_patch(circle)
 
             self.animated_objects.append(circle)
             self.animated_objects.append(line)
@@ -92,10 +106,12 @@ class TrajPlot(object):
             # Draw goal
             x_goal = each_agent.goal[0]
             y_goal = each_agent.goal[1]
-            self.axe.scatter(x_goal, y_goal, s=250, c=color, marker='X')
+            self.axes.scatter(x_goal, y_goal, s=250, c=color, marker='X')
+
+            color_idx += 1
 
         # Add time_text
-        self.time_text = self.axe.text(0.02, 0.95, '', transform=self.axe.transAxes)
+        self.time_text = self.axes.text(0.02, 0.95, '', transform=self.axes.transAxes)
         self.animated_objects.append(self.time_text)
 
     def init_animation(self):
@@ -164,12 +180,13 @@ class TrajPlot(object):
 
         plt.show()
 
-    def plot_obstacle(self, coords):
+    def plot_obstacle(self, obstacles):
         "Plot obstacle"
-        x_data = []
-        y_data = []
-        for coord in coords:
-            x_data.append(coord[0])
-            y_data.append(coord[1])
+        for each_obstacle in obstacles:
+            x_data = []
+            y_data = []
+            for coord in each_obstacle:
+                x_data.append(coord[0])
+                y_data.append(coord[1])
 
-        self.axe.plot(x_data, y_data, c='k', alpha=1, lw=5, marker='o')
+            self.axes.plot(x_data, y_data, c='k', alpha=1, lw=5, marker='o')
