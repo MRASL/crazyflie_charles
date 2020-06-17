@@ -51,5 +51,15 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
 
 ## Structure des fichiers
 
-  - Documentation
-    - Articles pertinents
+  - examples
+    - Example scripts
+  - include
+    - currently empty
+  - launch
+    - All .launch files
+  - scripts
+    - All scripts related to swarm managment
+  - srv
+    - Services
+  - trajectory_planning
+    - Scripts related to trajectory planning 

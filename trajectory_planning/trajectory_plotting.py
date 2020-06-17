@@ -16,6 +16,9 @@ SAVE_ANIMATION = False
 class TrajPlot(object):
     """To plot trajectories of agents
     """
+    # pylint: disable=too-many-instance-attributes
+    # 11 is reasonable in this case.
+
     def __init__(self, agent_list, time_step, wait_for_input=False):
         """Init
 

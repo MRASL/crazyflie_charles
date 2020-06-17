@@ -33,7 +33,7 @@ TODO:
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv, matrix_power
-import scipy.interpolate
+# import scipy.interpolate
 from qpsolvers import solve_qp
 from trajectory_plotting import TrajPlot
 # from scipy.sparse import csc_matrix
@@ -293,11 +293,12 @@ class Agent(object):
             time_step_initial (float): Period between samples
             time_step_interp (float): Period between interpolation samples
         """
-        n_sample = self.states.shape[1]
-        n_sample_interp = n_sample*time_step_initial/time_step_interp
+        pass
+        # n_sample = self.states.shape[1]
+        # n_sample_interp = n_sample*time_step_initial/time_step_interp
 
 
-        end_time = n_sample*time_step_initial
+        # end_time = n_sample*time_step_initial
 
         # traj_time = np.linspace(0, end_time, n_sample, endpoint=False)
         # traj_time_interp = np.linspace(0, end_time, n_sample_interp, endpoint=False)
@@ -430,7 +431,7 @@ class TrajectorySolver(object):
         Args:
             max_val(int): Maximum value, same for x and y
         """
-        self.trajectory_plotter.set_axes_limits((-1, max_val), (-1, max_val))
+        self.trajectory_plotter.set_axes_limits((-0.2, max_val), (-0.2, max_val))
 
     # Setup methods
     def initialize(self):
