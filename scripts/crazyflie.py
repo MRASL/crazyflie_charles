@@ -6,24 +6,39 @@ Args:
     cf_name (str): Name of the crazyflie
     to_sim (bool): To run in simulation or not
 
-:: _Voir les topics possibles: 
+:: _Voir les topics possibles:
     https://github.com/bitcraze/crazyflie-firmware/blob/master/src/modules/src/crtp_commander_generic.c
 """
 
 import rospy
-import tf
-from tf.transformations import euler_from_quaternion
 import numpy as np
 
 from crazyflie_driver.msg import Hover, Position
+from crazyflie_driver.srv import UpdateParams
 from std_msgs.msg import Empty as Empty_msg
 from std_srvs.srv import Empty as Empty_srv
 from std_srvs.srv import EmptyResponse as EmptyResponse_srv
-from crazyflie_driver.srv import UpdateParams
 from geometry_msgs.msg import Twist, PoseStamped, Pose
 from crazyflie_charles.srv import PoseRequest
 
-class Crazyflie:
+class Crazyflie(object):
+    """Controller of a single crazyflie.
+
+    In charge of executing services and following positions
+
+    Args:
+        object ([type]): [description]
+
+    Services:
+        *to add
+
+    Subscription:
+        *to add
+
+    Publishers:
+        *to add
+
+    """
     def __init__(self, cf_id, to_sim):
         """
         Args:
@@ -34,7 +49,7 @@ class Crazyflie:
             cf_id (str): Name of the CF
             _to_sim (bool): To sim
             _to_teleop (bool): To teleop
-            
+
             _states (list of str): All possible states of the CF
             _state (str): Current state of the CF
 
@@ -54,10 +69,10 @@ class Crazyflie:
 
         self._states = ["take_off", "land", "hover", "stop", "teleop"]
         self._state = "stop"
-        self._setState("stop")
-        
+        self._set_state("stop")
+
         rospy.loginfo("%s: Initializing" % self.cf_id)
-        
+
 
         self.world_frame = rospy.get_param("~worldFrame", "/world")
         self.rate = rospy.Rate(10)
@@ -70,7 +85,7 @@ class Crazyflie:
             self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
             # Set parameters # TODO: Move to swarmManager
-            self.setParam("kalman/resetEstimation", 1)     
+            self.set_param("kalman/resetEstimation", 1)
 
         # Declare services
         self._init_services()
@@ -82,7 +97,7 @@ class Crazyflie:
         self.pose = Pose()
         self.goal = Position()
         self.initial_pose = Pose()
-        self.findInitialPose()
+        self.find_initial_pose()
 
         rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self._pose_handler)
         rospy.Subscriber(self.cf_id + '/goal', Position, self._goal_handler)
@@ -112,14 +127,14 @@ class Crazyflie:
 
         self.cmd_stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.cmd_stop_msg = Empty_msg()
-    
+
     def _init_services(self):
-        rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.returnPose)
+        rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.return_pose)
         rospy.Service(self.cf_id + '/take_off', Empty_srv, self.take_off)
         rospy.Service(self.cf_id + '/hover', Empty_srv, self.hover)
         rospy.Service(self.cf_id + '/land', Empty_srv, self.land)
         rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
-        rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggleTeleop)
+        rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggle_teleop)
 
     # Handlers
     def _pose_handler(self, pose_stamped):
@@ -129,32 +144,40 @@ class Crazyflie:
     def _goal_handler(self, goal):
         self.goal = goal
 
-    def returnPose(self, req):
-        self.findInitialPose()
+    def return_pose(self, _):
+        """Return crazyflie pose
+
+        Returns:
+            Pose: Current position
+        """
+        self.find_initial_pose()
 
         return self.initial_pose
 
-    def findInitialPose(self):  
-        """ Find the initial position of the crazyflie by calculating the mean during a time interval"""
+    def find_initial_pose(self):
+        """ Find the initial position of the crazyflie.
+
+        Position found by calculating the mean during a time interval
+        """
         if not self._to_sim:
-            r = rospy.Rate(100)
-            initialPose = {'x': [], 'y':[], 'z':[] } 
-            while len(initialPose['x']) < 10:
-                initialPose['x'].append(self.pose.position.x)
-                initialPose['y'].append(self.pose.position.y)
-                initialPose['z'].append(self.pose.position.z)
-                r.sleep()
-            
-            self.initial_pose.position.x = np.mean(initialPose['x'])
-            self.initial_pose.position.y = np.mean(initialPose['y'])
-            self.initial_pose.position.z = np.mean(initialPose['z'])
+            rate = rospy.Rate(100)
+            initial_pose = {'x':[], 'y':[], 'z':[]}
+            while len(initial_pose['x']) < 10:
+                initial_pose['x'].append(self.pose.position.x)
+                initial_pose['y'].append(self.pose.position.y)
+                initial_pose['z'].append(self.pose.position.z)
+                rate.sleep()
+
+            self.initial_pose.position.x = np.mean(initial_pose['x'])
+            self.initial_pose.position.y = np.mean(initial_pose['y'])
+            self.initial_pose.position.z = np.mean(initial_pose['z'])
             rospy.loginfo("Initial position: \n{}".format(self.initial_pose))
 
         else:
             self.initial_pose = self.pose
 
     # Setter & Getters
-    def setParam(self, name, value):
+    def set_param(self, name, value):
         """Changes the value of the given parameter.
 
         Args:
@@ -165,66 +188,92 @@ class Crazyflie:
         rospy.set_param(self.cf_id + "/" + name, value)
         self.update_params([name])
 
-    def getId(self):
+    def get_cf_id(self):
+        """Get crazyflie id
+
+        Returns:
+            int: cf_id
+        """
         return self.cf_id
 
     def in_teleop(self):
+        """Returns true if controlled by joystick
+
+        Returns:
+            bool: True if in teleop
+        """
         return self._state == "teleop"
 
     # State manager
-    def _setState(self, newState):
-        if newState in self._states:
-            self._state = newState
-        else:
-            rospy.logerr("Invalid State: %s" % newState)
+    def _set_state(self, new_state):
+        """Set state of SM
 
-    def take_off(self, req):
+        Args:
+            newState (str): New state
+        """
+        if new_state in self._states:
+            self._state = new_state
+        else:
+            rospy.logerr("Invalid State: %s" % new_state)
+
+    def take_off(self, _):
+        """Take off service
+        """
         # rospy.loginfo("%s: Take off" % self.cf_id)
-        self._setState("take_off")
+        self._set_state("take_off")
         return EmptyResponse_srv()
 
-    def hover(self, req):
+    def hover(self, _):
+        """Hover service
+        """
         # rospy.loginfo("%s: Hover" % self.cf_id)
-        self._setState("hover")
+        self._set_state("hover")
         return EmptyResponse_srv()
 
-    def land(self, req):
+    def land(self, _):
+        """Land service
+        """
         # rospy.loginfo("%s: Landing" % self.cf_id)
-        self._setState("land")
+        self._set_state("land")
         return EmptyResponse_srv()
 
-    def stop(self, req):
+    def stop(self, _):
+        """Stop service
+        """
         # rospy.loginfo("%s: Stoping" % self.cf_id)
-        self._setState("stop")
+        self._set_state("stop")
         return EmptyResponse_srv()
 
-    def toggleTeleop(self, req):
+    def toggle_teleop(self, _):
+        """Toggle teleop service
+        """
         if self._state == "teleop":
-            self._setState("stop")
+            self._set_state("stop")
         else:
-            self._setState("teleop")
+            self._set_state("teleop")
 
         return EmptyResponse_srv()
 
     # Methods depending on state
     def _take_off(self):
-        dZ = self.goal.z - self.pose.position.z
-        x_start = self.pose.position.x 
+        z_dist = self.goal.z - self.pose.position.z
+        x_start = self.pose.position.x
         y_start = self.pose.position.y
         z_start = self.pose.position.z
 
         # rospy.loginfo("Going to \n{}".format(self.goal))
 
         time_range = 1*10
-        z_inc = dZ/time_range
-        
-        
+        z_inc = z_dist/time_range
+
+
         for i in range(time_range):
-            if rospy.is_shutdown() or self._state is not "take_off": break
+            if rospy.is_shutdown() or self._state is not "take_off":
+                break
 
-            z = i*z_inc + z_start
+            new_z = i*z_inc + z_start
 
-            self.cmd_pos(x_start, y_start, z, self.goal.yaw)
+            self.cmd_pos(x_start, y_start, new_z, self.goal.yaw)
 
             self.rate.sleep()
 
@@ -244,19 +293,20 @@ class Crazyflie:
         z_start = self.pose.position.z
         yaw_start = self.goal.yaw
 
-        dZ =  z_start - self.goal.z
+        z_dist = z_start - self.goal.z
 
 
         time_range = 2*10
 
-        z_dec = dZ/time_range
-        
+        z_dec = z_dist/time_range
+
         for i in range(time_range):
-            if rospy.is_shutdown() or self._state is not "land": break
+            if rospy.is_shutdown() or self._state is not "land":
+                break
 
-            z = z_start - i*z_dec 
+            new_z = z_start - i*z_dec
 
-            self.cmd_pos(x_start, y_start, z, yaw_start)
+            self.cmd_pos(x_start, y_start, new_z, yaw_start)
 
             self.rate.sleep()
 
@@ -289,32 +339,34 @@ class Crazyflie:
         msg.linear.z = thrust
         self.cmd_vel_pub.publish(msg)
 
-    def cmd_hovering(self, zDistance):
+    def cmd_hovering(self, z_distance):
         """Publish hover in cmd_hover topic
 
         Args:
             zDistance (float): Distance to hover
         """
-        self.cmd_hovering_msg.zDistance = zDistance
+        self.cmd_hovering_msg.zDistance = z_distance
         self.cmd_hovering_pub.publish(self.cmd_hovering_msg)
 
-    def cmd_pos(self, x, y, z, yaw):
+    def cmd_pos(self, x_val, y_val, _val, yaw):
         """Publish target position to cmd_positions topic
 
         Args:
-            x (float): X
-            y (float): Y
-            z (float): Z
+            x_val (float): X
+            y_val (float): Y
+            z_val (float): Z
             yaw (float): Yaw
         """
-        self.cmd_pos_msg.x = x
-        self.cmd_pos_msg.y = y
-        self.cmd_pos_msg.z = z
+        self.cmd_pos_msg.x = x_val
+        self.cmd_pos_msg.y = y_val
+        self.cmd_pos_msg.z = _val
         self.cmd_pos_msg.yaw = yaw
         self.cmd_pos_pub.publish(self.cmd_pos_msg)
 
     # Run methods
     def run_auto(self):
+        """Run controller, when not in teleop
+        """
         if self._state == "take_off":
             self._take_off()
         elif self._state == "hover":
@@ -329,15 +381,15 @@ if __name__ == '__main__':
     rospy.init_node('cf_controller', anonymous=False)
 
     # Get params
-    cf_id = rospy.get_param("~cf_name", "cf_default")
-    to_sim = rospy.get_param("~to_sim", "False")
-    
+    CF_ID = rospy.get_param("~cf_name", "cf_default")
+    TO_SIM = rospy.get_param("~to_sim", "False")
+
     # Initialize cfx
-    cf = Crazyflie(cf_id, to_sim)
+    CF = Crazyflie(CF_ID, TO_SIM)
 
     while not rospy.is_shutdown():
-        if not cf.in_teleop():
-            cf.run_auto()
+        if not CF.in_teleop():
+            CF.run_auto()
 
         else:
             pass
