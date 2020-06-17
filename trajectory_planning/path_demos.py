@@ -31,7 +31,7 @@ def demo():
     # agents = seven_agents()
     # agents = nine_agents()
 
-    agents, arena_max = random_pos(10, 1)
+    agents, arena_max = random_pos(9, 1)
 
     start_time = time.time()
     solver = TrajectorySolver(agents)
@@ -278,8 +278,8 @@ def algo_performance(n_agents, density, n_tests):
     print 'Compute time average: %.2f ms' % time_average
 
 if __name__ == '__main__':
-    # demo()
-    algo_performance(4, 1, 20)  #: n_agents, density, n_tests
+    demo()
+    # algo_performance(4, 1, 30)  #: n_agents, density, n_tests
 
     # Results (4, 1, 10):
     # 80%, 3075
