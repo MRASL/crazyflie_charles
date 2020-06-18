@@ -9,7 +9,6 @@ from crazyflie_driver.msg import Position
 
 from general_formation import FormationClass
 
-
 class CircleFormation(FormationClass):
     """Circle formation
 

@@ -116,7 +116,7 @@ class FormationClass(object):
 
         return center_dist, theta, z_dist
 
-    def compute_cf_goals(self, crazyflies, swarm_goal):
+    def compute_cf_goals(self, crazyflies, formation_goal):
         """Compute goal of each crazyflie based on target position of the swarm
 
         Args:
@@ -128,7 +128,7 @@ class FormationClass(object):
         for swarm_id in range(self.n_cf):
             if rospy.is_shutdown():
                 break
-            yaw = swarm_goal.yaw
+            yaw = formation_goal.yaw
 
             # Could fail if swarm position is being calculated
             try:
@@ -140,9 +140,9 @@ class FormationClass(object):
             y_dist = sin(theta) * self.center_dist[swarm_id]
             z_dist = self.center_height[swarm_id]
 
-            self.cf_goals[swarm_id].x = swarm_goal.x + x_dist
-            self.cf_goals[swarm_id].y = swarm_goal.y + y_dist
-            self.cf_goals[swarm_id].z = swarm_goal.z + z_dist
+            self.cf_goals[swarm_id].x = formation_goal.x + x_dist
+            self.cf_goals[swarm_id].y = formation_goal.y + y_dist
+            self.cf_goals[swarm_id].z = formation_goal.z + z_dist
             self.cf_goals[swarm_id].yaw = yaw
 
         # Update crazyflies based on swarm ID
@@ -151,27 +151,13 @@ class FormationClass(object):
                 break
             cf_id = cf_attrs["swarm_id"]
             try:
-                cf_attrs["goal"].x = self.cf_goals[cf_id].x
-                cf_attrs["goal"].y = self.cf_goals[cf_id].y
-                cf_attrs["goal"].z = self.cf_goals[cf_id].z
-                cf_attrs["goal"].yaw = self.cf_goals[cf_id].yaw
+                cf_attrs["formation_goal"].x = self.cf_goals[cf_id].x
+                cf_attrs["formation_goal"].y = self.cf_goals[cf_id].y
+                cf_attrs["formation_goal"].z = self.cf_goals[cf_id].z
+                cf_attrs["formation_goal"].yaw = self.cf_goals[cf_id].yaw
             except KeyError:
                 # Pass, keys arn't initialized yet because of new formation
                 pass
-
-    def compute_cf_goals_vel(self, crazyflies, swarm_goal_vel):
-        """Compute goal of each crazyflie based on target velocity of the swarm
-
-        Args:
-            crazyflies (dict): Information of each Crazyflie
-            swarm_goal_vel (Twist): Goal of the swarm
-        """
-        # Useless?
-        for _, cf_attrs in crazyflies.items():
-            cf_attrs["goal"].x += swarm_goal_vel.linear.x
-            cf_attrs["goal"].y += swarm_goal_vel.linear.y
-            cf_attrs["goal"].z += swarm_goal_vel.linear.z
-            cf_attrs["goal"].yaw += swarm_goal_vel.angular.z
 
     def land_extra_cf(self):
         """Land CFs in extra.

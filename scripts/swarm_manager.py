@@ -39,16 +39,13 @@ Subscribed services:
         - toggle_teleop
 
 Subscription:
-    - from /joystick_controller
-        - /joy_swarm_vel
+    - /joy_swarm_vel
     - /cfx/pose #TODO: Add pose of each CF of swarm
+    - /cfx/formation_goal
 
-Publisher:
-    - /cfx/goal
-    - /formation_center_vel_pub: Velocity of formation center
-
-    - /swarm_goal
-    - /swarm_goal_vel
+Publishing:
+    - /cfx/goal: Goal of CF
+    - /formation_goal_vel: Velocity of formation center
 
 """
 
@@ -142,17 +139,17 @@ class Swarm(object):
                     - initial_pose
         """
         # TODO: add subdivision? i.e: self.crazyflies['cf1']['srv']['emergency] Or use a class?
-        self.crazyflies[cf_id] = {"emergency": None,     # service
-                                  "get_pose": None,      # service
-                                  "take_off": None,      # service
-                                  "hover": None,         # service
-                                  "land": None,          # service
-                                  "stop": None,          # service
-                                  "toggle_teleop": None, # service
-                                  "set_pose": None,      # service
-                                  "initial_pose": None,  # attr
-                                  "goal_msg": None,      # msg
-                                  "goal_pub": None}      # publisher
+        self.crazyflies[cf_id] = {"emergency": None,            # service
+                                  "get_pose": None,             # service
+                                  "take_off": None,             # service
+                                  "hover": None,                # service
+                                  "land": None,                 # service
+                                  "stop": None,                 # service
+                                  "toggle_teleop": None,        # service
+                                  "initial_pose": None,         # attr
+                                  "formation_goal_msg": None,   # msg
+                                  "goal_msg": None,             # msg
+                                  "goal_pub": None,}            # publisher
 
         # Subscribe to services
         if not TO_SIM:
@@ -160,9 +157,6 @@ class Swarm(object):
 
         else:
             pass
-            # self._link_service(cf_id, "set_pose", PoseSet)
-            # self.crazyflies[cf_id]["initial_pose"] = self.formation.cf_goals[cf_id]
-            # self.crazyflies[cf_id]["set_pose"](self.crazyflies[cf_id]["initial_pose"])
 
         rospy.loginfo("Swarm: waiting services of %s " % cf_id)
         self._link_service(cf_id, "get_pose", PoseRequest)
@@ -178,6 +172,10 @@ class Swarm(object):
         self.crazyflies[cf_id]["goal_pub"] =\
             rospy.Publisher('/' + cf_id + '/goal', Position, queue_size=1)
 
+        self.crazyflies[cf_id]["formation_goal_msg"] = Position()
+        rospy.Subscriber("/%s/formation_goal" % cf_id, Position,
+                         self.cf_formation_goal_handler, cf_id)
+
     def _link_service(self, cf_id, service_name, service_type):
         """Add a service to the dict of CFs
 
@@ -191,6 +189,18 @@ class Swarm(object):
         # rospy.loginfo("Swarm: found %s service of %s" % (service_name, cf_id))
         self.crazyflies[cf_id][service_name] =\
             rospy.ServiceProxy('/%s/%s' % (cf_id, service_name), service_type)
+
+    def cf_formation_goal_handler(self, cf_formation_goal, cf_id):
+        """Update formation goal of a CF
+
+        Args:
+            cf_formation_goal (Position): Goal of CF in formation
+            cf_id (int): Id of the CF
+        """
+        self.crazyflies[cf_id]["formation_goal_msg"] = cf_formation_goal
+
+        # TODO cf_goal not always formation goal
+        self.crazyflies[cf_id]["goal_msg"] = self.crazyflies[cf_id]["formation_goal_msg"]
 
     # Setter & getters
     def in_teleop(self):
@@ -219,6 +229,13 @@ class Swarm(object):
             goal_spd (Twist): Speed variation of goal
         """
         self.formation_goal_vel_pub.publish(formation_goal_vel)
+
+    def pub_cf_goals(self):
+        """Publish goal of each CF
+        """
+        for _, each_cf in self.crazyflies.items():
+            goal_msg = each_cf["goal_msg"]
+            each_cf["goal_pub"].publish(goal_msg)
 
     # Services methods
     def _call_all_cf_service(self, service_name, service_msg=None):
@@ -339,6 +356,7 @@ class Swarm(object):
         """Publish on topics depending of current state
         """
         self.pub_formation_goal_vel(self.formation_goal_vel)
+        self.pub_cf_goals()
         self.rate.sleep()
 
 if __name__ == '__main__':
