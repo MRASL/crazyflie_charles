@@ -133,7 +133,7 @@ class FormationClass(object):
             # Could fail if swarm position is being calculated
             try:
                 theta = self.angle[swarm_id] + yaw
-            except:
+            except KeyError:
                 break
 
             x_dist = cos(theta) * self.center_dist[swarm_id]
@@ -150,10 +150,14 @@ class FormationClass(object):
             if rospy.is_shutdown():
                 break
             cf_id = cf_attrs["swarm_id"]
-            cf_attrs["goal"].x = self.cf_goals[cf_id].x
-            cf_attrs["goal"].y = self.cf_goals[cf_id].y
-            cf_attrs["goal"].z = self.cf_goals[cf_id].z
-            cf_attrs["goal"].yaw = self.cf_goals[cf_id].yaw
+            try:
+                cf_attrs["goal"].x = self.cf_goals[cf_id].x
+                cf_attrs["goal"].y = self.cf_goals[cf_id].y
+                cf_attrs["goal"].z = self.cf_goals[cf_id].z
+                cf_attrs["goal"].yaw = self.cf_goals[cf_id].yaw
+            except KeyError:
+                # Pass, keys arn't initialized yet because of new formation
+                pass
 
     def compute_cf_goals_vel(self, crazyflies, swarm_goal_vel):
         """Compute goal of each crazyflie based on target velocity of the swarm
