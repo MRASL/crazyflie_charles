@@ -33,8 +33,8 @@ class RvizMarkers:
         self.rate = rospy.Rate(100)
 
 
-        rospy.Subscriber("swarm_goal", Position, self.update_swarm_goal)
-        rospy.Subscriber("swarm_pose", Pose, self.update_swarm_pose)
+        rospy.Subscriber("formation_goal", Position, self.update_formation_goal)
+        rospy.Subscriber("formation_pose", Pose, self.update_formation_pose)
 
         for each_cf in cf_list:
             self.cf_pose_msgs[each_cf] = self.init_cf_pose_marker(each_cf)
@@ -290,7 +290,7 @@ class RvizMarkers:
         msg_pose.pose.orientation.z = z
         msg_pose.pose.orientation.w = w
 
-    def update_swarm_goal(self, goal):
+    def update_formation_goal(self, goal):
         self.swarm_goal_msg.pose.position.x = goal.x
         self.swarm_goal_msg.pose.position.y = goal.y
         self.swarm_goal_msg.pose.position.z = goal.z
@@ -302,7 +302,7 @@ class RvizMarkers:
         self.swarm_goal_arrow_msg.pose.orientation.z = z
         self.swarm_goal_arrow_msg.pose.orientation.w = w
 
-    def update_swarm_pose(self, pose):
+    def update_formation_pose(self, pose):
         self.swarm_pose_msg.pose.position = pose.position
         self.swarm_pose_arrow_msg.pose = pose
 

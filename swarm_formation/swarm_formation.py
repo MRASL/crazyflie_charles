@@ -12,6 +12,24 @@ Notes:
         - V (X)
         - Ligne (X)
 
+Services:
+    - set_formation: Set formation type
+    - set_offset: Set offset of goal
+    - toggle_ctrl_mode: Toggle between absolute and relative ctrl mode
+    - update_swarm_goal: Compute current formation center
+    - formation_inc_scale: Increase scale of formation
+    - formation_dec_scale: Decrease scale of formation
+    - get_formation_list: Returns a list /w all possible formations 
+
+Subscribed Services:
+
+Subscribtion:
+    /formation_center_goal_vel: Velocity of formation center
+
+Publisher:
+    /formation_center: Center of the formation
+    /cfx/formation_goal: Goal, in formation, of each CF
+
 TODO:
     *Add possibility to scale formations
     *Change between formations
@@ -35,6 +53,9 @@ OFFSET = [0, 0, 0.2]
 
 class FormationManager(object):
     """To manage to position of all CF in the formation.
+
+    Associates formation position /w a CF
+
     """
     def __init__(self, cf_list, to_sim):
         self.cf_list = cf_list
@@ -53,7 +74,7 @@ class FormationManager(object):
 
         self.rate = rospy.Rate(100)
 
-        self.offset = OFFSET #: (list of float) Swarm center offset
+        self.offset = OFFSET #: (list of float) Formation center offset
 
         self.formation = None #: (str) Current formation
         self.formations = {"square": SquareFormation(self.offset), #: All possible formations
@@ -69,15 +90,14 @@ class FormationManager(object):
 
 
         # Publisher
-        self.swarm_pose_publisher = rospy.Publisher('/swarm_pose', Pose, queue_size=1)
-        self.swarm_goal_publisher = rospy.Publisher('/swarm_goal', Position, queue_size=1)
-        self.swarm_pose = Pose()
-        self.swarm_goal = Position()
-        self.swarm_goal_vel = Twist()
+        self.formation_pose_pub = rospy.Publisher('/formation_pose', Pose, queue_size=1)
+        self.formation_goal_pub = rospy.Publisher('/formation_goal', Position, queue_size=1)
+        self.formation_pose = Pose()
+        self.formation_goal = Position()
+        self.formation_goal_vel = Twist()
 
         # Subscribers
-        rospy.Subscriber("/swarm_goal", Position, self.swarm_goal_handler)
-        rospy.Subscriber("/swarm_goal_vel", Twist, self.swarm_goal_vel_handler)
+        rospy.Subscriber("/formation_goal_vel", Twist, self.formation_goal_vel_handler)
 
         # Initialize each CF
         for cf_id in cf_list:
@@ -88,8 +108,8 @@ class FormationManager(object):
                                       "goal_pub": None}         # publisher
 
             # Add goal publisher
-            self.crazyflies[cf_id]["goal_pub"] = rospy.Publisher('/%s/goal' % cf_id,
-                                                                 Position, queue_size=1)
+            self.crazyflies[cf_id]["goal_pub"] =\
+                rospy.Publisher('/%s/goal' % cf_id, Position, queue_size=1)
 
             # Subscribe to pose topic
             rospy.Subscriber("/%s/pose" % cf_id, PoseStamped, self.pose_handler, cf_id)
@@ -106,7 +126,7 @@ class FormationManager(object):
 
         # Start services
         rospy.Service('/set_formation', SetFormation, self.set_formation)
-        rospy.Service('/set_offset', Empty, self.set_offset)        # TODO: Set offset
+        rospy.Service('/set_offset', Empty, self.set_offset) # TODO: Set offset
         rospy.Service('/toggle_ctrl_mode', Empty, self.toggle_ctrl_mode)
         rospy.Service('/update_swarm_goal', Empty, self.update_swarm_goal)
         rospy.Service('/formation_inc_scale', Empty, self.formation_inc_scale)
@@ -124,54 +144,54 @@ class FormationManager(object):
         self.crazyflies[cf_id]["pose"] = pose_stamped
         self.pose_cnt += 1
 
-        # Compute swarm pose once every time all poses are updated
+        # Compute formation center once every time all cf poses are updated
         if self.pose_cnt % self.n_cf == 0 and self.formation is not None:
             self.get_swarm_pose()
             self.pose_cnt = 0
 
-    def swarm_goal_handler(self, goal_position):
+    def formation_goal_handler(self, goal_position):
         """Update swarm goal
 
         Args:
             goal_position (Positions): New swarm goal
         """
-        self.swarm_goal = goal_position
+        self.formation_goal = goal_position
         if self.trajectory_mode and self.formation is not None:
-            self.formation.compute_cf_goals(self.crazyflies, self.swarm_goal)
+            self.formation.compute_cf_goals(self.crazyflies, self.formation_goal)
 
-    def swarm_goal_vel_handler(self, goal_vel):
-        """To change swarm goal based on a velocity
+    def formation_goal_vel_handler(self, goal_vel):
+        """To change formation goal based on a velocity
 
         Depends on ctrl mode
 
         Args:
             goal_vel (Twist): Swarm goal velocity
         """
-        self.swarm_goal_vel = goal_vel
+        self.formation_goal_vel = goal_vel
 
         # Moves relative to world
         if self.abs_ctrl_mode:
-            self.swarm_goal.x += self.swarm_goal_vel.linear.x
-            self.swarm_goal.y += self.swarm_goal_vel.linear.y
-            self.swarm_goal.z += self.swarm_goal_vel.linear.z
-            self.swarm_goal.yaw += self.swarm_goal_vel.angular.z
+            self.formation_goal.x += self.formation_goal_vel.linear.x
+            self.formation_goal.y += self.formation_goal_vel.linear.y
+            self.formation_goal.z += self.formation_goal_vel.linear.z
+            self.formation_goal.yaw += self.formation_goal_vel.angular.z
 
         # Moves relative to orientation. X axis in front, y axis on toward the left, z axis up
         else:
-            x_vel = self.swarm_goal_vel.linear.x
-            y_vel = self.swarm_goal_vel.linear.y
-            theta = self.swarm_goal.yaw
+            x_vel = self.formation_goal_vel.linear.x
+            y_vel = self.formation_goal_vel.linear.y
+            theta = self.formation_goal.yaw
             x_dist = x_vel * cos(theta) + y_vel * cos(theta + pi/2.0)
             y_dist = x_vel * sin(theta) + y_vel * sin(theta + pi/2.0)
-            self.swarm_goal.x += x_dist
-            self.swarm_goal.y += y_dist
-            self.swarm_goal.z += self.swarm_goal_vel.linear.z
-            self.swarm_goal.yaw += self.swarm_goal_vel.angular.z
+            self.formation_goal.x += x_dist
+            self.formation_goal.y += y_dist
+            self.formation_goal.z += self.formation_goal_vel.linear.z
+            self.formation_goal.yaw += self.formation_goal_vel.angular.z
 
         # If in velocity ctrl
         if not self.trajectory_mode and self.formation is not None:
             # self.formation.compute_cf_goals_vel(self.crazyflies, self.swarm_goal_vel)
-            self.formation.compute_cf_goals(self.crazyflies, self.swarm_goal)
+            self.formation.compute_cf_goals(self.crazyflies, self.formation_goal)
 
     def set_formation(self, srv_call):
         """Set formation
@@ -237,10 +257,10 @@ class FormationManager(object):
         self.get_swarm_pose()
 
         # Update swarm goal to match current position
-        self.swarm_goal.x = self.swarm_pose.position.x
-        self.swarm_goal.y = self.swarm_pose.position.y
-        self.swarm_goal.z = self.swarm_pose.position.z
-        self.swarm_goal.yaw = yaw_from_quat(self.swarm_pose.orientation)
+        self.formation_goal.x = self.formation_pose.position.x
+        self.formation_goal.y = self.formation_pose.position.y
+        self.formation_goal.z = self.formation_pose.position.z
+        self.formation_goal.yaw = yaw_from_quat(self.formation_pose.orientation)
 
         # Update CF goals to match current position
         for _, cf_attrs in self.crazyflies.items():
@@ -316,7 +336,7 @@ class FormationManager(object):
 
         Empty service
         """
-        self.swarm_pose = self.formation.compute_swarm_pose(self.crazyflies)
+        self.formation_pose = self.formation.compute_swarm_pose(self.crazyflies)
         return EmptyResponse()
 
     # Publishers
@@ -331,12 +351,12 @@ class FormationManager(object):
     def publish_swarm_pose(self):
         """Publish current position of the swarm (center)
         """
-        self.swarm_pose_publisher.publish(self.swarm_pose)
+        self.formation_pose_pub.publish(self.formation_pose)
 
     def publish_swarm_goal(self):
         """Publish current goal of the swarm
         """
-        self.swarm_goal_publisher.publish(self.swarm_goal)
+        self.formation_goal_pub.publish(self.formation_goal)
 
     def run_formation(self):
         """Execute formation

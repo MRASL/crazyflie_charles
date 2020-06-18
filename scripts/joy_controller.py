@@ -2,6 +2,32 @@
 
 """
 Script to map inputs of the controller to services and teleop CF in manual mode
+
+Services:
+    - None
+
+Subscribed services:
+    - From swarm_manager
+        - update_params
+        - emergency
+        - toggle_teleop
+        - land
+        - take_off
+        - stop
+        - formation_inc_scale
+        - formation_dec_scale
+        - toggle_ctrl_mode
+        - next_swarm_formation
+        - prev_swarm_formation
+
+Subscription:
+    - from joy
+        - joy_topic
+
+Publisher:
+    - /cf1/cmd_vel: Velocity of a single CF (only when in teleop)
+    - /joy_swarm_vel: Velocity of the swarm
+
 """
 
 import rospy
@@ -87,9 +113,9 @@ class Controller(object):
         # TODO Update to publish on cf_names from params
         if not to_sim:
             self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
-            self.vel_msg = Twist()
+            self.cf_vel_msg = Twist()
 
-        self.goal_vel_publisher = rospy.Publisher("swarm_goal_vel", Twist, queue_size=1)
+        self.goal_vel_publisher = rospy.Publisher("/joy_swarm_vel", Twist, queue_size=1)
         self.goal_vel_msg = Twist()
 
         # Axis parameters
@@ -111,6 +137,19 @@ class Controller(object):
 
     def _init_services(self):
         """Init services
+
+        Service list:
+            - update_params
+            - emergency
+            - toggle_teleop
+            - land
+            - take_off
+            - stop
+            - formation_inc_scale
+            - formation_dec_scale
+            - toggle_ctrl_mode
+            - next_swarm_formation
+            - prev_swarm_formation
         """
         if not self._to_sim:
             rospy.loginfo("Joy: waiting for params service")
@@ -173,41 +212,16 @@ class Controller(object):
         self._get_buttons_axes(data.axes)
 
         if self.in_teleop():
-            self.vel_msg.linear.x = self._get_axis(data.axes, self.axes.x_axis)
-            self.vel_msg.linear.y = self._get_axis(data.axes, self.axes.y_axi)
-            self.vel_msg.linear.z = self._get_axis(data.axes, self.axes.z_axis)
-            self.vel_msg.angular.z = self._get_axis(data.axes, self.axes.yaw_axis)
+            self.cf_vel_msg.linear.x = get_axis(data.axes, self.axes.x_axis)
+            self.cf_vel_msg.linear.y = get_axis(data.axes, self.axes.y_axi)
+            self.cf_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis)
+            self.cf_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis)
 
         else:
-            self.goal_vel_msg.linear.x = self._get_axis(data.axes, self.axes.x_axis, False)
-            self.goal_vel_msg.linear.y = self._get_axis(data.axes, self.axes.y_axi, False)
-            self.goal_vel_msg.linear.z = self._get_axis(data.axes, self.axes.z_axis, False)
-            self.goal_vel_msg.angular.z = self._get_axis(data.axes, self.axes.yaw_axis, False)
-
-    def _get_axis(self, axes_data, axis_to_read, measure_vel=True):
-        """Find the value of the axis
-
-        Args:
-            axesData (list of int): Value of all the joystick axes
-            axisToRead (Axis): Axis to read
-            measureVel (bool, optional): To measure velocity or goal. Defaults to True.
-
-        Returns:
-            int: Read value. Input from -1 to 1, output from -max to max
-        """
-        sign = 1.0
-        if axis_to_read.axis_num < 0:
-            sign = -1.0
-            axis_to_read.axis_num = -axis_to_read.axis_num
-
-        if axis_to_read.axis_num > len(axes_data):
-            rospy.logerr("Invalid axes number")
-            return 0
-
-        val = axes_data[axis_to_read.axis_num]
-        max_val = axis_to_read.max_vel if measure_vel else axis_to_read.max_goal
-
-        return sign * val * max_val
+            self.goal_vel_msg.linear.x = get_axis(data.axes, self.axes.x_axis, False)
+            self.goal_vel_msg.linear.y = get_axis(data.axes, self.axes.y_axi, False)
+            self.goal_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis, False)
+            self.goal_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis, False)
 
     def _get_buttons(self, buttons_data):
         """Find pressed buttons
@@ -312,12 +326,42 @@ class Controller(object):
         """
         while not rospy.is_shutdown():
             if self.in_teleop():
-                self.vel_publisher.publish(self.vel_msg)
+                self.vel_publisher.publish(self.cf_vel_msg)
 
             else:
                 self.goal_vel_publisher.publish(self.goal_vel_msg)
 
             self.rate.sleep()
+
+def get_axis(axes_data, axis_to_read, in_teleop=True):
+    """Find the value of the axis
+
+    When in_teleop is True, controls velocity of a single CF.
+    When in_teleop is False, controls velocity of swarm goal.
+
+    The only difference is the max value of each axis.
+
+    Args:
+        axesData (list of int): Value of all the joystick axes
+        axisToRead (Axis): Axis to read
+        measureVel (bool, optional): To measure velocity or goal. Defaults to True.
+
+    Returns:
+        int: Read value. Input from -1 to 1, output from -max to max
+    """
+    sign = 1.0
+    if axis_to_read.axis_num < 0:
+        sign = -1.0
+        axis_to_read.axis_num = -axis_to_read.axis_num
+
+    if axis_to_read.axis_num > len(axes_data):
+        rospy.logerr("Invalid axes number")
+        return 0
+
+    val = axes_data[axis_to_read.axis_num]
+    max_val = axis_to_read.max_vel if in_teleop else axis_to_read.max_goal
+
+    return sign * val * max_val
 
 if __name__ == '__main__':
     rospy.init_node('joy_controller', anonymous=False)
