@@ -21,6 +21,8 @@ from crazyflie_driver.msg import Position
 TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
 GND_HEIGHT = 0.2 #: (float) Height of the ground
 
+PRINT_SRV_WAIT = False
+
 class Swarm(object):
     """Controls the swarm """
 
@@ -62,19 +64,22 @@ class Swarm(object):
 
         # Formation services
         rospy.loginfo("Swarm: waiting for services")
-        # rospy.loginfo("Swarm: waiting for %s service" % "set_formation")
+        if PRINT_SRV_WAIT:
+            rospy.loginfo("Swarm: waiting for %s service" % "set_formation")
+            rospy.loginfo("Swarm: found %s service" % "set_formation")
+            rospy.loginfo("Swarm: waiting for %s service" % "update_swarm_goal")
+            rospy.loginfo("Swarm: found %s service" % "update_swarm_goal")
+            rospy.loginfo("Swarm: waiting for %s service" % "get_formations_list")
+            rospy.loginfo("Swarm: found %s service" % "get_formations_list")
+
         rospy.wait_for_service("set_formation")
-        # rospy.loginfo("Swarm: found %s service" % "set_formation")
         self.set_formation = rospy.ServiceProxy("set_formation", SetFormation)
 
-        # rospy.loginfo("Swarm: waiting for %s service" % "update_swarm_goal")
         rospy.wait_for_service("update_swarm_goal")
-        # rospy.loginfo("Swarm: found %s service" % "update_swarm_goal")
         self.update_swarm_goal = rospy.ServiceProxy("update_swarm_goal", srv.Empty)
 
         rospy.wait_for_service("get_formations_list")
         self.get_formations_list = rospy.ServiceProxy("get_formations_list", GetFormationList)
-
         rospy.loginfo("Swarm: services found")
 
         # Publisher
@@ -84,7 +89,6 @@ class Swarm(object):
         # Subscribe
         rospy.Subscriber("swarm_goal", Position, self.swarm_goal_handler)
         rospy.Subscriber("swarm_goal_vel", Twist, self.swarm_goal_vel_handler)
-
 
         # Find all possible formations and initialize swarm to 'line'
         self.formation_list = self.get_formations_list().formations.split(',')
@@ -312,7 +316,6 @@ class Swarm(object):
         self.formation = self.formation_list[prev_idx]
         self.set_formation(self.formation)
         return {}
-
 
 if __name__ == '__main__':
     # Launch node
