@@ -46,6 +46,35 @@ Publishing:
     - /cfx/goal: Goal of CF
     - /formation_goal_vel: Velocity of formation center
 
+Etapes generales:
+    1 - Initialisation
+        - [x] Setup des CF
+        - [x] Setup de la formation
+            - Goal initial
+            - Goal de chaque CF
+        - [ ] Setup traj. planner
+    2 - Landed
+        - [x] Position initiale de chaque CF
+    3 - Take off
+        - [x] Decolle de x m au dessus de pos initiale
+    4 - Go to formation
+        - [ ] Associe chaque CF a une pos
+        - [ ] Plan trajectoire de chaque CF
+        - [ ] Suit la trajectoire
+    5 - En formation
+        - [x] Suit commandes du joystick
+    7 - Change formation
+        - [x] Compute nouveaux goals
+        - [ ] Compute trajectoires de chaque CF
+        - [ ] Va au nouveau but
+    8 - Chage scale
+        - [x] Compute nouveaux goals
+        - [ ] Compute trajectoires de chaque CF
+        - [ ] Va au nouveau but
+    9 - Land
+        - [ ] Compute traj jusqu'a x m de la position initiale
+        - [ ] Chaque CF va au dessus de sa position initiale
+        - [x] Land
 """
 
 import rospy
@@ -54,6 +83,7 @@ from geometry_msgs.msg import Twist
 from std_srvs import srv
 from crazyflie_charles.srv import SetFormation, GetFormationList
 from crazyflie_driver.msg import Position
+from state_machine import StateMachine
 
 TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
 GND_HEIGHT = 0.2 #: (float) Height of the ground
@@ -84,14 +114,14 @@ class Swarm(object):
 
         # Services
         # TODO: #14 Update all parameters
-        rospy.Service('/update_params', srv.Empty, self.update_params) # Update all CFs params
-        rospy.Service('/emergency', srv.Empty, self.emergency)         # Emergency
-        rospy.Service('/stop', srv.Empty, self.stop)                   # Stop all CFs
-        rospy.Service('/take_off', srv.Empty, self.take_off)           # Take off all CFs
-        rospy.Service('/land', srv.Empty, self.land)                   # Land all CFs
-        rospy.Service('/toggle_teleop', srv.Empty, self.toggle_teleop) # Toggle teleop
-        rospy.Service('/next_swarm_formation', srv.Empty, self.next_swarm_formation) # Formation
-        rospy.Service('/prev_swarm_formation', srv.Empty, self.prev_swarm_formation) # Formation
+        rospy.Service('/update_params', srv.Empty, self._update_params_srv) # Update all CFs params
+        rospy.Service('/emergency', srv.Empty, self._emergency_srv)         # Emergency
+        rospy.Service('/stop', srv.Empty, self._stop_srv)                   # Stop all CFs
+        rospy.Service('/take_off', srv.Empty, self._take_off_srv)           # Take off all CFs
+        rospy.Service('/land', srv.Empty, self._land_srv)                   # Land all CFs
+        rospy.Service('/toggle_teleop', srv.Empty, self._toggle_teleop_srv) # Toggle teleop
+        rospy.Service('/next_swarm_formation', srv.Empty, self._next_swarm_formation_srv)# Formation
+        rospy.Service('/prev_swarm_formation', srv.Empty, self._prev_swarm_formation_srv)# Formation
 
         # Link formation manager services
         rospy.loginfo("Swarm: waiting for formation services")
@@ -117,6 +147,16 @@ class Swarm(object):
         self.formation_list = self.get_formations_list().formations.split(',')
         self.formation = "line"
         self.set_formation(self.formation)
+
+        # Initialize state machine
+        self.state_list = {"landed": self.landed_state,
+                           "take_off":self.take_off_state,
+                           "follow_traj": self.follow_traj_state,
+                           "in_formation": self.in_formation_state,
+                           "hover": self.hover_state,
+                           "land": self.land_state,}
+        self.state_machine = StateMachine(self.state_list)
+        self.state_machine.set_state("landed")
 
     # CF initialization
     def _init_cf(self, cf_id):
@@ -195,9 +235,6 @@ class Swarm(object):
         """
         self.crazyflies[cf_id]["formation_goal_msg"] = cf_formation_goal
 
-        # TODO cf_goal not always formation goal
-        self.crazyflies[cf_id]["goal_msg"] = self.crazyflies[cf_id]["formation_goal_msg"]
-
     # Setter & getters
     def in_teleop(self):
         """
@@ -215,11 +252,8 @@ class Swarm(object):
         """
         self.joy_swarm_vel = joy_swarm_vel
 
-        # TODO if in formation state
-        self.formation_goal_vel = self.joy_swarm_vel
-
     def pub_formation_goal_vel(self, formation_goal_vel):
-        """Publish new swarm_goal speed
+        """Publish swarm_goal speed
 
         Args:
             goal_spd (Twist): Speed variation of goal
@@ -251,7 +285,7 @@ class Swarm(object):
                 res = each_cf[service_name](service_msg)
         return res
 
-    def toggle_teleop(self, _):
+    def _toggle_teleop_srv(self, _):
         """Toggle between manual and automatic mode
 
         Args:
@@ -264,7 +298,7 @@ class Swarm(object):
         self._call_all_cf_service("toggle_teleop")
         return srv.EmptyResponse()
 
-    def update_params(self, _):
+    def _update_params_srv(self, _):
         """Update parameter of all swarm
 
         Args:
@@ -276,37 +310,31 @@ class Swarm(object):
         rospy.loginfo("Swarm: Update params")
         return srv.EmptyResponse()
 
-    def emergency(self, _):
+    def _emergency_srv(self, _):
         """Call emergency service """
         rospy.logerr("Swarm: EMERGENCY")
         self._call_all_cf_service("emergency")
         return srv.EmptyResponse()
 
-    def stop(self, _):
+    def _stop_srv(self, _):
         """Call stop service """
         rospy.loginfo("Swarm: stop")
         self._call_all_cf_service("stop")
         return srv.EmptyResponse()
 
-    def take_off(self, _):
+    def _take_off_srv(self, _):
         """Take off all cf in swarm
         """
-        rospy.loginfo("Swarm: take off")
-
-        self._call_all_cf_service("take_off")
+        self.state_machine.set_state("take_off")
         return srv.EmptyResponse()
 
-    def land(self, _):
+    def _land_srv(self, _):
         """Land all cf in swarm
         """
-        rospy.loginfo("Swarm: land")
-
-        # TODO: Land service
-
-        self._call_all_cf_service("land")
+        self.state_machine.set_state("land")
         return srv.EmptyResponse()
 
-    def next_swarm_formation(self, _):
+    def _next_swarm_formation_srv(self, _):
         """Change swarm formation to next the next one
         """
         idx = self.formation_list.index(self.formation)
@@ -319,7 +347,7 @@ class Swarm(object):
         self.set_formation(self.formation)
         return {}
 
-    def prev_swarm_formation(self, _):
+    def _prev_swarm_formation_srv(self, _):
         """Change swarm formation to the previous one
         """
         idx = self.formation_list.index(self.formation)
@@ -332,13 +360,61 @@ class Swarm(object):
         self.set_formation(self.formation)
         return {}
 
-    # Main function:
+    # Main functions:
     def control_swarm(self):
         """Publish on topics depending of current state
         """
-        self.pub_formation_goal_vel(self.formation_goal_vel)
+        # Execute function depending on current state
+        state_function = self.state_machine.run_state()
+        state_function()
+
+        # Publish goal of each CF
         self.pub_cf_goals()
+
         self.rate.sleep()
+
+    def landed_state(self):
+        """All CF are on the ground
+        """
+        pass
+
+    def take_off_state(self):
+        """Take off all CF in the swarm.
+        """
+        rospy.loginfo("Swarm: take off")
+        self._call_all_cf_service("take_off")
+
+        self.state_machine.set_state("in_formation")
+
+    def follow_traj_state(self):
+        """All cf follow a specified trajectory
+        """
+        pass
+
+    def in_formation_state(self):
+        """Swarm is in a specific formation.
+
+        Formation can be moved /w the joystick
+        """
+        # Publish goal velocity
+        self.formation_goal_vel = self.joy_swarm_vel
+        self.pub_formation_goal_vel(self.formation_goal_vel)
+
+        # Set CF goal to formation goal
+        for _, each_cf in self.crazyflies.items():
+            each_cf["goal_msg"] = each_cf["formation_goal_msg"]
+
+    def hover_state(self):
+        """CFs hover in place
+        """
+        pass
+
+    def land_state(self):
+        """Land CF to their starting position
+        """
+        rospy.loginfo("Swarm: land")
+        self._call_all_cf_service("land")
+        self.state_machine.set_state("landed")
 
 if __name__ == '__main__':
     # Launch node

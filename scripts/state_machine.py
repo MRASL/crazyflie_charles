@@ -53,6 +53,17 @@ class StateMachine(object):
         else:
             rospy.logerr("Invalid State: %s" % new_state)
 
+    def in_state(self, state):
+        """Check current state
+
+        Args:
+            state (str): To verify if currently in this state
+
+        Returns:
+            bool: True if SM in it's this state
+        """
+        return self.current_state == state
+
     def run_state(self):
         """Return method associated with current state
 
