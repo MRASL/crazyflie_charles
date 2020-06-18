@@ -18,7 +18,11 @@ from crazyflie_driver.srv import UpdateParams
 from std_msgs.msg import Empty as Empty_msg
 from std_srvs.srv import Empty as Empty_srv
 from std_srvs.srv import EmptyResponse as EmptyResponse_srv
-from geometry_msgs.msg import Twist, PoseStamped, Pose
+from geometry_msgs.msg import Twist, PoseStamped, Pose, Quaternion
+from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
+
+GND_HEIGHT = 0.0
+TAKE_OFF_HEIGHT = 0.5
 
 class Crazyflie(object):
     """Controller of a single crazyflie.
@@ -154,16 +158,18 @@ class Crazyflie(object):
         while not self.localization_started:
             pass
 
-        initial_pose = {'x':[], 'y':[], 'z':[]}
+        initial_pose = {'x':[], 'y':[], 'z':[], 'yaw':[]}
         while len(initial_pose['x']) < 10:
             initial_pose['x'].append(self.pose.position.x)
             initial_pose['y'].append(self.pose.position.y)
             initial_pose['z'].append(self.pose.position.z)
+            initial_pose['yaw'].append(yaw_from_quat(self.pose.orientation))
             rate.sleep()
 
         self.initial_pose.position.x = np.mean(initial_pose['x'])
         self.initial_pose.position.y = np.mean(initial_pose['y'])
         self.initial_pose.position.z = np.mean(initial_pose['z'])
+        self.initial_pose.orientation = quat_from_yaw(np.mean(initial_pose['yaw']))
         rospy.loginfo("%s: Initial position found" % self.cf_id)
         # rospy.loginfo(self.initial_pose)
 
@@ -247,10 +253,12 @@ class Crazyflie(object):
 
     # Methods depending on state
     def _take_off(self):
-        z_dist = self.goal.z - self.pose.position.z
+        z_dist = TAKE_OFF_HEIGHT - self.pose.position.z
         x_start = self.pose.position.x
         y_start = self.pose.position.y
         z_start = self.pose.position.z
+        yaw_start = yaw_from_quat(self.pose.orientation)
+
 
         # rospy.loginfo("Going to \n{}".format(self.goal))
 
@@ -264,7 +272,7 @@ class Crazyflie(object):
 
             new_z = i*z_inc + z_start
 
-            self.cmd_pos(x_start, y_start, new_z, self.goal.yaw)
+            self.cmd_pos(x_start, y_start, new_z, yaw_start)
 
             self.rate.sleep()
 
@@ -279,13 +287,15 @@ class Crazyflie(object):
         self.rate.sleep()
 
     def _land(self):
+        self._go_to_initial_position()
+        rospy.sleep(0.2)
+
         x_start = self.pose.position.x
         y_start = self.pose.position.y
         z_start = self.pose.position.z
-        yaw_start = self.goal.yaw
+        yaw_start = yaw_from_quat(self.pose.orientation)
 
-        z_dist = z_start - self.goal.z
-
+        z_dist = z_start - GND_HEIGHT
 
         time_range = 2*10
 
@@ -301,10 +311,18 @@ class Crazyflie(object):
 
             self.rate.sleep()
 
-        self.cmd_pos(self.goal.x, self.goal.y, self.goal.z, yaw_start)
+        self.cmd_pos(x_start, y_start, GND_HEIGHT, yaw_start)
         self.rate.sleep()
 
         self.stop(Empty_srv())
+
+    def _go_to_initial_position(self):
+        """To return above start position
+        """
+        self.cmd_pos(self.initial_pose.position.x,
+                     self.initial_pose.position.y,
+                     self.initial_pose.position.z + TAKE_OFF_HEIGHT,
+                     yaw_from_quat(self.initial_pose.orientation))
 
     def _stop(self):
         self.cmd_vel(0, 0, 0, 0)
@@ -366,6 +384,35 @@ class Crazyflie(object):
             self._land()
         else:
             self._stop()
+
+def yaw_from_quat(quaternion):
+    """Returns yaw from a quaternion
+
+    Args:
+        quaternion (Quaternion)
+
+    Returns:
+        float: Yaw
+    """
+    _, _, yaw = euler_from_quaternion([quaternion.x,
+                                       quaternion.y,
+                                       quaternion.z,
+                                       quaternion.w])
+    return yaw
+
+def quat_from_yaw(yaw):
+    """Compute a quaternion from yaw
+
+    Pitch and roll are considered zero
+
+    Args:
+        yaw (float): Yaw
+
+    Returns:
+        Quaternion
+    """
+    x_quat, y_quat, z_quat, w_quat = quaternion_from_euler(0, 0, yaw)
+    return Quaternion(x_quat, y_quat, z_quat, w_quat)
 
 if __name__ == '__main__':
     # Launch node

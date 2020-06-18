@@ -159,6 +159,7 @@ class PyramidFormation(FormationClass):
         return self.cf_goals
 
     def update_scale(self):
-        self.tier_dist = self.scale/self.n_tier # Space between CFs
+        # Space between CFs
+        self.tier_dist = self.scale/self.n_tier if self.n_tier > 0 else 0
 
         self.compute_start_positions(False)

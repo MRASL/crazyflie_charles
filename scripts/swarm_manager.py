@@ -52,7 +52,7 @@ import rospy
 
 from geometry_msgs.msg import Twist
 from std_srvs import srv
-from crazyflie_charles.srv import PoseRequest, SetFormation, GetFormationList
+from crazyflie_charles.srv import SetFormation, GetFormationList
 from crazyflie_driver.msg import Position
 
 TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
@@ -293,17 +293,6 @@ class Swarm(object):
         """
         rospy.loginfo("Swarm: take off")
 
-        self.update_swarm_goal()
-        goal_var = Twist()
-
-        if self.formation == "pyramid":
-            goal_var.linear.z = 1.5
-
-        else:
-            goal_var.linear.z = 0.5
-
-        self.pub_formation_goal_vel(goal_var)
-
         self._call_all_cf_service("take_off")
         return srv.EmptyResponse()
 
@@ -313,10 +302,6 @@ class Swarm(object):
         rospy.loginfo("Swarm: land")
 
         # TODO: Land service
-        # self.update_swarm_goal()
-        # goal_var = Twist()
-        # goal_var.linear.z = GND_HEIGHT - self.swarm_goal.z
-        # self.pub_swarm_goal_vel(goal_var)
 
         self._call_all_cf_service("land")
         return srv.EmptyResponse()

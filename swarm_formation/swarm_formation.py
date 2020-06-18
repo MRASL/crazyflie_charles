@@ -39,18 +39,17 @@ import rospy
 from crazyflie_charles.srv import SetFormation, GetFormationList
 from crazyflie_driver.msg import Position
 
-from general_formation import yaw_from_quat
 from square_formation import SquareFormation
 from line_formation import LineFormation
 from circle_formation import CircleFormation
 from pyramid_formation import PyramidFormation
 from v_formation import VFormation
 
-FORMATION_INITIAL_POS = Pose()
-FORMATION_INITIAL_POS.position.x = 0.5
-FORMATION_INITIAL_POS.position.y = 0.5
-FORMATION_INITIAL_POS.position.z = 0.5
-FORMATION_INITIAL_POS.orientation.w = 1.0
+FORMATION_INITIAL_GOAL = Position()
+FORMATION_INITIAL_GOAL.x = 0.5
+FORMATION_INITIAL_GOAL.y = 0.5
+FORMATION_INITIAL_GOAL.z = 0.5
+FORMATION_INITIAL_GOAL.yaw = 0.0
 
 class FormationManager(object):
     """To manage to position of all CF in the formation.
@@ -75,14 +74,14 @@ class FormationManager(object):
 
         self.rate = rospy.Rate(100)
 
-        self.initial_formation_pos = FORMATION_INITIAL_POS #: Position: formation start position
+        self.initial_formation_goal = FORMATION_INITIAL_GOAL #: Position: formation start position
 
         #: All possible formations
-        self.formations = {"square": SquareFormation(self.initial_formation_pos),
-                           "v": VFormation(self.initial_formation_pos),
-                           "pyramid": PyramidFormation(self.initial_formation_pos),
-                           "circle": CircleFormation(self.initial_formation_pos),
-                           "line": LineFormation(self.initial_formation_pos),}
+        self.formations = {"square": SquareFormation(),
+                           "v": VFormation(),
+                           "pyramid": PyramidFormation(),
+                           "circle": CircleFormation(),
+                           "line": LineFormation(),}
         self.formation = None #: (str) Current formation
 
         #: (list of list of float): Starting pos of each agent in formation, independant of CF id
@@ -97,8 +96,8 @@ class FormationManager(object):
         self.formation_goal = Position()
         self.formation_goal_vel = Twist()
 
-        if self.initial_formation_pos is not None:
-            self.formation.pose = self.initial_formation_pos
+        if self.initial_formation_goal is not None:
+            self.formation_goal = self.initial_formation_goal
 
         # Subscribers
         rospy.Subscriber("/formation_goal_vel", Twist, self.formation_goal_vel_handler)
@@ -243,19 +242,19 @@ class FormationManager(object):
         # Update swarm position
         self.get_swarm_pose()
 
-        # Update swarm goal to match current position
-        self.formation_goal.x = self.formation_pose.position.x
-        self.formation_goal.y = self.formation_pose.position.y
-        self.formation_goal.z = self.formation_pose.position.z
-        self.formation_goal.yaw = yaw_from_quat(self.formation_pose.orientation)
+        # # Update swarm goal to match current position
+        # self.formation_goal.x = self.formation_pose.position.x
+        # self.formation_goal.y = self.formation_pose.position.y
+        # self.formation_goal.z = self.formation_pose.position.z
+        # self.formation_goal.yaw = yaw_from_quat(self.formation_pose.orientation)
 
-        # Update CF goals to match current position
-        for _, cf_attrs in self.crazyflies.items():
-            cur_position = cf_attrs["pose"].pose
-            cf_attrs["formation_goal"].x = cur_position.position.x
-            cf_attrs["formation_goal"].y = cur_position.position.y
-            cf_attrs["formation_goal"].z = cur_position.position.z
-            cf_attrs["formation_goal"].yaw = yaw_from_quat(cur_position.orientation)
+        # # Update CF goals to match current position
+        # for _, cf_attrs in self.crazyflies.items():
+        #     cur_position = cf_attrs["pose"].pose
+        #     cf_attrs["formation_goal"].x = cur_position.position.x
+        #     cf_attrs["formation_goal"].y = cur_position.position.y
+        #     cf_attrs["formation_goal"].z = cur_position.position.z
+        #     cf_attrs["formation_goal"].yaw = yaw_from_quat(cur_position.orientation)
 
         return EmptyResponse()
 

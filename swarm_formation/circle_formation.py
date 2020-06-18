@@ -6,6 +6,7 @@
 from math import sin, cos, pi
 import rospy
 from crazyflie_driver.msg import Position
+from geometry_msgs.msg import Pose
 
 from general_formation import FormationClass
 
@@ -53,6 +54,31 @@ class CircleFormation(FormationClass):
         self.angle_between_cf = (2*pi)/(self.n_cf - 1)
 
     # Computing
+    def compute_swarm_pose(self, crazyflie_list):
+        """Compute pose of the swarm. Center is set at position of CF 0
+
+        Args:
+            crazyflie_list (dict of dict): Attrs of each CF
+
+        Returns:
+            Pose: Swarm Pose
+        """
+
+        # To simplify, swarm pose is the average of all the poses
+        swarm_pose = Pose()
+
+        for _, cf_attrs in crazyflie_list.items():
+            if rospy.is_shutdown():
+                break
+
+            if cf_attrs["swarm_id"] == 0:
+                pose = cf_attrs["pose"].pose
+
+                swarm_pose.position = pose.position
+                swarm_pose.orientation = pose.orientation
+
+        return swarm_pose
+
     def compute_start_positions(self):
         cf_num = 0
         center_x = self.scale

@@ -67,7 +67,9 @@ class SquareFormation(FormationClass):
         self.land_extra_cf()
 
         self.cf_per_side = int(sqrt(self.n_cf)) # Number of CF per side
-        self.dist = self.scale/(self.cf_per_side-1) # Space between CFs
+
+        # Space between CFs
+        self.dist = self.scale/(self.cf_per_side-1) if self.cf_per_side > 1 else 0
 
     # Computing
     def compute_start_positions(self):
@@ -94,11 +96,11 @@ class SquareFormation(FormationClass):
                 self.angle[cf_num] = theta
                 self.center_height[cf_num] = center_height
 
-
                 cf_num += 1
 
         return self.cf_goals
 
     def update_scale(self):
-        self.dist = self.scale/(self.cf_per_side-1) # Space between CFs
+         # Space between CFs
+        self.dist = self.scale/(self.cf_per_side-1) if self.cf_per_side > 1 else 0
         self.compute_start_positions()
