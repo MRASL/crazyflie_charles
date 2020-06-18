@@ -99,6 +99,8 @@ class Swarm(object):
             cf_list (list of str): Name of all CFs in the swarm
             to_sim (bool): To simulate or not
         """
+        rospy.loginfo("Swarm: Initialization...")
+
         self.crazyflies = {} #: dict: Keys are name of the CF
 
         self._to_sim = to_sim   #: bool: True if in simulation
@@ -419,7 +421,6 @@ class Swarm(object):
 if __name__ == '__main__':
     # Launch node
     rospy.init_node('swarm_manager', anonymous=False)
-    rospy.loginfo('Initialisation du swarm manager')
 
     # Get params
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")

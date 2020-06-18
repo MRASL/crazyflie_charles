@@ -9,7 +9,7 @@ import numpy as np
 from numpy import array, mean
 from numpy.linalg import norm
 
-from path import Agent, TrajectorySolver
+from trajectory_solver import Agent, TrajectorySolver
 
 def demo():
     """Launch trajectories tests
