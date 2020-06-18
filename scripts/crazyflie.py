@@ -19,7 +19,6 @@ from std_msgs.msg import Empty as Empty_msg
 from std_srvs.srv import Empty as Empty_srv
 from std_srvs.srv import EmptyResponse as EmptyResponse_srv
 from geometry_msgs.msg import Twist, PoseStamped, Pose
-from crazyflie_charles.srv import PoseRequest
 
 class Crazyflie(object):
     """Controller of a single crazyflie.
@@ -73,7 +72,6 @@ class Crazyflie(object):
 
         rospy.loginfo("%s: Initializing" % self.cf_id)
 
-
         self.world_frame = rospy.get_param("~worldFrame", "/world")
         self.rate = rospy.Rate(10)
 
@@ -97,10 +95,13 @@ class Crazyflie(object):
         self.pose = Pose()
         self.goal = Position()
         self.initial_pose = Pose()
-        self.find_initial_pose()
 
         rospy.Subscriber(self.cf_id + '/pose', PoseStamped, self._pose_handler)
         rospy.Subscriber(self.cf_id + '/goal', Position, self._goal_handler)
+
+        # Find initial position
+        self.localization_started = False #: boool: Sets to True upon receiveing first pose
+        self.find_initial_pose()
 
         rospy.loginfo("%s: Setup done" % self.cf_id)
 
@@ -129,7 +130,6 @@ class Crazyflie(object):
         self.cmd_stop_msg = Empty_msg()
 
     def _init_services(self):
-        rospy.Service(self.cf_id + '/get_pose', PoseRequest, self.return_pose)
         rospy.Service(self.cf_id + '/take_off', Empty_srv, self.take_off)
         rospy.Service(self.cf_id + '/hover', Empty_srv, self.hover)
         rospy.Service(self.cf_id + '/land', Empty_srv, self.land)
@@ -139,42 +139,33 @@ class Crazyflie(object):
     # Handlers
     def _pose_handler(self, pose_stamped):
         """Update crazyflie position in world """
+        self.localization_started = True
         self.pose = pose_stamped.pose
 
     def _goal_handler(self, goal):
         self.goal = goal
-
-    def return_pose(self, _):
-        """Return crazyflie pose
-
-        Returns:
-            Pose: Current position
-        """
-        self.find_initial_pose()
-
-        return self.initial_pose
 
     def find_initial_pose(self):
         """ Find the initial position of the crazyflie.
 
         Position found by calculating the mean during a time interval
         """
-        if not self._to_sim:
-            rate = rospy.Rate(100)
-            initial_pose = {'x':[], 'y':[], 'z':[]}
-            while len(initial_pose['x']) < 10:
-                initial_pose['x'].append(self.pose.position.x)
-                initial_pose['y'].append(self.pose.position.y)
-                initial_pose['z'].append(self.pose.position.z)
-                rate.sleep()
+        rate = rospy.Rate(100)
+        while not self.localization_started:
+            pass
 
-            self.initial_pose.position.x = np.mean(initial_pose['x'])
-            self.initial_pose.position.y = np.mean(initial_pose['y'])
-            self.initial_pose.position.z = np.mean(initial_pose['z'])
-            rospy.loginfo("Initial position: \n{}".format(self.initial_pose))
+        initial_pose = {'x':[], 'y':[], 'z':[]}
+        while len(initial_pose['x']) < 10:
+            initial_pose['x'].append(self.pose.position.x)
+            initial_pose['y'].append(self.pose.position.y)
+            initial_pose['z'].append(self.pose.position.z)
+            rate.sleep()
 
-        else:
-            self.initial_pose = self.pose
+        self.initial_pose.position.x = np.mean(initial_pose['x'])
+        self.initial_pose.position.y = np.mean(initial_pose['y'])
+        self.initial_pose.position.z = np.mean(initial_pose['z'])
+        rospy.loginfo("%s: Initial position found" % self.cf_id)
+        # rospy.loginfo(self.initial_pose)
 
     # Setter & Getters
     def set_param(self, name, value):

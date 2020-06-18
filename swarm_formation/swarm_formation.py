@@ -36,17 +36,21 @@ from math import sin, cos, pi
 from geometry_msgs.msg import Pose, PoseStamped, Twist
 from std_srvs.srv import Empty, EmptyResponse
 import rospy
-from crazyflie_charles.srv import SetFormation, PoseSet, GetFormationList
+from crazyflie_charles.srv import SetFormation, GetFormationList
 from crazyflie_driver.msg import Position
 
-from general_formation import yaw_from_quat, quat_from_yaw
+from general_formation import yaw_from_quat
 from square_formation import SquareFormation
 from line_formation import LineFormation
 from circle_formation import CircleFormation
 from pyramid_formation import PyramidFormation
 from v_formation import VFormation
 
-OFFSET = [0, 0, 0.2]
+FORMATION_INITIAL_POS = Pose()
+FORMATION_INITIAL_POS.position.x = 0.5
+FORMATION_INITIAL_POS.position.y = 0.5
+FORMATION_INITIAL_POS.position.z = 0.5
+FORMATION_INITIAL_POS.orientation.w = 1.0
 
 class FormationManager(object):
     """To manage to position of all CF in the formation.
@@ -71,20 +75,20 @@ class FormationManager(object):
 
         self.rate = rospy.Rate(100)
 
-        self.offset = OFFSET #: (list of float) Formation center offset
+        self.initial_formation_pos = FORMATION_INITIAL_POS #: Position: formation start position
 
+        #: All possible formations
+        self.formations = {"square": SquareFormation(self.initial_formation_pos),
+                           "v": VFormation(self.initial_formation_pos),
+                           "pyramid": PyramidFormation(self.initial_formation_pos),
+                           "circle": CircleFormation(self.initial_formation_pos),
+                           "line": LineFormation(self.initial_formation_pos),}
         self.formation = None #: (str) Current formation
-        self.formations = {"square": SquareFormation(self.offset), #: All possible formations
-                           "v": VFormation(self.offset),
-                           "pyramid": PyramidFormation(self.offset),
-                           "circle": CircleFormation(self.offset),
-                           "line": LineFormation(self.offset),}
 
-        #: (list of list of float) Starting position of the formation, independant of CFs
+        #: (list of list of float): Starting pos of each agent in formation, independant of CF id
         self.start_positions = []
 
         self.crazyflies = {} #: (dict of list) Information of each CF
-
 
         # Publisher
         self.formation_pose_pub = rospy.Publisher('/formation_pose', Pose, queue_size=1)
@@ -92,6 +96,9 @@ class FormationManager(object):
         self.formation_pose = Pose()
         self.formation_goal = Position()
         self.formation_goal_vel = Twist()
+
+        if self.initial_formation_pos is not None:
+            self.formation.pose = self.initial_formation_pos
 
         # Subscribers
         rospy.Subscriber("/formation_goal_vel", Twist, self.formation_goal_vel_handler)
@@ -134,16 +141,6 @@ class FormationManager(object):
         if self.pose_cnt % self.n_cf == 0 and self.formation is not None:
             self.get_swarm_pose()
             self.pose_cnt = 0
-
-    def formation_goal_handler(self, goal_position):
-        """Update swarm goal
-
-        Args:
-            goal_position (Positions): New swarm goal
-        """
-        self.formation_goal = goal_position
-        if self.trajectory_mode and self.formation is not None:
-            self.formation.compute_cf_goals(self.crazyflies, self.formation_goal)
 
     def formation_goal_vel_handler(self, goal_vel):
         """To change formation goal based on a velocity
@@ -228,7 +225,10 @@ class FormationManager(object):
         return {}
 
     def update_formation_goal(self, _=None):
-        """Update swarm goal to match current position
+        """Update formation goal to match current position
+
+        - formation_goal is set to formation_pose
+        - cf formation_goal set to cf current_pose
 
         Args:
             req (Empty, optional): service. Defaults to None.
@@ -239,6 +239,7 @@ class FormationManager(object):
         Notes:
             Call from service and in initialisation
         """
+        #TODO: REMOVE, Update, formation goal cant move if not following formation
         # Update swarm position
         self.get_swarm_pose()
 
@@ -293,7 +294,7 @@ class FormationManager(object):
             cf_attrs["swarm_id"] = swarm_id
 
         rospy.sleep(0.2)
-        self.update_formation_goal()
+        # self.update_formation_goal()
 
     # Control methods
     def get_swarm_pose(self):

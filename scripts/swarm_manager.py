@@ -31,7 +31,6 @@ Subscribed services:
         - get_formations_list
     - From /cfx_controller
         - emergency
-        - get_pose
         - take_off
         - land
         - hover
@@ -135,12 +134,10 @@ class Swarm(object):
                     - cf: Crazyflie instance
                     - emergency service
                     - goal_publisher
-                    - get_pose
                     - initial_pose
         """
         # TODO: add subdivision? i.e: self.crazyflies['cf1']['srv']['emergency] Or use a class?
         self.crazyflies[cf_id] = {"emergency": None,            # service
-                                  "get_pose": None,             # service
                                   "take_off": None,             # service
                                   "hover": None,                # service
                                   "land": None,                 # service
@@ -159,7 +156,6 @@ class Swarm(object):
             pass
 
         rospy.loginfo("Swarm: waiting services of %s " % cf_id)
-        self._link_service(cf_id, "get_pose", PoseRequest)
         self._link_service(cf_id, "take_off", srv.Empty)
         self._link_service(cf_id, "land", srv.Empty)
         self._link_service(cf_id, "hover", srv.Empty)
