@@ -7,9 +7,8 @@ from math import sin, cos, pi, ceil
 
 import rospy
 from crazyflie_driver.msg import Position
-from geometry_msgs.msg import Pose
 
-from general_formation import FormationClass
+from general_formation import FormationClass, compute_info_from_center
 
 
 class VFormation(FormationClass):
@@ -58,70 +57,46 @@ class VFormation(FormationClass):
 
         # Attrs specific to square
         #: (float) Number of CF per side. index 0 is right side, 1 is left side
-        self.cf_per_side = [0, 0]
+        self.agents_per_side = [0, 0]
         self.dist = 0 #: (float) Space between CFs
         self.theta = 60*pi/180 #: (float) Opening of the formation (rad)
 
     # Setter
-    def set_n_cf(self, n):
-        # Verify number of CFs, all numbers are valid
-        if n > 0:
-            self.n_cf = n
-            self.n_cf_landed = 0
+    def set_n_agents(self, n_agents):
+        # Verify number of Agents, all numbers are valid
+        if n_agents > 0:
+            self.n_agents = n_agents
+            self.n_agents_landed = 0
         else:
-            rospy.loginfo("Formation: Unsuported number of CFs, landing %i CF" % self.n_cf_landed)
+            rospy.loginfo("Formation: Unsuported number of CFs, landing %i CF" %\
+                self.n_agents_landed)
 
-        rospy.loginfo("Formation: %i crazyflies in formation" % self.n_cf)
+        rospy.loginfo("Formation: %i crazyflies in formation" % self.n_agents)
 
-        # Compute number of CF per side
-        if self.n_cf % 2 != 0:
-            self.cf_per_side[0] = (self.n_cf - 1) /2
-            self.cf_per_side[1] = self.cf_per_side[0]
+        # Compute number of agents per side
+        if self.n_agents % 2 != 0:
+            self.agents_per_side[0] = (self.n_agents - 1) /2
+            self.agents_per_side[1] = self.agents_per_side[0]
 
         else:
-            self.cf_per_side[0] = self.n_cf / 2
-            self.cf_per_side[1] = self.cf_per_side[0] - 1
+            self.agents_per_side[0] = self.n_agents / 2
+            self.agents_per_side[1] = self.agents_per_side[0] - 1
 
-        self.dist = self.scale/(self.cf_per_side[0]) # Space between CFs
+        self.dist = self.scale/(self.agents_per_side[0]) # Space between CFs
 
     # Computing
-    def compute_swarm_pose(self, crazyflie_list):
-        """Compute pose of the swarm. Center is set at position of CF 0
+    def compute_start_positions(self, formation_goal):
+        center = [formation_goal.x,
+                  formation_goal.y,
+                  formation_goal.z]
 
-        Args:
-            crazyflie_list (dict of dict): Attrs of each CF
-
-        Returns:
-            Pose: Swarm Pose
-        """
-
-        # To simplify, swarm pose is the average of all the poses
-        swarm_pose = Pose()
-
-        for _, cf_attrs in crazyflie_list.items():
+        for i in range(self.n_agents):
             if rospy.is_shutdown():
                 break
 
-            if cf_attrs["swarm_id"] == 0:
-                pose = cf_attrs["pose"].pose
-
-                swarm_pose.position = pose.position
-                swarm_pose.orientation = pose.orientation
-
-        return swarm_pose
-
-    def compute_start_positions(self):
-        cf_num = 0
-        center_x = self.scale * cos(self.theta/2)
-        center_y = self.scale * sin(self.theta/2)
-
-        for i in range(self.n_cf):
-            if rospy.is_shutdown():
-                break
-
-            start_goal = Position()
-            start_goal.z = 0
-            start_goal.yaw = 0
+            agent_goal = Position()
+            agent_goal.z = 0
+            agent_goal.yaw = 0
 
             # Find row number
             # i = 0 -> row = 0, i = 1 -> row = 1, i = 2 -> row = 1, i = 3 -> row = 2 ...
@@ -135,21 +110,20 @@ class VFormation(FormationClass):
             x_dist = -self.dist*row_num * cos(self.theta/2)
             y_dist = self.dist*row_num * sin(self.theta/2) * sign
 
-            start_goal.x = center_x + x_dist
-            start_goal.y = center_y + y_dist
-            self.cf_goals[cf_num] = start_goal
+            agent_goal.x = center[0] + x_dist
+            agent_goal.y = center[1] + y_dist
+            agent_goal.z = center[2]
+            self.agents_goals[i] = agent_goal
 
             center_dist, theta, center_height = \
-                self.compute_info_from_center([start_goal.x, start_goal.y, 0],
-                                              [center_x, center_y, 0])
-            self.center_dist[cf_num] = center_dist
-            self.angle[cf_num] = theta
-            self.center_height[cf_num] = center_height
+                compute_info_from_center([agent_goal.x, agent_goal.y, agent_goal.z],
+                                         center)
+            self.center_dist[i] = center_dist
+            self.angle[i] = theta
+            self.center_height[i] = center_height
 
-            cf_num += 1
+        return self.agents_goals
 
-        return self.cf_goals
-
-    def update_scale(self):
-        self.dist = self.scale/(self.cf_per_side[0]) # Space between CFs
-        self.compute_start_positions()
+    def update_scale(self, formation_goal):
+        self.dist = self.scale/(self.agents_per_side[0]) # Space between agents
+        self.compute_start_positions(formation_goal)

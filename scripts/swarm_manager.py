@@ -27,7 +27,6 @@ Services:
 Subscribed services:
     - From /formation_manager
         - set_formation
-        - update_swarm_goal
         - get_formations_list
     - From /cfx_controller
         - emergency
@@ -130,9 +129,6 @@ class Swarm(object):
         rospy.loginfo("Swarm: waiting for formation services")
         rospy.wait_for_service("set_formation")
         self.set_formation = rospy.ServiceProxy("/set_formation", SetFormation)
-
-        rospy.wait_for_service("update_swarm_goal")
-        self.update_swarm_goal = rospy.ServiceProxy("/update_swarm_goal", srv.Empty)
 
         rospy.wait_for_service("get_formations_list")
         self.get_formations_list = rospy.ServiceProxy("/get_formations_list", GetFormationList)

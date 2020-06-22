@@ -6,7 +6,7 @@
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass
+from general_formation import FormationClass, compute_info_from_center
 
 
 class LineFormation(FormationClass):
@@ -39,56 +39,58 @@ class LineFormation(FormationClass):
 
         self.min_scale = 0.5
 
-        self.cf_dist = 0
+        self.agents_dist = 0
 
     # Setter
-    def set_n_cf(self, n):
+    def set_n_agents(self, n_agents):
         # Verify number of CFs, all n are valid
-        if n > 0:
-            self.n_cf = n
-            self.n_cf_landed = 0
+        if n_agents > 0:
+            self.n_agents = n_agents
+            self.n_agents_landed = 0
         else:
-            rospy.loginfo("Formation: Unsuported number of CFs, landing %i CF" % self.n_cf_landed)
+            rospy.loginfo("Formation: Unsuported number of agents, landing %i agents"\
+                % self.n_agents_landed)
 
-        rospy.loginfo("Formation: %i crazyflies in formation" % self.n_cf)
+        rospy.loginfo("Formation: %i agents in formation" % self.n_agents)
 
-        self.cf_dist = self.scale/(self.n_cf - 1) if self.n_cf > 1 else 0
+        self.agents_dist = self.scale/(self.n_agents - 1) if self.n_agents > 1 else 0
 
     # Computing
-    def compute_start_positions(self):
-        cf_num = 0
-        center_x = 0
-        center_y = self.scale / 2
-        center_z = 0
+    def compute_start_positions(self, formation_goal):
+        center = [formation_goal.x,
+                  formation_goal.y,
+                  formation_goal.z]
 
-        for i in range(self.n_cf):
+        center_offset = self.scale/2
+
+        for i in range(self.n_agents):
             if rospy.is_shutdown():
                 break
 
-            start_goal = Position()
-            start_goal.yaw = 0
+            agent_goal = Position()
+            agent_goal.yaw = 0
+
             z_dist = 0
-
             x_dist = 0
-            y_dist = self.cf_dist*i
+            y_dist = self.agents_dist*i - center_offset
 
-            start_goal.x = center_x + x_dist
-            start_goal.y = y_dist
-            start_goal.z = center_z + z_dist
+            agent_goal.x = center[0] + x_dist
+            agent_goal.y = center[1] + y_dist
+            agent_goal.z = center[2] + z_dist
 
-            self.cf_goals[cf_num] = start_goal
+            self.agents_goals[i] = agent_goal
 
-            center_dist, theta, center_height =\
-                self.compute_info_from_center([start_goal.x, start_goal.y, start_goal.z],
-                                              [center_x, center_y, 0])
-            self.center_dist[cf_num] = center_dist
-            self.angle[cf_num] = theta
-            self.center_height[cf_num] = center_height
+            center_dist, theta, center_height = compute_info_from_center([agent_goal.x,
+                                                                          agent_goal.y,
+                                                                          agent_goal.z],
+                                                                         center)
 
-            cf_num += 1
+            self.center_dist[i] = center_dist
+            self.angle[i] = theta
+            self.center_height[i] = center_height
 
-        return self.cf_goals
+        return self.agents_goals
 
-    def update_scale(self):
-        self.cf_dist = self.scale / (self.n_cf - 1) if self.n_cf > 1 else 0
-        self.compute_start_positions()
+    def update_scale(self, formation_goal):
+        self.agents_dist = self.scale / (self.n_agents - 1) if self.n_agents > 1 else 0
+        self.compute_start_positions(formation_goal)
