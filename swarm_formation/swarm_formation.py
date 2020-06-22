@@ -104,17 +104,13 @@ class FormationManager(object):
 
         # Initialize each CF
         for cf_id in cf_list:
-            self.crazyflies[cf_id] = {"pose": PoseStamped(),        # msg
-                                      "formation_goal": Position(), # msg
+            self.crazyflies[cf_id] = {"formation_goal": Position(), # msg
                                       "swarm_id": 0,                # int, id in the swarm
                                       "formation_goal_pub": None}   # publisher
 
             # Add goal publisher
             self.crazyflies[cf_id]["formation_goal_pub"] =\
                 rospy.Publisher('/%s/formation_goal' % cf_id, Position, queue_size=1)
-
-            # Subscribe to pose topic
-            rospy.Subscriber("/%s/pose" % cf_id, PoseStamped, self.pose_handler, cf_id)
 
         # Start services
         rospy.Service('/set_formation', SetFormation, self.set_formation)
@@ -126,21 +122,6 @@ class FormationManager(object):
         rospy.Service('/get_formations_list', GetFormationList, self.return_formation_list)
 
     # Services and subscriptions
-    def pose_handler(self, pose_stamped, cf_id):
-        """Update current position of a cf
-
-        Args:
-            pose_stamped (PoseStamped): New pose of CF
-            cf_id (int): Id of the CF
-        """
-        self.crazyflies[cf_id]["pose"] = pose_stamped
-        self.pose_cnt += 1
-
-        # Compute formation center once every time all cf poses are updated
-        if self.pose_cnt % self.n_cf == 0 and self.formation is not None:
-            self.get_swarm_pose()
-            self.pose_cnt = 0
-
     def formation_goal_vel_handler(self, goal_vel):
         """To change formation goal based on a velocity
 
@@ -240,7 +221,7 @@ class FormationManager(object):
         """
         #TODO: REMOVE, Update, formation goal cant move if not following formation
         # Update swarm position
-        self.get_swarm_pose()
+        # self.get_swarm_pose()
 
         # # Update swarm goal to match current position
         # self.formation_goal.x = self.formation_pose.position.x
@@ -301,7 +282,7 @@ class FormationManager(object):
 
         Empty service
         """
-        self.formation_pose = self.formation.compute_swarm_pose(self.crazyflies)
+        # self.formation_pose = self.formation.compute_swarm_pose(self.crazyflies)
         return EmptyResponse()
 
     # Publishers
