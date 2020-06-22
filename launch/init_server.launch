@@ -44,6 +44,11 @@
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
     <param name="to_sim" value="$(arg to_sim)"/>
   </node>
+
+  <!-- Launch trajectory planner -->
+  <node name="trajectory_planner" pkg="crazyflie_charles" type="trajectory_planner_ros.py" output="screen">
+    <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
+  </node>
  
   <!-- Rviz markers -->
   <node name="rviz_markers" pkg="crazyflie_charles" type="rviz_markers.py" output="screen" >

@@ -1,0 +1,4 @@
+string position_type
+string positions
+---
+bool success

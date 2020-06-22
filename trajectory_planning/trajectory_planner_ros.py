@@ -17,16 +17,54 @@ Etapes:
     3 - Service to return all positions of time_step x
 """
 
+import ast
 import rospy
 
+from crazyflie_charles.srv import SetPositions
 from trajectory_solver import TrajectorySolver, Agent
 
 class TrajectoryPlanner(object):
     """To plan trajectories of CFs
     """
     def __init__(self, cf_list):
-        self.cf_list = cf_list
-        pass
+        #: dict of str: Agent
+        self.agents = {}
+        for each_cf in cf_list:
+            self.agents[each_cf] = Agent()
+
+        test_ag = Agent(start_pos=[0, 0, 0], goal=[1, 1, 1])
+        self.solver = TrajectorySolver([test_ag])  # CHANGE
+
+        # Start services
+        rospy.Service('/set_planner_positions', SetPositions, self.set_positions)
+
+    def set_positions(self, srv_req):
+        """Set start position or goal of each agent
+
+        Args:
+            srv_req (SetPositions): List /w position type(start or goal) and positions of each agent
+        """
+        pos_type = srv_req.position_type
+        cf_positions = ast.literal_eval(srv_req.positions)
+
+        if pos_type == "start_position":
+            print "Setting start positions to:"
+            print cf_positions
+
+            for cf_id, start_pos in cf_positions.items():
+                self.agents[cf_id].set_starting_position(start_pos)
+
+        elif pos_type == "goal":
+            print "Setting goals to:"
+            print cf_positions
+
+            for cf_id, goal in cf_positions.items():
+                self.agents[cf_id].set_goal(goal)
+
+        else:
+            rospy.logerr("Invalid position type")
+
+        return {"success": True}
 
 if __name__ == '__main__':
     # Launch node
