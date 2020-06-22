@@ -44,7 +44,7 @@ IN_DEBUG = False
 MAX_TIME = 15
 
 GOAL_THRES = 0.01 # 5 cm
-R_MIN = 0.35
+R_MIN = 0.1
 STEP_INVERVAL = 0.1
 HORIZON_TIME = 2.0
 COLL_RADIUS = 2*R_MIN
@@ -115,7 +115,7 @@ class Agent(object):
         # For testing
         self.acc_cst = array([[0.5, 0.5, 0]]).T
 
-        #: np.array of (6*k)x(Kmax): Position and speed trajectorie at each time step.
+        #: np.array of (6*k)x(Kmax): Position and speed trajectory at each time step.
         #  Columns: predicted [p, v], Rows: Each k
         self.states = None
 
@@ -139,6 +139,8 @@ class Agent(object):
         """
         if position is not None:
             self.start_position = array(position).reshape(3, 1)
+        else:
+            self.start_position = array([0.0, 0.0, 0.0]).reshape(3, 1)
 
     def set_goal(self, goal):
         """Set agent goal
@@ -148,6 +150,9 @@ class Agent(object):
         """
         if goal is not None:
             self.goal = array(goal).reshape(3, 1)
+
+        else:
+            self.goal = array([0.0, 0.0, 0.0]).reshape(3, 1)
 
     def set_all_traj(self, all_trajectories):
         """Set last predicted trajectories of all agents
@@ -164,6 +169,14 @@ class Agent(object):
             new_state (array): Trajectory at time step
         """
         self.states = hstack((self.states, new_state))
+
+    def get_final_traj(self):
+        """Get trajectory of agent to goal
+
+        Returns:
+            3x(n time steps): Position trajectory
+        """
+        return self.states[0:3, :]
 
     # Initialization
     def initialize_position(self, n_steps, all_agents_traj):
@@ -184,15 +197,15 @@ class Agent(object):
         dist = norm(self.goal - self.start_position)
         dist_z = norm(self.goal[2, 0] - self.start_position[2, 0])
 
-        speed_z = dist_z * speed / dist
+        speed_z = dist_z * speed / dist if dist != 0 else 0
         # dist_xy = np.sqrt(dist**2 - dist_z**2)
         speed_xy = np.sqrt(speed**2 - speed_z**2)
 
         dist_x = norm(self.goal[0, 0] - self.start_position[0, 0])
         dist_y = norm(self.goal[1, 0] - self.start_position[1, 0])
 
-        speed_x = speed_xy*dist_x/dist
-        speed_y = speed_xy*dist_y/dist
+        speed_x = speed_xy*dist_x/dist if dist != 0 else 0
+        speed_y = speed_xy*dist_y/dist if dist != 0 else 0
 
         # Check signs
         if self.goal[0, 0] - self.start_position[0, 0] < 0:
@@ -310,7 +323,7 @@ class Agent(object):
 class TrajectorySolver(object):
     """To solve trajectories of all agents
     """
-    def __init__(self, agent_list, verbose=True):
+    def __init__(self, agent_list=None, verbose=True):
         """Init solver
 
         Args:
@@ -335,12 +348,14 @@ class TrajectorySolver(object):
         #: float: Number of time steps in horizon (k)
         self.steps_in_horizon = int(self.horizon_time/self.step_interval)
 
+        # Initialize agents
         self.agents = agent_list        #: list of Agent: All agents
-        self.n_agents = len(self.agents)
+        self.n_agents = 0
+        #: 3k x n_agents array: Latest predicted trajectory of each agent over horizon
+        self.all_agents_traj = None
 
-        # Set idx of all agents
-        for i in range(self.n_agents):
-            self.agents[i].agent_idx = i
+        if self.agents is not None:
+            self.initialize_agents()
 
         # Error weights
         self.kapa = KAPPA
@@ -353,13 +368,9 @@ class TrajectorySolver(object):
         self.relaxation_weight_p = RELAX_WEIGHT_SQ
         self.relaxation_weight_q = RELAX_WEIGHT_LIN
 
-        #: 3k x n_agents array: Latest predicted trajectory of each agent over horizon
-        self.all_agents_traj = np.zeros((3*self.steps_in_horizon, self.n_agents))
-
         self.has_fix_obstacle = False
         self.obstacle_positions = []  #: list of tuple (x, y, z): Position of each obstacle
 
-        self.initialize()
 
         # Constraints
         self.r_min = 0.35                #: m
@@ -400,7 +411,7 @@ class TrajectorySolver(object):
         self.initialize_matrices()
 
         # Graph parameters
-        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval)
+        self.trajectory_plotter = None
 
         # Debug
         self.agents_distances = []
@@ -408,7 +419,7 @@ class TrajectorySolver(object):
         if self.verbose:
             print "Solver ready"
 
-    # Options methods
+    # Setters methods
     def set_wait_for_input(self, to_wait):
         """Wait for input before next frame
 
@@ -433,10 +444,50 @@ class TrajectorySolver(object):
         """
         self.trajectory_plotter.set_axes_limits((-0.2, max_val), (-0.2, max_val))
 
-    # Setup methods
-    def initialize(self):
+    def set_obstacle(self, obstacle_positions):
+        """Add obstacle has an agent /w cst position
+
+        Args:
+            obstacle_positions (list of tuple): Position of each obstacle (x, y, z)
+        """
+        if obstacle_positions: # If not empty
+            self.has_fix_obstacle = True
+            self.obstacle_positions = obstacle_positions
+
+            for each_obstacle in self.obstacle_positions:
+
+                # Each point of the wall is considered as an agent /w cst position over horizon
+                obstacle_trajectories = None
+                for each_obstacle_pos in each_obstacle:
+                    each_coord_array = array([each_obstacle_pos]).reshape(3, 1)
+                    coord = each_coord_array
+                    for _ in range(1, self.steps_in_horizon):
+                        coord = vstack((coord, each_coord_array))
+
+                    if obstacle_trajectories is None:
+                        obstacle_trajectories = coord
+                    else:
+                        obstacle_trajectories = hstack((obstacle_trajectories, coord))
+
+                self.all_agents_traj = hstack((self.all_agents_traj, obstacle_trajectories))
+
+        # Update all agents informations
+        for agent in self.agents:
+            agent.set_all_traj(self.all_agents_traj)
+
+    # Initialization methods
+    def initialize_agents(self):
         """Initialize positions and starting trajectory of all agents
         """
+        self.n_agents = len(self.agents)
+
+        # Set idx of all agents
+        for i in range(self.n_agents):
+            self.agents[i].agent_idx = i
+
+        #: 3k x n_agents array: Latest predicted trajectory of each agent over horizon
+        self.all_agents_traj = np.zeros((3*self.steps_in_horizon, self.n_agents))
+
         for each_agent in self.agents:
             each_agent.initialize_position(self.steps_in_horizon, self.all_agents_traj)
 
@@ -591,43 +642,22 @@ class TrajectorySolver(object):
         self.h_constraint = vstack((self.h_constraint, acc_max_mat))
 
         # Positions constraints
+        self.p_min_mat = array([self.p_min]).T
+        self.p_max_mat = array([self.p_max]).T
         p_min = self.p_min_mat
         p_max = self.p_max_mat
+
         for _ in range(1, self.steps_in_horizon):
             self.p_min_mat = vstack((self.p_min_mat, p_min))
             self.p_max_mat = vstack((self.p_max_mat, p_max))
 
-    # Obstacle setup
-    def set_obstacle(self, obstacle_positions):
-        """Add obstacle has an agent /w cst position
+    def update_agents_info(self):
+        """To update agents information
 
-        Args:
-            obstacle_positions (list of tuple): Position of each obstacle (x, y, z)
+        Has to be called when starting position or goal of an agent chan
         """
-        if obstacle_positions: # If not empty
-            self.has_fix_obstacle = True
-            self.obstacle_positions = obstacle_positions
-
-            for each_obstacle in self.obstacle_positions:
-
-                # Each point of the wall is considered as an agent /w cst position over horizon
-                obstacle_trajectories = None
-                for each_obstacle_pos in each_obstacle:
-                    each_coord_array = array([each_obstacle_pos]).reshape(3, 1)
-                    coord = each_coord_array
-                    for _ in range(1, self.steps_in_horizon):
-                        coord = vstack((coord, each_coord_array))
-
-                    if obstacle_trajectories is None:
-                        obstacle_trajectories = coord
-                    else:
-                        obstacle_trajectories = hstack((obstacle_trajectories, coord))
-
-                self.all_agents_traj = hstack((self.all_agents_traj, obstacle_trajectories))
-
-        # Update all agents informations
-        for agent in self.agents:
-            agent.set_all_traj(self.all_agents_traj)
+        self.initialize_agents()
+        self.initialize_matrices()
 
     # Trajectory solvers
     def solve_trajectories(self):
@@ -1022,13 +1052,13 @@ class TrajectorySolver(object):
         """
         if self.verbose:
             if self.at_goal:
-                print "\nTrajectory succesfull"
+                print "Trajectory succesfull"
                 if self.agents_distances:
                     print "Minimal distance between agents: %.2f" % min(self.agents_distances)
 
                 for each_agent in self.agents:
                     print "Final pos, agent", self.agents.index(each_agent), ": {}".format(
-                        each_agent.states[0:2, -1])
+                        each_agent.states[0:3, -1])
 
                 print "Time to reach goal: %.2f" % (self.k_t*self.step_interval)
 
@@ -1041,6 +1071,7 @@ class TrajectorySolver(object):
     def plot_trajectories(self):
         """Plot all computed trajectories
         """
+        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval)
         if self.has_fix_obstacle:
             self.trajectory_plotter.plot_obstacle(self.obstacle_positions)
 

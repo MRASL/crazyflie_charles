@@ -152,6 +152,32 @@ def nine_agents():
 
     return [a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8]
 
+def update_test():
+    """To test when agents position are changed after solver initialization
+    """
+    a_list = ['a1', 'a2', 'a3']
+    agents = {}
+    for each_a in a_list:
+        agents[each_a] = Agent()
+
+    agent_list = [agent for (_, agent) in agents.items()]
+
+    solver = TrajectorySolver(agent_list)
+
+    agents['a1'].set_starting_position([1.0, 1.0, 0.0])
+    agents['a1'].set_goal([4.0, 4.0, 0.0])
+
+    agents['a2'].set_starting_position([4.0, 4.0, 0.0])
+    agents['a2'].set_goal([1.0, 1.0, 0.0])
+
+    agents['a3'].set_starting_position([2.0, 0.5, 0.0])
+    agents['a3'].set_goal([2.0, 4.0, 0.0])
+
+    solver.update_agents_info()
+
+    solver.solve_trajectories()
+    solver.plot_trajectories()
+
 def compute_obstacle(positions, n_pts):
     """Compute coordinates of a wall
 
@@ -278,7 +304,8 @@ def algo_performance(n_agents, density, n_tests):
     print 'Compute time average: %.2f ms' % time_average
 
 if __name__ == '__main__':
-    demo()
+    # demo()
+    update_test()
     # algo_performance(4, 1, 30)  #: n_agents, density, n_tests
 
     # Results (4, 1, 10):
