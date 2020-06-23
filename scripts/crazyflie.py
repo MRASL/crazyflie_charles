@@ -17,9 +17,9 @@ from crazyflie_driver.msg import Hover, Position
 from crazyflie_driver.srv import UpdateParams
 from std_msgs.msg import Empty as Empty_msg
 from std_srvs.srv import Empty as Empty_srv
-from std_srvs.srv import EmptyResponse as EmptyResponse_srv
 from geometry_msgs.msg import Twist, PoseStamped, Pose, Quaternion
-from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
+from state_machine import StateMachine
 
 GND_HEIGHT = 0.0
 TAKE_OFF_HEIGHT = 0.5
@@ -70,9 +70,15 @@ class Crazyflie(object):
         self._to_sim = to_sim
         self._to_teleop = False
 
-        self._states = ["take_off", "land", "hover", "stop", "teleop"]
-        self._state = "stop"
-        self._set_state("stop")
+        # Initialize state machine
+        self._state_list = {"landed": self._stop,
+                            "take_off":self._take_off,
+                            "hover": self._hover,
+                            "stop": self._stop,
+                            "land": self._land,
+                            "teleop": None}
+        self._state_machine = StateMachine(self._state_list)
+        self._state_machine.set_state("landed")
 
         rospy.loginfo("%s: Initializing" % self.cf_id)
 
@@ -199,57 +205,45 @@ class Crazyflie(object):
         Returns:
             bool: True if in teleop
         """
-        return self._state == "teleop"
+        return self._state_machine.in_state("teleop")
 
-    # State manager
-    def _set_state(self, new_state):
-        """Set state of SM
-
-        Args:
-            newState (str): New state
-        """
-        if new_state in self._states:
-            self._state = new_state
-        else:
-            rospy.logerr("Invalid State: %s" % new_state)
-
+    # Services
     def take_off(self, _):
         """Take off service
         """
         # rospy.loginfo("%s: Take off" % self.cf_id)
-        self._set_state("take_off")
-        return EmptyResponse_srv()
+        self._state_machine.set_state("take_off")
+        return {}
 
     def hover(self, _):
         """Hover service
         """
         # rospy.loginfo("%s: Hover" % self.cf_id)
-        self._set_state("hover")
-        return EmptyResponse_srv()
+        self._state_machine.set_state("hover")
+        return {}
 
     def land(self, _):
         """Land service
         """
         # rospy.loginfo("%s: Landing" % self.cf_id)
-        self._set_state("land")
-        return EmptyResponse_srv()
+        self._state_machine.set_state("land")
+        return {}
 
     def stop(self, _):
         """Stop service
         """
-        # rospy.loginfo("%s: Stoping" % self.cf_id)
-        self._set_state("stop")
-        return EmptyResponse_srv()
+        self._state_machine.set_state("stop")
+        return {}
 
     def toggle_teleop(self, _):
         """Toggle teleop service
         """
-        if self._state == "teleop":
-            self._set_state("stop")
+        if self._state_machine.in_state("teleop"):
+            self._state_machine.set_state("stop")
         else:
-            self._set_state("teleop")
+            self._state_machine.set_state("teleop")
 
-        return EmptyResponse_srv()
+        return {}
 
     # Methods depending on state
     def _take_off(self):
@@ -267,7 +261,7 @@ class Crazyflie(object):
 
 
         for i in range(time_range):
-            if rospy.is_shutdown() or self._state is not "take_off":
+            if rospy.is_shutdown() or not self._state_machine.in_state("take_off"):
                 break
 
             new_z = i*z_inc + z_start
@@ -276,8 +270,8 @@ class Crazyflie(object):
 
             self.rate.sleep()
 
-        if self._state is "take_off":
-            self.hover(Empty_srv())
+        if self._state_machine.in_state("take_off"):
+            self._state_machine.set_state("hover")
 
     def _hover(self):
         self.cmd_pos_msg.header.seq += 1
@@ -287,7 +281,6 @@ class Crazyflie(object):
         self.rate.sleep()
 
     def _land(self):
-        self._go_to_initial_position()
         rospy.sleep(0.2)
 
         x_start = self.pose.position.x
@@ -302,7 +295,7 @@ class Crazyflie(object):
         z_dec = z_dist/time_range
 
         for i in range(time_range):
-            if rospy.is_shutdown() or self._state is not "land":
+            if rospy.is_shutdown() or not self._state_machine.in_state("land"):
                 break
 
             new_z = z_start - i*z_dec
@@ -314,15 +307,7 @@ class Crazyflie(object):
         self.cmd_pos(x_start, y_start, GND_HEIGHT, yaw_start)
         self.rate.sleep()
 
-        self.stop(Empty_srv())
-
-    def _go_to_initial_position(self):
-        """To return above start position
-        """
-        self.cmd_pos(self.initial_pose.position.x,
-                     self.initial_pose.position.y,
-                     self.initial_pose.position.z + TAKE_OFF_HEIGHT,
-                     yaw_from_quat(self.initial_pose.orientation))
+        self._state_machine.set_state("stop")
 
     def _stop(self):
         self.cmd_vel(0, 0, 0, 0)
@@ -376,14 +361,9 @@ class Crazyflie(object):
     def run_auto(self):
         """Run controller, when not in teleop
         """
-        if self._state == "take_off":
-            self._take_off()
-        elif self._state == "hover":
-            self._hover()
-        elif self._state == "land":
-            self._land()
-        else:
-            self._stop()
+
+        state_function = self._state_machine.run_state()
+        state_function()
 
 def yaw_from_quat(quaternion):
     """Returns yaw from a quaternion
