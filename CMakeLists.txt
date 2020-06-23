@@ -62,6 +62,7 @@ add_service_files(
   PoseSet.srv
   SetFormation.srv
   GetFormationList.srv
+  SetPositions.srv
 )
 
 ## Generate actions in the 'action' folder

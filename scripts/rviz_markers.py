@@ -4,8 +4,8 @@
 
 Notes:
     Blue markers: Position of a CF
-    Green marker: Position of swarm
-    Red: Goals
+    Red: Goals of CF
+    Green: Formation goal
 
 :: _Rviz Markers wiki:
     http://wiki.ros.org/rviz/DisplayTypes/Marker
@@ -23,7 +23,6 @@ class RvizMarkers:
         self.bed_msg = self.init_bed_msg()
 
         self.swarm_goal_msg, self.swarm_goal_arrow_msg = self.init_swarm_goal_msg()
-        self.swarm_pose_msg, self.swarm_pose_arrow_msg = self.init_swarm_pose_msg()
 
         self.cf_pose_msgs = {}
         self.cf_goal_msgs = {}
@@ -32,9 +31,7 @@ class RvizMarkers:
         
         self.rate = rospy.Rate(100)
 
-
-        rospy.Subscriber("swarm_goal", Position, self.update_swarm_goal)
-        rospy.Subscriber("swarm_pose", Pose, self.update_swarm_pose)
+        rospy.Subscriber("formation_goal", Position, self.update_formation_goal)
 
         for each_cf in cf_list:
             self.cf_pose_msgs[each_cf] = self.init_cf_pose_marker(each_cf)
@@ -44,7 +41,7 @@ class RvizMarkers:
             rospy.Subscriber("/%s/goal" % each_cf, Position, self.update_cf_goal, each_cf)
 
 
-        self.markerPub = rospy.Publisher("/visualization_marker", Marker, queue_size=1)
+        self.marker_pub = rospy.Publisher("/visualization_marker", Marker, queue_size=1)
 
     def init_bed_msg(self):
         bedMsg = Marker()
@@ -77,12 +74,12 @@ class RvizMarkers:
 
         return bedMsg
 
-    def init_swarm_pose_msg(self):
+    def init_swarm_goal_msg(self):
         msg = Marker()
         msg.header.frame_id = "world"
         msg.header.stamp = rospy.Time()
         msg.ns = "swarm"
-        msg.id = 0
+        msg.id = 2
         msg.type = 2      # Sphere
         msg.action = 0    # Add
         msg.pose.position.x = 0
@@ -104,7 +101,7 @@ class RvizMarkers:
         msg_pose.header.frame_id = "world"
         msg_pose.header.stamp = rospy.Time()
         msg_pose.ns = "swarm"
-        msg_pose.id = 1
+        msg_pose.id = 3
         msg_pose.type = 0      # Arrow
         msg_pose.action = 0    # Add
         msg_pose.pose.position.x = 0
@@ -120,53 +117,6 @@ class RvizMarkers:
         msg_pose.color.a = 0.8
         msg_pose.color.r = 0
         msg_pose.color.g = 1
-        msg_pose.color.b = 0
-        
-        return [msg, msg_pose]
-    
-    def init_swarm_goal_msg(self):
-        msg = Marker()
-        msg.header.frame_id = "world"
-        msg.header.stamp = rospy.Time()
-        msg.ns = "swarm"
-        msg.id = 2
-        msg.type = 2      # Sphere
-        msg.action = 0    # Add
-        msg.pose.position.x = 0
-        msg.pose.position.y = 0
-        msg.pose.position.z = 0
-        msg.pose.orientation.x = 0.0
-        msg.pose.orientation.y = 0.
-        msg.pose.orientation.z = 0.0
-        msg.pose.orientation.w = 1.0
-        msg.scale.x = 0.03
-        msg.scale.y = 0.03
-        msg.scale.z = 0.03
-        msg.color.a = 0.8
-        msg.color.r = 1
-        msg.color.g = 0
-        msg.color.b = 0
-
-        msg_pose = Marker()
-        msg_pose.header.frame_id = "world"
-        msg_pose.header.stamp = rospy.Time()
-        msg_pose.ns = "swarm"
-        msg_pose.id = 3
-        msg_pose.type = 0      # Arrow
-        msg_pose.action = 0    # Add
-        msg_pose.pose.position.x = 0
-        msg_pose.pose.position.y = 0
-        msg_pose.pose.position.z = 0
-        msg_pose.pose.orientation.x = 0.0
-        msg_pose.pose.orientation.y = 0.
-        msg_pose.pose.orientation.z = 0.0
-        msg_pose.pose.orientation.w = 1.0
-        msg_pose.scale.x = 0.08
-        msg_pose.scale.y = 0.01
-        msg_pose.scale.z = 0.01
-        msg_pose.color.a = 0.8
-        msg_pose.color.r = 1
-        msg_pose.color.g = 0
         msg_pose.color.b = 0
         
         return [msg, msg_pose]
@@ -290,7 +240,7 @@ class RvizMarkers:
         msg_pose.pose.orientation.z = z
         msg_pose.pose.orientation.w = w
 
-    def update_swarm_goal(self, goal):
+    def update_formation_goal(self, goal):
         self.swarm_goal_msg.pose.position.x = goal.x
         self.swarm_goal_msg.pose.position.y = goal.y
         self.swarm_goal_msg.pose.position.z = goal.z
@@ -302,29 +252,25 @@ class RvizMarkers:
         self.swarm_goal_arrow_msg.pose.orientation.z = z
         self.swarm_goal_arrow_msg.pose.orientation.w = w
 
-    def update_swarm_pose(self, pose):
-        self.swarm_pose_msg.pose.position = pose.position
-        self.swarm_pose_arrow_msg.pose = pose
-
     def publish(self):
         while not rospy.is_shutdown():
             # Publish swarm data
-            self.markerPub.publish(self.swarm_goal_msg)
-            self.markerPub.publish(self.swarm_goal_arrow_msg)
-            self.markerPub.publish(self.swarm_pose_msg)
-            self.markerPub.publish(self.swarm_pose_arrow_msg)
+            self.marker_pub.publish(self.swarm_goal_msg)
+            self.marker_pub.publish(self.swarm_goal_arrow_msg)
             
             # Publish all CFs pose
             for _, each_cf_msg in self.cf_pose_msgs.items():
-                if rospy.is_shutdown(): break
-                self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
-                self.markerPub.publish(each_cf_msg[1]) # Publish arrow
+                if rospy.is_shutdown():
+                    break
+                self.marker_pub.publish(each_cf_msg[0]) # Pusblish sphere
+                self.marker_pub.publish(each_cf_msg[1]) # Publish arrow
 
             # Publish all CFs goal
             for _, each_cf_msg in self.cf_goal_msgs.items():
-                if rospy.is_shutdown(): break
-                self.markerPub.publish(each_cf_msg[0]) # Pusblish sphere
-                self.markerPub.publish(each_cf_msg[1]) # Publish arrow
+                if rospy.is_shutdown():
+                    break
+                self.marker_pub.publish(each_cf_msg[0]) # Pusblish sphere
+                self.marker_pub.publish(each_cf_msg[1]) # Publish arrow
             
             self.rate.sleep()
 
@@ -332,10 +278,7 @@ class RvizMarkers:
 if __name__ == '__main__':
     rospy.init_node('rviz_markers', anonymous=False)
 
-    cf_list = rospy.get_param("~cf_list", "['cf1']")
-    rviz_markers = RvizMarkers(cf_list)
+    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
+    RVIZ_MARKERS = RvizMarkers(CF_LIST)
 
-    rviz_markers.publish()
-
-
-
+    RVIZ_MARKERS.publish()
