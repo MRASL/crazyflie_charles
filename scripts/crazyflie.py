@@ -16,6 +16,7 @@ import numpy as np
 from crazyflie_driver.msg import Hover, Position
 from crazyflie_driver.srv import UpdateParams
 from std_msgs.msg import Empty as Empty_msg
+from std_msgs.msg import String
 from std_srvs.srv import Empty as Empty_srv
 from geometry_msgs.msg import Twist, PoseStamped, Pose, Quaternion
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
@@ -138,6 +139,8 @@ class Crazyflie(object):
 
         self.cmd_stop_pub = rospy.Publisher(self.cf_id + "/cmd_stop", Empty_msg, queue_size=1)
         self.cmd_stop_msg = Empty_msg()
+
+        self.current_state_pub = rospy.Publisher(self.cf_id + "/state", String, queue_size=1)
 
     def _init_services(self):
         rospy.Service(self.cf_id + '/take_off', Empty_srv, self.take_off)
@@ -357,13 +360,19 @@ class Crazyflie(object):
         self.cmd_pos_msg.yaw = yaw
         self.cmd_pos_pub.publish(self.cmd_pos_msg)
 
+    def publish_state(self):
+        """Publish current state
+        """
+        self.current_state_pub.publish(self._state_machine.get_state())
+
     # Run methods
-    def run_auto(self):
+    def run(self):
         """Run controller, when not in teleop
         """
-
         state_function = self._state_machine.run_state()
         state_function()
+
+        self.publish_state()
 
 def yaw_from_quat(quaternion):
     """Returns yaw from a quaternion
@@ -407,7 +416,7 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         if not CF.in_teleop():
-            CF.run_auto()
+            CF.run()
 
         else:
             pass

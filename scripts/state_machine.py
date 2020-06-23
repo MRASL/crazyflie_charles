@@ -40,6 +40,14 @@ class StateMachine(object):
         """
         return self.states.keys()
 
+    def get_state(self):
+        """Get name of current state
+
+        Returns:
+            str: Current state
+        """
+        return self.current_state
+
     def set_state(self, new_state):
         """Set current state
 

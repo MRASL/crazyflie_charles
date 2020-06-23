@@ -151,38 +151,27 @@ class Controller(object):
             - next_swarm_formation
             - prev_swarm_formation
         """
+        # Find services
+        rospy.loginfo("Joy: waiting for services...")
+
         if not self._to_sim:
-            rospy.loginfo("Joy: waiting for params service")
-            rospy.wait_for_service('update_params')
-            rospy.loginfo("Joy: found update_params service")
-            self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
+            rospy.wait_for_service('/update_swarm_params')
+            self._update_params = rospy.ServiceProxy('/update_swarm_params', UpdateParams)
 
-            rospy.loginfo("Joy: waiting for emergency service")
-            rospy.wait_for_service('emergency')
-            rospy.loginfo("Joy: found emergency service")
-            self._emergency = rospy.ServiceProxy('emergency', Empty)
+            rospy.wait_for_service('/swarm_emergency')
+            self._emergency = rospy.ServiceProxy('/swarm_emergency', Empty)
 
-        rospy.loginfo("Joy: waiting for services")
-
-        # rospy.loginfo("Joy: waiting for toggle_teleop service")
         rospy.wait_for_service('/toggle_teleop')
-        # rospy.loginfo("Joy: found toggleTeleop service")
         self._toggle_teleop_srv = rospy.ServiceProxy('/toggle_teleop', Empty)
 
-        # rospy.loginfo("Joy: waiting for land service")
-        rospy.wait_for_service('land')
-        # rospy.loginfo("Joy: found land service")
-        self._land = rospy.ServiceProxy('land', Empty)
+        rospy.wait_for_service('/land_swarm')
+        self._land = rospy.ServiceProxy('/land_swarm', Empty)
 
-        # rospy.loginfo("Joy: waiting for take_off service")
-        rospy.wait_for_service('take_off')
-        # rospy.loginfo("Joy: found take_off service")
-        self._takeoff = rospy.ServiceProxy('take_off', Empty)
+        rospy.wait_for_service('/take_off_swarm')
+        self._takeoff = rospy.ServiceProxy('/take_off_swarm', Empty)
 
-        # rospy.loginfo("Joy: waiting for stop service")
-        rospy.wait_for_service('stop')
-        # rospy.loginfo("Joy: found stop service")
-        self._stop = rospy.ServiceProxy('stop', Empty)
+        rospy.wait_for_service('/stop_swarm')
+        self._stop = rospy.ServiceProxy('/stop_swarm', Empty)
 
         rospy.wait_for_service('/inc_swarm_scale')
         self._formation_inc_scale = rospy.ServiceProxy('/inc_swarm_scale', Empty)
@@ -190,15 +179,14 @@ class Controller(object):
         rospy.wait_for_service('/dec_swarm_scale')
         self._formation_dec_scale = rospy.ServiceProxy('/dec_swarm_scale', Empty)
 
-        rospy.wait_for_service('toggle_ctrl_mode')
-        self._toggle_abs_ctrl_mode = rospy.ServiceProxy('toggle_ctrl_mode', Empty)
+        rospy.wait_for_service('/toggle_ctrl_mode')
+        self._toggle_abs_ctrl_mode = rospy.ServiceProxy('/toggle_ctrl_mode', Empty)
 
-        rospy.wait_for_service('next_swarm_formation')
-        self._next_swarm_formation = rospy.ServiceProxy('next_swarm_formation', Empty)
+        rospy.wait_for_service('/next_swarm_formation')
+        self._next_swarm_formation = rospy.ServiceProxy('/next_swarm_formation', Empty)
 
-        rospy.wait_for_service('prev_swarm_formation')
-        self._prev_swarm_formation = rospy.ServiceProxy('prev_swarm_formation', Empty)
-
+        rospy.wait_for_service('/prev_swarm_formation')
+        self._prev_swarm_formation = rospy.ServiceProxy('/prev_swarm_formation', Empty)
         rospy.loginfo("Joy: found services")
 
     def _joy_changed(self, data):
