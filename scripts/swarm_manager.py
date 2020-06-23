@@ -180,6 +180,7 @@ class Swarm(object):
         self.state_machine.set_state("landed")
         self.next_state = ""
         self.traj_found = False
+        self.traj_successfull = False
 
     # CF initialization
     def _init_cf(self, cf_id):
@@ -462,9 +463,10 @@ class Swarm(object):
         return {}
 
     def _traj_found_srv(self, srv_req):
-        self.traj_found = srv_req.data
+        self.traj_found = True
+        self.traj_successfull = srv_req.data
 
-        if not self.traj_found:
+        if not self.traj_successfull:
             rospy.logerr("Swarm: No trajectory found")
 
         return {'success': True, "message": ""}
@@ -595,8 +597,13 @@ class Swarm(object):
             self.rate.sleep()
 
         self.traj_found = False
-        self.start_trajectory_pub()
-        self.state_machine.set_state("follow_traj")
+
+        if self.traj_successfull:
+            self.start_trajectory_pub()
+            self.state_machine.set_state("follow_traj")
+
+        else:
+            self.state_machine.set_state("go_to_start")
 
     def follow_traj_state(self):
         """All cf follow a specified trajectory

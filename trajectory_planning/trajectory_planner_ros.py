@@ -69,9 +69,10 @@ class TrajectoryPlanner(object):
         self.trajectory_found = False
 
         if pos_type == "start_position":
-            print "Setting start positions to:"
-            print cf_positions
+            # print "Setting start positions to:"
+            # print cf_positions
 
+            rospy.loginfo("Planner: Setting start positions")
             for cf_id, start_pos in cf_positions.items():
                 start_coord = start_pos[0:3]
                 start_yaw = start_pos[3]
@@ -79,8 +80,10 @@ class TrajectoryPlanner(object):
                 self.agents[cf_id]['start_yaw'] = start_yaw
 
         elif pos_type == "goal":
-            print "Setting goals to:"
-            print cf_positions
+            # print "Setting goals to:"
+            # print cf_positions
+
+            rospy.loginfo("Planner: Setting goals")
             for cf_id, goal in cf_positions.items():
                 goal_coord = goal[0:3]
                 # goal_yaw = goal[3]

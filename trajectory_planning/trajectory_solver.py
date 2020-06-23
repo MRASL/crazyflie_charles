@@ -378,9 +378,9 @@ class TrajectorySolver(object):
         self.a_max = 1.0                 #: m/s**2
         self.a_min = -1.0                #: m/s**2
 
-        p_min = -1.0
-        p_max = 5.0
-        self.p_min = [p_min, p_min, p_min]
+        p_min = -10.0
+        p_max = 10.0
+        self.p_min = [p_min, p_min, 0.0]
         self.p_max = [p_max, p_max, p_max]
 
         self.a_min_mat = array([[self.a_min, self.a_min, self.a_min]]).T
@@ -722,6 +722,10 @@ class TrajectorySolver(object):
         if self.at_goal:
             for each_agent in self.agents:
                 each_agent.interpolate_traj(self.step_interval, self.interp_time_step)
+
+        # TODO REMOVE
+        if not self.k_t < self.k_max:
+            self.at_goal = True
 
         return self.at_goal
 
