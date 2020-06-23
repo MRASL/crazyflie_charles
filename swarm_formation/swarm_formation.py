@@ -206,12 +206,14 @@ class FormationManager(object):
         """Service to increase scale of the formation
         """
         self.formation.change_scale(self.formation_goal, True)
+        self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
         return {}
 
     def formation_dec_scale(self, _):
         """Service to reduce scale of the formation
         """
         self.formation.change_scale(self.formation_goal, False)
+        self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
         return {}
 
     def return_formation_list(self, _):

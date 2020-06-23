@@ -190,6 +190,7 @@ class Agent(object):
         """
         self.n_steps = n_steps
         self.all_agents_traj = all_agents_traj.view()
+        self.at_goal = False
 
         speed = 0.1
 
@@ -658,6 +659,10 @@ class TrajectorySolver(object):
         """
         self.initialize_agents()
         self.initialize_matrices()
+
+        self.k_t = 0
+        self.at_goal = False
+        self.in_collision = False
 
     # Trajectory solvers
     def solve_trajectories(self):

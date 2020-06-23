@@ -184,11 +184,11 @@ class Controller(object):
         # rospy.loginfo("Joy: found stop service")
         self._stop = rospy.ServiceProxy('stop', Empty)
 
-        rospy.wait_for_service('formation_inc_scale')
-        self._formation_inc_scale = rospy.ServiceProxy('formation_inc_scale', Empty)
+        rospy.wait_for_service('/inc_swarm_scale')
+        self._formation_inc_scale = rospy.ServiceProxy('/inc_swarm_scale', Empty)
 
-        rospy.wait_for_service('formation_dec_scale')
-        self._formation_dec_scale = rospy.ServiceProxy('formation_dec_scale', Empty)
+        rospy.wait_for_service('/dec_swarm_scale')
+        self._formation_dec_scale = rospy.ServiceProxy('/dec_swarm_scale', Empty)
 
         rospy.wait_for_service('toggle_ctrl_mode')
         self._toggle_abs_ctrl_mode = rospy.ServiceProxy('toggle_ctrl_mode', Empty)
