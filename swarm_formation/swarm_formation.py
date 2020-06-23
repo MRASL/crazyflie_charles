@@ -170,6 +170,7 @@ class FormationManager(object):
             rospy.loginfo("Formation: Setting formation to %s" % new_formation)
             self.formation = self.formations[new_formation]
             self.init_formation()
+            self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
 
         else:
             rospy.logerr("Formation: Invalid formation: %s" % new_formation)

@@ -36,6 +36,7 @@ class TrajectoryPlanner(object):
             self.agents[each_cf]['agent'] = Agent()
             self.agents[each_cf]['trajectory_pub'] =\
                 rospy.Publisher('/' + each_cf + '/trajectory_goal', Position, queue_size=1)
+            self.agents[each_cf]['start_yaw'] = 0
 
         agent_list = [agent_dict['agent'] for (_, agent_dict) in self.agents.items()]
         self.solver = TrajectorySolver(agent_list)
@@ -52,7 +53,7 @@ class TrajectoryPlanner(object):
 
         rospy.loginfo("Planner: waiting for swarm manager services")
         self.follow_traj = rospy.ServiceProxy("/follow_traj", Empty)
-        self.traj_done = rospy.ServiceProxy("/in_formation", Empty)
+        self.traj_done = rospy.ServiceProxy("/traj_done", Empty)
         self.send_result = rospy.ServiceProxy("/traj_found", SetBool)
         rospy.loginfo("Planner: swarm manager services found")
 
@@ -72,14 +73,18 @@ class TrajectoryPlanner(object):
             print cf_positions
 
             for cf_id, start_pos in cf_positions.items():
-                self.agents[cf_id]['agent'].set_starting_position(start_pos)
+                start_coord = start_pos[0:3]
+                start_yaw = start_pos[3]
+                self.agents[cf_id]['agent'].set_starting_position(start_coord)
+                self.agents[cf_id]['start_yaw'] = start_yaw
 
         elif pos_type == "goal":
             print "Setting goals to:"
             print cf_positions
-
             for cf_id, goal in cf_positions.items():
-                self.agents[cf_id]['agent'].set_goal(goal)
+                goal_coord = goal[0:3]
+                # goal_yaw = goal[3]
+                self.agents[cf_id]['agent'].set_goal(goal_coord)
 
         else:
             rospy.logerr("Invalid position type")
@@ -132,6 +137,7 @@ class TrajectoryPlanner(object):
                 goal_msg.x = agent_pos[0]
                 goal_msg.y = agent_pos[1]
                 goal_msg.z = agent_pos[2]
+                goal_msg.yaw = agent_dict["start_yaw"]
 
                 agent_dict['trajectory_pub'].publish(goal_msg)
 

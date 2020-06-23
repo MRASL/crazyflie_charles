@@ -83,6 +83,7 @@ from std_srvs.srv import Empty, SetBool
 from crazyflie_charles.srv import SetFormation, GetFormationList, SetPositions
 from crazyflie_driver.msg import Position
 from state_machine import StateMachine
+from crazyflie import yaw_from_quat
 
 TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
 GND_HEIGHT = 0.2 #: (float) Height of the ground
@@ -122,13 +123,13 @@ class Swarm(object):
         rospy.Service('/land', Empty, self._land_srv)                   # Land all CFs
         rospy.Service('/hover', Empty, self._hover_srv)                 # Hover state
         rospy.Service('/follow_traj', Empty, self._follow_traj_srv)     # Follow traj state
-        rospy.Service('/in_formation', Empty, self._in_formation_srv)   # Go to in formation state
         rospy.Service('/toggle_teleop', Empty, self._toggle_teleop_srv) # Toggle teleop
         rospy.Service('/next_swarm_formation', Empty, self._next_swarm_formation_srv) # Formation
         rospy.Service('/prev_swarm_formation', Empty, self._prev_swarm_formation_srv) # Formation
         rospy.Service('/inc_swarm_scale', Empty, self._inc_swarm_scale_srv) # Formation
         rospy.Service('/dec_swarm_scale', Empty, self._dec_swarm_scale_srv) # Formation
         rospy.Service('/traj_found', SetBool, self._traj_found_srv)
+        rospy.Service('/traj_done', Empty, self._traj_done_srv)   # Trajectory done
 
         # Formation manager services
         rospy.loginfo("Swarm: waiting for formation services")
@@ -172,10 +173,12 @@ class Swarm(object):
                            "follow_traj": self.follow_traj_state,
                            "in_formation": self.in_formation_state,
                            "hover": self.hover_state,
+                           "go_to_start": self.go_to_start_state,
                            "land": self.land_state,
                            "wait_for_planner": self.wait_for_planner_state}
         self.state_machine = StateMachine(self.state_list)
         self.state_machine.set_state("landed")
+        self.next_state = ""
         self.traj_found = False
 
     # CF initialization
@@ -377,7 +380,7 @@ class Swarm(object):
     def _land_srv(self, _):
         """Land all cf in swarm
         """
-        self.state_machine.set_state("land")
+        self.state_machine.set_state("go_to_start")
         return {}
 
     def _hover_srv(self, _):
@@ -390,12 +393,6 @@ class Swarm(object):
         """Follow a trajectory
         """
         self.state_machine.set_state("follow_traj")
-        return {}
-
-    def _in_formation_srv(self, _):
-        """Go to in formation state
-        """
-        self.state_machine.set_state("in_formation")
         return {}
 
     def _next_swarm_formation_srv(self, _):
@@ -412,8 +409,9 @@ class Swarm(object):
 
             self.formation = self.formation_list[next_idx]
             self.set_formation(self.formation)
+            rospy.sleep(0.1)
 
-            self._start_planner()
+            self._start_traj_planner()
 
         return {}
 
@@ -431,8 +429,9 @@ class Swarm(object):
 
             self.formation = self.formation_list[prev_idx]
             self.set_formation(self.formation)
+            rospy.sleep(0.1)
 
-            self._start_planner()
+            self._start_traj_planner()
 
         return {}
 
@@ -445,7 +444,7 @@ class Swarm(object):
             self.inc_formation_scale()
             rospy.sleep(0.1)
 
-            self._start_planner()
+            self._start_traj_planner()
 
         return {}
 
@@ -458,7 +457,7 @@ class Swarm(object):
             self.dec_formation_scale()
             rospy.sleep(0.1)
 
-            self._start_planner()
+            self._start_traj_planner()
 
         return {}
 
@@ -470,8 +469,14 @@ class Swarm(object):
 
         return {'success': True, "message": ""}
 
-    def _start_planner(self):
-        """Set planner start and goal positions before starting it
+    def _traj_done_srv(self, _):
+        """Go to state after trajectory
+        """
+        self.state_machine.set_state(self.next_state)
+        return {}
+
+    def _start_traj_planner(self):
+        """Initialize and start trajectory planner
         """
         # Send each CF starting position to planner
         start_positions = {}
@@ -479,14 +484,18 @@ class Swarm(object):
             cf_pose = cf_vals["pose"].pose
             start_positions[cf_id] = [cf_pose.position.x,
                                       cf_pose.position.y,
-                                      cf_pose.position.z]
+                                      cf_pose.position.z,
+                                      yaw_from_quat(cf_pose.orientation)]
         self.set_planner_positions(position_type="start_position", positions=str(start_positions))
 
         # Send each CF formation goal to planner
         goals = {}
         for cf_id, cf_vals in self.crazyflies.items():
             formation_goal = cf_vals["formation_goal_msg"]
-            goals[cf_id] = [formation_goal.x, formation_goal.y, formation_goal.z]
+            goals[cf_id] = [formation_goal.x,
+                            formation_goal.y,
+                            formation_goal.z,
+                            formation_goal.yaw]
 
         self.set_planner_positions(position_type="goal", positions=str(goals))
 
@@ -519,9 +528,11 @@ class Swarm(object):
         rospy.loginfo("Swarm: take off")
         self.traj_found = False
 
-        # Update CF goal
+        # Update CF goal and initial pose
         for cf_id, cf_vals in self.crazyflies.items():
             cf_pose = cf_vals["pose"].pose
+            cf_vals["initial_pose"] = cf_pose
+
             cf_vals["goal_msg"].x = cf_pose.position.x
             cf_vals["goal_msg"].y = cf_pose.position.y
             cf_vals["goal_msg"].z = cf_pose.position.z + 0.5
@@ -532,14 +543,18 @@ class Swarm(object):
             cf_pose = cf_vals["pose"].pose
             start_positions[cf_id] = [cf_pose.position.x,
                                       cf_pose.position.y,
-                                      cf_pose.position.z + 0.5]
+                                      cf_pose.position.z + 0.5,
+                                      yaw_from_quat(cf_pose.orientation)]
         self.set_planner_positions(position_type="start_position", positions=str(start_positions))
 
         # Send each CF goal to planner
         goals = {}
         for cf_id, cf_vals in self.crazyflies.items():
             formation_goal = cf_vals["formation_goal_msg"]
-            goals[cf_id] = [formation_goal.x, formation_goal.y, formation_goal.z]
+            goals[cf_id] = [formation_goal.x,
+                            formation_goal.y,
+                            formation_goal.z,
+                            formation_goal.yaw]
 
         self.set_planner_positions(position_type="goal", positions=str(goals))
 
@@ -563,12 +578,13 @@ class Swarm(object):
             self.rate.sleep()
 
         # Change state
+        self.next_state = "in_formation"  # Go to formation after traj
         self.state_machine.set_state("wait_for_planner")
 
     def wait_for_planner_state(self):
         """Wait until planner is ready
         """
-        rospy.sleep(0.1)
+        rospy.sleep(0.1) # Make sure first traj messages are received
         while not self.traj_found:
             if rospy.is_shutdown():
                 break
@@ -610,6 +626,38 @@ class Swarm(object):
         # Set CF goal to current pose
         for _, each_cf in self.crazyflies.items():
             each_cf["goal_msg"] = each_cf["goal_msg"]
+
+    def go_to_start_state(self):
+        """Land CF to their starting position
+        """
+        # Send each CF starting position to planner
+        start_positions = {}
+        for cf_id, cf_vals in self.crazyflies.items():
+            cf_pose = cf_vals["pose"].pose
+            start_positions[cf_id] = [cf_pose.position.x,
+                                      cf_pose.position.y,
+                                      cf_pose.position.z,
+                                      yaw_from_quat(cf_pose.orientation)]
+        self.set_planner_positions(position_type="start_position", positions=str(start_positions))
+
+        # Send each CF goal to planner
+        goals = {}
+        for cf_id, cf_vals in self.crazyflies.items():
+            cf_initial_pose = cf_vals["initial_pose"]
+
+            goals[cf_id] = [cf_initial_pose.position.x,
+                            cf_initial_pose.position.y,
+                            cf_initial_pose.position.z + 0.5,
+                            yaw_from_quat(cf_initial_pose.orientation),]
+
+        self.set_planner_positions(position_type="goal", positions=str(goals))
+
+        # Start solver
+        self.start_trajectory_planner()
+
+        # Change state
+        self.next_state = "land"
+        self.state_machine.set_state("wait_for_planner")
 
     def land_state(self):
         """Land CF to their starting position
