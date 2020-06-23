@@ -6,7 +6,6 @@ from math import sin, cos, pi, sqrt, atan
 import rospy
 
 from geometry_msgs.msg import Pose, Quaternion
-from crazyflie_driver.msg import Position
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 
 
@@ -14,7 +13,6 @@ class FormationClass(object):
     """Basic formation type
 
     """
-
     def __init__(self, offset=None):
         if offset is None:
             offset = [0, 0, 0]
@@ -24,6 +22,8 @@ class FormationClass(object):
         self.agents_goals = {} #: (dict of Position) Target Pose of all the CF
         self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
         self.angle = {} #: (dict of float) Keys: swarm id, Item: Angle(rad) from x axis
+
+        self.extra_agents_id = [] #: list of int: Id of landed agents
 
         #: (dict of float) Keys: swarm id, Item: Height from center (<0 -> below swarm center)
         self.center_height = {}
@@ -125,18 +125,13 @@ class FormationClass(object):
                 # Pass, keys arn't initialized yet because of new formation
                 pass
 
-    def land_extra_agents(self):
-        """Land CFs in extra.
-
+    def find_extra_agents(self):
+        """Find extra agents formation id
         """
-        x_land = 0
+        self.extra_agents_id = []
 
-        for _ in range(self.n_agents, self.n_agents + self.n_agents_landed + 1):
-            land_goal = Position()
-            land_goal.x = x_land
-            x_land += 0.25
-
-            self.agents_goals[id] = land_goal
+        for agent_id in range(self.n_agents, self.n_agents + self.n_agents_landed + 1):
+            self.extra_agents_id.append(agent_id)
 
     # Methods depending on formation
     def set_n_agents(self, n_agents):

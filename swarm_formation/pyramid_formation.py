@@ -76,7 +76,7 @@ class PyramidFormation(FormationClass):
                 self.n_agents_landed)
 
         rospy.loginfo("Formation: %i crazyflies in formation" % self.n_agents)
-        self.land_extra_agents()
+        self.find_extra_agents()
 
         self.n_tier = (self.n_agents - 1) / 4
 
