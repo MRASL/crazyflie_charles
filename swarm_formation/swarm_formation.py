@@ -165,18 +165,20 @@ class FormationManager(object):
         """
         new_formation = srv_call.formation
         valid_formation = True
+        extra_agents = []
 
         if new_formation in self.formations.keys():
             rospy.loginfo("Formation: Setting formation to %s" % new_formation)
             self.formation = self.formations[new_formation]
             self.init_formation()
             self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
+            extra_agents = self.find_extra_agents_id()
 
         else:
             rospy.logerr("Formation: Invalid formation: %s" % new_formation)
             valid_formation = False
 
-        return valid_formation
+        return {"success": valid_formation, "extra_cf": ','.join(extra_agents)}
 
     def set_offset(self, srv_call):
         """Set offset of the swarm
@@ -202,6 +204,21 @@ class FormationManager(object):
             rospy.loginfo("Formation: Control mode set to relative")
 
         return {}
+
+    def find_extra_agents_id(self):
+        """Find extra agents swarm id (i.e "cf5")
+
+        Returns:
+            list of str: Swarm id of extra agents
+        """
+        swarm_id = []
+        extra_agents_formation_id = self.formation.extra_agents_id
+
+        for cf_id_, cf_attrs in self.crazyflies.items():
+            if cf_attrs["swarm_id"] in extra_agents_formation_id:
+                swarm_id.append(cf_id_)
+
+        return swarm_id
 
     def formation_inc_scale(self, _):
         """Service to increase scale of the formation

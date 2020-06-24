@@ -64,7 +64,7 @@ class SquareFormation(FormationClass):
 
         rospy.loginfo("Formation: %i crazyflies in formation" % self.n_agents)
 
-        self.land_extra_agents()
+        self.find_extra_agents()
 
         self.agents_per_side = int(sqrt(self.n_agents)) # Number of CF per side
 

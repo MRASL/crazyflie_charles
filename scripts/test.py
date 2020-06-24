@@ -1,16 +1,8 @@
 #!/usr/bin/env python
 
-from state_machine import StateMachine
+lst = ['a', 'b', 'c']
 
-def func():
-    print 'allo'
+str_lst = ','.join(lst)
 
-sm = StateMachine(["t1", "t2"])
-
-sm.add_states(["s1", "s2", "s3"])
-
-sm.add_states({'f':func})
-sm.set_state('f')
-f = sm.run_state()
-
-f()
+print str_lst
+print str_lst.split(',')
