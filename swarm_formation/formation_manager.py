@@ -139,8 +139,14 @@ class FormationManager(object):
             y_dist = x_vel * sin(theta) + y_vel * sin(theta + pi/2.0)
             self.formation_goal.x += x_dist
             self.formation_goal.y += y_dist
-            self.formation_goal.z += self.formation_goal_vel.linear.z
             self.formation_goal.yaw += self.formation_goal_vel.angular.z
+
+            # Make sure formation stays above ground
+            new_z = self.formation_goal.z + self.formation_goal_vel.linear.z
+            if new_z > self.formation.min_height:
+                self.formation_goal.z = new_z
+            else:
+                self.formation_goal.z = self.formation_goal.z
 
         # Update formation goal of each CF
         if self.formation is not None:
@@ -209,6 +215,7 @@ class FormationManager(object):
         self.scale += 0.5
 
         self.formation.set_scale(self.scale)
+        self.check_goal_height()
 
         # Find new agents positions around goal
         self.formation.compute_formation_positions()
@@ -224,6 +231,7 @@ class FormationManager(object):
         self.scale -= 0.5
 
         self.formation.set_scale(self.scale)
+        self.check_goal_height()
 
         # Find new agents positions around goal
         self.formation.compute_formation_positions()
@@ -248,6 +256,9 @@ class FormationManager(object):
         """
         self.formation.set_n_agents(len(self.cf_list))
         self.formation.set_scale(self.scale)
+
+        self.check_goal_height()
+
         self.formation.compute_formation_positions()
 
     def link_swarm_and_formation(self):
@@ -256,6 +267,14 @@ class FormationManager(object):
         for (_, cf_attrs), (swarm_id, _) in\
             zip(self.crazyflies.items(), self.formation.agents_goals.items()):
             cf_attrs["swarm_id"] = swarm_id
+
+    def check_goal_height(self):
+        """Make sure formation goal is above formation minimum height.
+
+        If it's not the case, set formation goal height to mimimum
+        """
+        if self.formation.min_height > self.formation_goal.z:
+            self.formation_goal.z = self.formation.min_height
 
     # Publishers
     def publish_cf_formation_goal(self):

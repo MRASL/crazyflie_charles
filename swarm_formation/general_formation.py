@@ -31,6 +31,8 @@ class FormationClass(object):
         self.min_scale = 0.0
         self.max_scale = 5.0
 
+        self.min_height = 0.5 #: float: Minimum height of formation goal
+
     # General methods, valid between formations
     def get_n_agents(self):
         """Returns number of CF in the swarm
