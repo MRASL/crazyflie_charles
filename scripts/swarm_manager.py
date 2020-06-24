@@ -166,7 +166,6 @@ class Swarm(object):
 
         # Find all possible formations and initialize swarm to 'line'
         self.formation_list = self.get_formations_list().formations.split(',')
-        # self.formation_list = ["line", "square"]
         self.formation = "line"
         self.extra_cf_list = [] #: list of str: ID of extra CF
         self.landed_cf_ids = [] #: list of str: Swarm Id of landed CFs
@@ -517,8 +516,7 @@ class Swarm(object):
             land_swarm (bool, optional): If true, land swarm to initial pos. Defaults to False.
         """
         rospy.loginfo("Swarm: Going to new formation")
-        print "Extra CF list: "
-        print self.extra_cf_list
+        rospy.loginfo("Swarm: CF in extra: {}".format(self.extra_cf_list))
 
         self.traj_found = False
 
@@ -535,8 +533,7 @@ class Swarm(object):
 
         # Take off landed CF that are not in extra
         take_off_list = [cf for cf in self.landed_cf_ids if cf not in self.extra_cf_list]
-        print "Take off list:"
-        print take_off_list
+        rospy.loginfo("CF to take off: {}".format(take_off_list))
         self._call_all_cf_service("take_off", cf_list=take_off_list)
 
         self.wait_for_take_off()

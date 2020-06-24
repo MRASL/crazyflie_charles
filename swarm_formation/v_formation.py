@@ -8,7 +8,7 @@ from math import sin, cos, pi, ceil
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, compute_info_from_center
+from general_formation import FormationClass, R_MIN, compute_info_from_center
 
 
 class VFormation(FormationClass):
@@ -48,18 +48,16 @@ class VFormation(FormationClass):
         3
 
     """
-    def __init__(self, offset=None):
-        if offset is None:
-            offset = [0, 0, 0]
-        super(VFormation, self).__init__(offset=offset)
-
-        self.min_scale = 0.5
+    def __init__(self):
+        super(VFormation, self).__init__()
 
         # Attrs specific to square
         #: (float) Number of CF per side. index 0 is right side, 1 is left side
         self.agents_per_side = [0, 0]
         self.dist = 0 #: (float) Space between CFs
         self.theta = 60*pi/180 #: (float) Opening of the formation (rad)
+
+        self.compute_min_scale()
 
     # Setter
     def set_n_agents(self, n_agents):
@@ -82,21 +80,20 @@ class VFormation(FormationClass):
             self.agents_per_side[0] = self.n_agents / 2
             self.agents_per_side[1] = self.agents_per_side[0] - 1
 
-        self.dist = self.scale/(self.agents_per_side[0]) # Space between CFs
+        self.update_formation_scale()
+        self.compute_min_scale()
 
     # Computing
-    def compute_start_positions(self, formation_goal):
-        center = [formation_goal.x,
-                  formation_goal.y,
-                  formation_goal.z]
+    def compute_min_scale(self):
+        self.min_scale = R_MIN * self.agents_per_side[0]
 
+    def compute_formation_positions(self):
         for i in range(self.n_agents):
             if rospy.is_shutdown():
                 break
 
-            agent_goal = Position()
-            agent_goal.z = 0
-            agent_goal.yaw = 0
+            # Initialize agent formation goal
+            self.agents_goals[i] = Position()
 
             # Find row number
             # i = 0 -> row = 0, i = 1 -> row = 1, i = 2 -> row = 1, i = 3 -> row = 2 ...
@@ -110,20 +107,10 @@ class VFormation(FormationClass):
             x_dist = -self.dist*row_num * cos(self.theta/2)
             y_dist = self.dist*row_num * sin(self.theta/2) * sign
 
-            agent_goal.x = center[0] + x_dist
-            agent_goal.y = center[1] + y_dist
-            agent_goal.z = center[2]
-            self.agents_goals[i] = agent_goal
-
-            center_dist, theta, center_height = \
-                compute_info_from_center([agent_goal.x, agent_goal.y, agent_goal.z],
-                                         center)
+            center_dist, theta, center_height = compute_info_from_center([x_dist, y_dist, 0])
             self.center_dist[i] = center_dist
             self.angle[i] = theta
             self.center_height[i] = center_height
 
-        return self.agents_goals
-
-    def update_scale(self, formation_goal):
+    def update_formation_scale(self):
         self.dist = self.scale/(self.agents_per_side[0]) # Space between agents
-        self.compute_start_positions(formation_goal)

@@ -7,7 +7,7 @@ from math import sqrt, floor
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, compute_info_from_center
+from general_formation import FormationClass, compute_info_from_center, R_MIN
 
 class SquareFormation(FormationClass):
     """Square formation
@@ -36,16 +36,14 @@ class SquareFormation(FormationClass):
         0   3   6
 
     """
-    def __init__(self, offset=None):
-        if offset is None:
-            offset = [0, 0, 0]
-        super(SquareFormation, self).__init__(offset=offset)
-
-        self.min_scale = 0.5
+    def __init__(self):
+        super(SquareFormation, self).__init__()
 
         # Attrs specific to square
         self.agents_per_side = 0 #: (float) Number of CF per side
         self.dist = 0 #: (float) Space between CFs
+
+        self.compute_min_scale()
 
     # Setter
     def set_n_agents(self, n_agents):
@@ -65,18 +63,18 @@ class SquareFormation(FormationClass):
         rospy.loginfo("Formation: %i crazyflies in formation" % self.n_agents)
 
         self.find_extra_agents()
-
-        self.agents_per_side = int(sqrt(self.n_agents)) # Number of CF per side
-
-        # Space between CFs
-        self.dist = self.scale/(self.agents_per_side-1) if self.agents_per_side > 1 else 0
+        self.update_formation_scale()
+        self.compute_min_scale()
 
     # Computing
-    def compute_start_positions(self, formation_goal):
+    def compute_min_scale(self):
+        if self.n_agents > 1:
+            self.min_scale = R_MIN*(self.agents_per_side - 1)
+        else:
+            self.min_scale = 0.0
+
+    def compute_formation_positions(self):
         agent_num = 0
-        center = [formation_goal.x,
-                  formation_goal.y,
-                  formation_goal.z]
 
         center_offset = [self.scale/2, self.scale/2, 0]
 
@@ -85,25 +83,25 @@ class SquareFormation(FormationClass):
                 if rospy.is_shutdown():
                     break
 
-                start_goal = Position()
-                start_goal.x = i*self.dist + center[0] - center_offset[0]
-                start_goal.y = j*self.dist + center[1] - center_offset[1]
-                start_goal.z = center[2]
-                start_goal.yaw = 0
-                self.agents_goals[agent_num] = start_goal
+                # Initialize agent formation goal
+                self.agents_goals[agent_num] = Position()
 
-                center_dist, theta, center_height = \
-                    compute_info_from_center([start_goal.x, start_goal.y, start_goal.z],
-                                             center)
+                # Formation position
+                x_dist = i*self.dist - center_offset[0]
+                y_dist = j*self.dist - center_offset[1]
+                z_dist = 0
+
+                # Information from center
+                center_dist, theta, center_height =\
+                    compute_info_from_center([x_dist, y_dist, z_dist])
                 self.center_dist[agent_num] = center_dist
                 self.angle[agent_num] = theta
                 self.center_height[agent_num] = center_height
 
                 agent_num += 1
 
-        return self.agents_goals
+    def update_formation_scale(self):
+        self.agents_per_side = int(sqrt(self.n_agents)) # Number of CF per side
 
-    def update_scale(self, formation_goal):
-         # Space between CFs
+        # Space between CFs
         self.dist = self.scale/(self.agents_per_side-1) if self.agents_per_side > 1 else 0
-        self.compute_start_positions(formation_goal)
