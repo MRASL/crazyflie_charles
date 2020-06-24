@@ -1,4 +1,4 @@
-#!/usr/bin/env python  
+#!/usr/bin/env python
 
 """
 Script to create a frame from the crazyflie current position
@@ -9,25 +9,33 @@ import tf
 from geometry_msgs.msg import PoseStamped
 
 def handle_crazyflie_pose(msg, args):
-    br = tf.TransformBroadcaster()
+    """Broadcast pose to tf
+
+    Args:
+        msg (PoseStamped): CF current pose
+        args (list of str): [frame, world]
+    """
+    pose_brd = tf.TransformBroadcaster()
     frame = args[0]
     world = args[1]
 
-    br.sendTransform((msg.pose.position.x, msg.pose.position.y, msg.pose.position.z),
-                     (msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w),
-                     rospy.Time.now(),
-                     '/%s' % frame,
-                     '/%s' % world)
+    pose_brd.sendTransform((msg.pose.position.x, msg.pose.position.y, msg.pose.position.z),
+                           (msg.pose.orientation.x, msg.pose.orientation.y,
+                            msg.pose.orientation.z, msg.pose.orientation.w),
+                           rospy.Time.now(),
+                           '/%s' % frame,
+                           '/%s' % world)
+
 
 if __name__ == '__main__':
     rospy.init_node('crazyflie_tf_broadcaster')
 
-    world = rospy.get_param('~world', 'world')
-    cf_name = rospy.get_param('~cf_name')
-    frame = rospy.get_param('~frame')
+    WORLD = rospy.get_param('~world', 'world')
+    CF_NAME = rospy.get_param('~cf_name')
+    FRAME = rospy.get_param('~frame')
 
-    rospy.Subscriber('/%s/pose' % cf_name,
+    rospy.Subscriber('/%s/pose' % CF_NAME,
                      PoseStamped,
                      handle_crazyflie_pose,
-                     (frame, world))
+                     (FRAME, WORLD))
     rospy.spin()

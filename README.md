@@ -61,5 +61,9 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
     - All scripts related to swarm managment
   - srv
     - Services
+  - swarm_formation
+    - All scripts related to swarm_formation
+      - formation_manager
+      - formation_types
   - trajectory_planning
     - Scripts related to trajectory planning 
