@@ -5,17 +5,16 @@
 from math import sin, cos, pi, sqrt, atan
 import rospy
 
-from geometry_msgs.msg import Pose, Quaternion
+from geometry_msgs.msg import Quaternion
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 
+R_MIN = 0.35
 
 class FormationClass(object):
     """Basic formation type
 
     """
-    def __init__(self, offset=None):
-        if offset is None:
-            offset = [0, 0, 0]
+    def __init__(self):
         self.n_agents = 0 #: (int) Number of CF in the formation
         self.n_agents_landed = 0 #(int) Number of CF landed, not part of current formation
 
@@ -28,14 +27,9 @@ class FormationClass(object):
         #: (dict of float) Keys: swarm id, Item: Height from center (<0 -> below swarm center)
         self.center_height = {}
 
-        self.initial_offset = Pose() #: (Pose): Offset of the center of the formation from 0,0,0
-        self.initial_offset.position.x = offset[0]
-        self.initial_offset.position.y = offset[1]
-        self.initial_offset.position.z = offset[2]
-
-        self.scale = 1.0 #: (float) scale of the formation
-        self.min_scale = 0
-        self.max_scale = 5
+        self.scale = 0.0 #: (float) scale of the formation
+        self.min_scale = 0.0
+        self.max_scale = 5.0
 
     # General methods, valid between formations
     def get_n_agents(self):
@@ -46,42 +40,21 @@ class FormationClass(object):
         """
         return self.n_agents
 
-    def set_offset(self, x_offset, y_offset, z_offset):
-        """Set starting offset of swarm position
+    def set_scale(self, new_scale):
+        """Set scale of the formation
 
         Args:
-            x_offset (float): x offset
-            y_offset (float): y offset
-            z_offset (float): z offset
+            new_scale (float): New formation scale
         """
-        self.initial_offset.position.x = x_offset
-        self.initial_offset.position.y = y_offset
-        self.initial_offset.position.z = z_offset
-
-    def change_scale(self, formation_goal, to_inc):
-        """Change scale of formation.
-
-        If to_inc is True, increase scale. Else, decrease it.
-
-        Note:
-            Scale is unique to each formation. i.e: Scale of circle is the radius, scale of square
-            is a side length
-
-        Args:
-            to_inc ([type]): [description]
-        """
-        if to_inc:
-            self.scale += 0.5
-
-        else:
-            self.scale -= 0.5
-
+        self.scale = new_scale
         self.scale = self.min_scale if self.scale < self.min_scale else self.scale
         self.scale = self.max_scale if self.scale > self.max_scale else self.scale
 
-        self.update_scale(formation_goal)
+        self.update_formation_scale()
 
-    def compute_agents_goals(self, crazyflies, formation_goal):
+        rospy.loginfo("Formation: Formation scale: %.2f" % self.scale)
+
+    def update_agents_positions(self, crazyflies, formation_goal):
         """Compute goal of each agent and updates corresponding CF goal.
 
         Agent goal is calculated based on distance and angle of agent id from formation center.
@@ -147,13 +120,22 @@ class FormationClass(object):
             self.n_agents = 0
             rospy.logerr("Unsuported number of CFs")
 
-    def compute_start_positions(self, formation_goal):
-        """Compute start position of each agent from formation center
+    def compute_min_scale(self):
+        """Find minimum scale to make sure distance between agents is greater than R_MIN
         """
         pass
 
-    def update_scale(self, formation_goal):
-        """Compute new positions of CFs based on new scale
+    def compute_formation_positions(self):
+        """Compute position of each agent from formation center
+
+        Position are defined by radius from center (x, y plane), height from center and radius angle
+        """
+        pass
+
+    def update_formation_scale(self):
+        """Compute new formation information after the scale is changed.
+
+        i.e: Distance/angle between agents
 
         Unique to each formation
 
@@ -161,19 +143,20 @@ class FormationClass(object):
         pass
 
 
-def compute_info_from_center(agent_position, formation_center):
+def compute_info_from_center(agent_position):
     """Calculate distance and angle from formation center
 
+    Formation center is considered to be at 0, 0, 0
+
     Args:
-        cf_position (list of float): Position [x, y, z]
-        formation_center (list of float): Center position [x, y, z]
+        cf_position (list of float): Position from [0 , 0 ,0][x, y, z]
 
     Returns:
         list of float: [distance from center, angle from center, height from center]
     """
-    x_dist = agent_position[0] - formation_center[0]
-    y_dist = agent_position[1] - formation_center[1]
-    z_dist = agent_position[2] - formation_center[2]
+    x_dist = agent_position[0]
+    y_dist = agent_position[1]
+    z_dist = agent_position[2]
 
     center_dist = sqrt(x_dist**2 + y_dist**2)
 

@@ -13,7 +13,6 @@ Avalaible formations:
 
 Services:
     - set_formation: Set formation type
-    - set_offset: Set offset of goal
     - toggle_ctrl_mode: Toggle between absolute and relative ctrl mode
     - formation_inc_scale: Increase scale of formation
     - formation_dec_scale: Decrease scale of formation
@@ -56,17 +55,10 @@ class FormationManager(object):
     Associates formation position /w a CF
 
     """
-    def __init__(self, cf_list, to_sim):
+    def __init__(self, cf_list):
         self.cf_list = cf_list
         self.n_cf = len(cf_list) #: (int) Number of CF in the swarm
         self.pose_cnt = 0 #: (int) To know when compute pose
-
-        self.to_sim = to_sim #: (bool) Simulation or not
-
-        #: (bool) In trajectory mode, goes to a specified setpoint.
-        #  In speed mode, controls variation of position
-        #  In trajectory mode, follows /swarm_goal, in speed_mode, follows /swarm_goal_vel
-        self.trajectory_mode = False
 
         #: In abs ctrl mode, moves in world/ In rel ctrl mode, moves relative to yaw
         self.abs_ctrl_mode = False
@@ -74,6 +66,8 @@ class FormationManager(object):
         self.rate = rospy.Rate(100)
 
         self.initial_formation_goal = FORMATION_INITIAL_GOAL #: Position: formation start position
+
+        self.scale = 1.0
 
         #: All possible formations
         self.formations = {"square": SquareFormation(),
@@ -113,7 +107,6 @@ class FormationManager(object):
 
         # Start services
         rospy.Service('/set_formation', SetFormation, self.set_formation)
-        rospy.Service('/set_offset', Empty, self.set_offset) # TODO: Set offset
         rospy.Service('/toggle_ctrl_mode', Empty, self.toggle_ctrl_mode)
         rospy.Service('/formation_inc_scale', Empty, self.formation_inc_scale)
         rospy.Service('/formation_dec_scale', Empty, self.formation_dec_scale)
@@ -149,10 +142,9 @@ class FormationManager(object):
             self.formation_goal.z += self.formation_goal_vel.linear.z
             self.formation_goal.yaw += self.formation_goal_vel.angular.z
 
-        # If in velocity ctrl
-        if not self.trajectory_mode and self.formation is not None:
-            # self.formation.compute_cf_goals_vel(self.crazyflies, self.swarm_goal_vel)
-            self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
+        # Update formation goal of each CF
+        if self.formation is not None:
+            self.formation.update_agents_positions(self.crazyflies, self.formation_goal)
 
     def set_formation(self, srv_call):
         """Set formation
@@ -171,7 +163,8 @@ class FormationManager(object):
             rospy.loginfo("Formation: Setting formation to %s" % new_formation)
             self.formation = self.formations[new_formation]
             self.init_formation()
-            self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
+            self.link_swarm_and_formation()
+            self.formation.update_agents_positions(self.crazyflies, self.formation_goal)
             extra_agents = self.find_extra_agents_id()
 
         else:
@@ -179,16 +172,6 @@ class FormationManager(object):
             valid_formation = False
 
         return {"success": valid_formation, "extra_cf": ','.join(extra_agents)}
-
-    def set_offset(self, srv_call):
-        """Set offset of the swarm
-
-        Not implemented
-
-        Args:
-            srv_call ([type]): [description]
-        """
-        pass
 
     def toggle_ctrl_mode(self, _):
         """Toggle control mode
@@ -223,15 +206,31 @@ class FormationManager(object):
     def formation_inc_scale(self, _):
         """Service to increase scale of the formation
         """
-        self.formation.change_scale(self.formation_goal, True)
-        self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
+        self.scale += 0.5
+
+        self.formation.set_scale(self.scale)
+
+        # Find new agents positions around goal
+        self.formation.compute_formation_positions()
+
+        # Update CFs positions
+        self.formation.update_agents_positions(self.crazyflies, self.formation_goal)
+
         return {}
 
     def formation_dec_scale(self, _):
         """Service to reduce scale of the formation
         """
-        self.formation.change_scale(self.formation_goal, False)
-        self.formation.compute_agents_goals(self.crazyflies, self.formation_goal)
+        self.scale -= 0.5
+
+        self.formation.set_scale(self.scale)
+
+        # Find new agents positions around goal
+        self.formation.compute_formation_positions()
+
+        # Update CFs positions
+        self.formation.update_agents_positions(self.crazyflies, self.formation_goal)
+
         return {}
 
     def return_formation_list(self, _):
@@ -248,12 +247,14 @@ class FormationManager(object):
         """Initialize formation goal and cf positions
         """
         self.formation.set_n_agents(len(self.cf_list))
-        self.start_positions = self.formation.compute_start_positions(self.formation_goal)
+        self.formation.set_scale(self.scale)
+        self.formation.compute_formation_positions()
 
-        # Set CF goal and swarm_id
-        for (_, cf_attrs), (swarm_id, position) in zip(self.crazyflies.items(),
-                                                       self.start_positions.items()):
-            cf_attrs["formation_goal"] = position
+    def link_swarm_and_formation(self):
+        """Link each agent of formation to a CF of the swarm and initialize formation goals
+        """
+        for (_, cf_attrs), (swarm_id, _) in\
+            zip(self.crazyflies.items(), self.formation.agents_goals.items()):
             cf_attrs["swarm_id"] = swarm_id
 
     # Publishers
@@ -292,10 +293,9 @@ if __name__ == '__main__':
 
     # Get params
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")
-    TO_SIM = rospy.get_param("~to_sim", "False")
 
     # Initialize swarm
-    FORMATION_MANAGER = FormationManager(CF_LIST, TO_SIM)
+    FORMATION_MANAGER = FormationManager(CF_LIST)
 
     FORMATION_MANAGER.run_formation()
 

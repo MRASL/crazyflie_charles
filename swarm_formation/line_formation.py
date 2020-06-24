@@ -6,7 +6,7 @@
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, compute_info_from_center
+from general_formation import FormationClass, compute_info_from_center, R_MIN
 
 
 class LineFormation(FormationClass):
@@ -32,14 +32,12 @@ class LineFormation(FormationClass):
         0
 
     """
-    def __init__(self, offset=None):
-        if offset is None:
-            offset = [0, 0, 0]
-        super(LineFormation, self).__init__(offset=offset)
-
-        self.min_scale = 0.5
+    def __init__(self,):
+        super(LineFormation, self).__init__()
 
         self.agents_dist = 0
+
+        self.compute_min_scale()
 
     # Setter
     def set_n_agents(self, n_agents):
@@ -53,44 +51,36 @@ class LineFormation(FormationClass):
 
         rospy.loginfo("Formation: %i agents in formation" % self.n_agents)
 
-        self.agents_dist = self.scale/(self.n_agents - 1) if self.n_agents > 1 else 0
+        self.update_formation_scale()
+        self.compute_min_scale()
 
     # Computing
-    def compute_start_positions(self, formation_goal):
-        center = [formation_goal.x,
-                  formation_goal.y,
-                  formation_goal.z]
+    def compute_min_scale(self):
+        if self.n_agents > 1:
+            self.min_scale = R_MIN*(self.n_agents - 1)
+        else:
+            self.min_scale = 0.0
 
+    def compute_formation_positions(self):
         center_offset = self.scale/2
 
         for i in range(self.n_agents):
             if rospy.is_shutdown():
                 break
 
-            agent_goal = Position()
-            agent_goal.yaw = 0
+            # Initialize agent formation goal
+            self.agents_goals[i] = Position()
 
+            # Compute formation position
             z_dist = 0
             x_dist = 0
             y_dist = self.agents_dist*i - center_offset
 
-            agent_goal.x = center[0] + x_dist
-            agent_goal.y = center[1] + y_dist
-            agent_goal.z = center[2] + z_dist
-
-            self.agents_goals[i] = agent_goal
-
-            center_dist, theta, center_height = compute_info_from_center([agent_goal.x,
-                                                                          agent_goal.y,
-                                                                          agent_goal.z],
-                                                                         center)
-
+            # Compute information from center
+            center_dist, theta, center_height = compute_info_from_center([x_dist, y_dist, z_dist])
             self.center_dist[i] = center_dist
             self.angle[i] = theta
             self.center_height[i] = center_height
 
-        return self.agents_goals
-
-    def update_scale(self, formation_goal):
+    def update_formation_scale(self):
         self.agents_dist = self.scale / (self.n_agents - 1) if self.n_agents > 1 else 0
-        self.compute_start_positions(formation_goal)

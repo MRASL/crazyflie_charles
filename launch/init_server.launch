@@ -40,7 +40,7 @@
   </node>
 
   <!-- Launch formation manager-->
-  <node name="formation_manager" pkg="crazyflie_charles" type="swarm_formation.py" output="screen">
+  <node name="formation_manager" pkg="crazyflie_charles" type="formation_manager.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
     <param name="to_sim" value="$(arg to_sim)"/>
   </node>
