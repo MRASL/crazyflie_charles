@@ -505,21 +505,35 @@ class TrajectorySolver(object):
             self.all_agents_traj[:, each_agent.agent_idx] = p_traj[:, 0]
 
     def initialize_matrices(self):
-        """Compute matrix used to determine new states
+        r"""Compute matrices used to determine new states
 
         Notes:
-            A = | I3    h*I3 |
-                | 03    I3   |
 
-            B = | (h**2/2)I3 |
-                |    h*I3    |
+        .. math::
+            :nowrap:
 
-                     |     B           03       ..  03 |
-            Lambda = |     AB           B       ..  03 |
-                     | ..                              |
-                     | A**(k-1)B    A**(k-2)B   ..  B  |
-
-            A0 = | A.T  A**2.T  ... (A**k).T |.T
+            \begin{align*}
+                A &= \begin{bmatrix}
+                        I_3 & hI_3\\
+                        0_3 & I_3
+                    \end{bmatrix}\\
+                \\
+                B &= \begin{bmatrix}
+                        \frac{h^2}{2}I_3\\
+                        hI_3
+                    \end{bmatrix}\\
+                \\
+                \Lambda &= \begin{bmatrix}
+                                B           & 0_3       & ...   & 0_3\\
+                                AB          & B         & ...   & 0_3\\
+                                ...         & ...       & ...   & ...\\
+                                A^{k-1}B    & A^{k-2}B  & ...   & B
+                        \end{bmatrix}\\
+                \\
+                A_0 &= \begin{bmatrix}
+                            A^T & (A^2)^T & ... & (A^k)^T
+                    \end{bmatrix}^T\\
+            \end{align*}
         """
         # Build prediction matrix
         self.build_prediction_matrices()
