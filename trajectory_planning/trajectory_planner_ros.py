@@ -1,19 +1,69 @@
 #!/usr/bin/env python
-"""To path trajectories of CFs
+"""Package to compute collision free trajectories for each agent.
 
-Services:
+The algorithm used is based on Distributed Model Predictive Control.
 
-Subscribed Services:
+.. todo:: ADD Article
 
-Subscribtion:
+Usage
+-----
+1. Set start position and goals of each agent to compute trajectories\
+(``/set_planner_positions`` srv)
 
-Publisher:
+2. Start trajectory solver (``/plan_trajectories`` srv)
 
-Etapes:
-    1 - Service to set start_position and goal of all agents
-    2 - Service to start planning
-        - Send msg once
-    3 - Service to return all positions of time_step x
+3. Wait for trajectory solver to be done
+
+4. Start trajectory publishing (``/pub_trajectories`` srv)
+
+5. Wait for trajectory publishing to be done
+
+ROS Features
+------------
+Subscribed Topics
+^^^^^^^^^^^^^^^^^
+    None
+
+Published Topics
+^^^^^^^^^^^^^^^^
+/cfx/trajectory_goal(crazyflie_driver/Position)
+    Position of the CF on the trajectory, at each time step
+
+Services
+^^^^^^^^
+/set_planner_positions(crazyflie_charles/SetPositions)
+    Set position (start or goal) of each crazyflie.
+    See :py:meth:`TrajectoryPlanner.set_positions` for more information.
+
+/plan_trajectories(`std_srvs/Empty`_)
+    Start solver to find a trajectory for each crazyflie.
+
+/pub_trajectories(`std_srvs/Empty`_)
+    Call to start publishing all trajectories
+
+Services Called
+^^^^^^^^^^^^^^^
+.. todo:: Add link to swarm_manager srv
+
+/traj_found(`std_srvs/SetBool`_)
+    Service called once a trajectory is found.
+
+    `data` is True if valid trajectories are found.
+
+    `data` is false otherwise (collision, no solution in constraints).
+
+/traj_done(`std_srvs/Empty`_)
+    Service called once the last step of the trajectory is reached.
+
+Parameters
+^^^^^^^^^^
+~cf_list(str, default: ['cf1'])
+
+TrajectoryPlanner Class
+-----------------------
+
+.. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
+.. _std_srvs/SetBool: http://docs.ros.org/api/std_srvs/html/srv/SetBool.html
 """
 
 import ast
@@ -29,8 +79,13 @@ class TrajectoryPlanner(object):
     """To plan trajectories of CFs
     """
     def __init__(self, cf_list):
-        #: dict of str: dict of str: Agent, traj_pub
+        """
+        Args:
+            cf_list (list of str): List of all CF in the swarm
+        """
         self.agents = {}
+        """dict of str: dict of str: Keys are the id of the CF.
+        Items are a dict containing: ``Agent``, trajectory_publisher, start_yaw"""
         for each_cf in cf_list:
             self.agents[each_cf] = {}
             self.agents[each_cf]['agent'] = Agent()
@@ -41,9 +96,13 @@ class TrajectoryPlanner(object):
         agent_list = [agent_dict['agent'] for (_, agent_dict) in self.agents.items()]
         self.solver = TrajectorySolver(agent_list)
 
+        #: bool: True if a trajectories are to be planned
         self.to_plan_trajectories = False
-        self.trajectory_found = False #: bool: If a trajectory has been found for current position
 
+        #: bool: True if a trajectory has been found for current position
+        self.trajectory_found = False
+
+        #: bool: True if a trajectories are to be published
         self.to_publish_traj = False
 
         # Start services
@@ -52,9 +111,8 @@ class TrajectoryPlanner(object):
         rospy.Service('/pub_trajectories', Empty, self.start_publishing_srv)
 
         rospy.loginfo("Planner: waiting for swarm manager services")
-        self.follow_traj = rospy.ServiceProxy("/follow_traj", Empty)
-        self.traj_done = rospy.ServiceProxy("/traj_done", Empty)
         self.send_result = rospy.ServiceProxy("/traj_found", SetBool)
+        self.traj_done = rospy.ServiceProxy("/traj_done", Empty)
         rospy.loginfo("Planner: swarm manager services found")
 
     # Services
@@ -122,7 +180,6 @@ class TrajectoryPlanner(object):
         """Publish computed trajectory
         """
         # Set swarm manager to follow trajectory
-        self.follow_traj()
 
         rospy.loginfo("Planner: Publishing trajectories...")
         rate = rospy.Rate(10)
@@ -152,7 +209,7 @@ class TrajectoryPlanner(object):
         self.traj_done()
 
     def run_planner(self):
-        """To plan trajectories
+        """Execute the correct method based on booleen states
         """
         if self.to_plan_trajectories and not self.trajectory_found:
             self.to_plan_trajectories = False

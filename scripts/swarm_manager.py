@@ -122,7 +122,6 @@ class Swarm(object):
         rospy.Service('/stop_swarm', Empty, self._stop_swarm_srv)
         rospy.Service('/take_off_swarm', Empty, self._take_off_swarm_srv)
         rospy.Service('/land_swarm', Empty, self._land_swarm_srv)
-        rospy.Service('/follow_traj', Empty, self._follow_traj_srv)
 
         rospy.Service('/toggle_teleop', Empty, self._toggle_teleop_srv)
         rospy.Service('/next_swarm_formation', Empty, self._next_swarm_formation_srv)
