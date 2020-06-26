@@ -171,7 +171,6 @@ class FormationManager(object):
         new_formation = srv_call.formation
         cf_initial_positions = ast.literal_eval(srv_call.positions)
         valid_formation = True
-        extra_agents = []
 
         if new_formation in self.formations.keys():
             rospy.loginfo("Formation: Setting formation to %s" % new_formation)
