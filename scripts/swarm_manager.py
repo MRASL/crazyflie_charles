@@ -168,7 +168,6 @@ class Swarm(object):
         self.formation = "line"
         self.extra_cf_list = [] #: list of str: ID of extra CF
         self.landed_cf_ids = [] #: list of str: Swarm Id of landed CFs
-        self.set_formation(self.formation)
 
         # Initialize state machine
         self.state_list = {"landed": self.swarm_landed,
@@ -395,6 +394,8 @@ class Swarm(object):
     def _take_off_swarm_srv(self, _):
         """Take off all cf in swarm
         """
+        self.send_formation()
+
         self.go_to_formation()
         return {}
 
@@ -411,6 +412,21 @@ class Swarm(object):
         return {}
 
     # Formation
+    def send_formation(self):
+        """Set swarm formation and find CFs in extra
+        """
+        start_positions = {}
+        for cf_id, cf_vals in self.crazyflies.items():
+            cf_pose = cf_vals["pose"].pose
+
+            start_positions[cf_id] = [cf_pose.position.x,
+                                      cf_pose.position.y,
+                                      cf_pose.position.z]
+
+        srv_res = self.set_formation(formation=self.formation, positions=str(start_positions))
+
+        self.extra_cf_list = srv_res.extra_cf.split(',')
+
     def update_formation(self):
         """Update formation of formation manager to match current formation
         """
@@ -419,8 +435,7 @@ class Swarm(object):
         rospy.sleep(0.1)
 
         # Set new formation
-        srv_res = self.set_formation(self.formation)
-        self.extra_cf_list = srv_res.extra_cf.split(',')
+        self.send_formation()
 
         self.go_to_formation()
 
@@ -515,7 +530,7 @@ class Swarm(object):
             land_swarm (bool, optional): If true, land swarm to initial pos. Defaults to False.
         """
         rospy.loginfo("Swarm: Going to new formation")
-        rospy.loginfo("Swarm: CF in extra: {}".format(self.extra_cf_list))
+        # rospy.loginfo("Swarm: CF in extra: {}".format(self.extra_cf_list))
 
         self.traj_found = False
 
@@ -532,7 +547,7 @@ class Swarm(object):
 
         # Take off landed CF that are not in extra
         take_off_list = [cf for cf in self.landed_cf_ids if cf not in self.extra_cf_list]
-        rospy.loginfo("CF to take off: {}".format(take_off_list))
+        # rospy.loginfo("CF to take off: {}".format(take_off_list))
         self._call_all_cf_service("take_off", cf_list=take_off_list)
 
         self.wait_for_take_off()

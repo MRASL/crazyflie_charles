@@ -58,8 +58,6 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  PoseRequest.srv
-  PoseSet.srv
   SetFormation.srv
   GetFormationList.srv
   SetPositions.srv

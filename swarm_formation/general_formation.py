@@ -42,6 +42,18 @@ class FormationClass(object):
         """
         return self.n_agents
 
+    def get_agents_goals(self):
+        """Return goal of each agent in formation
+
+        Returns:
+            dict of list: Keys: agents id, Items: goal [x, y, z]
+        """
+        goals = {}
+        for agent_id, agent_goal in self.agents_goals.items():
+            goals[agent_id] = [agent_goal.x, agent_goal.y, agent_goal.z]
+
+        return goals
+
     def set_scale(self, new_scale):
         """Set scale of the formation
 
@@ -56,14 +68,16 @@ class FormationClass(object):
 
         rospy.loginfo("Formation: Formation scale: %.2f" % self.scale)
 
-    def update_agents_positions(self, crazyflies, formation_goal):
+    def update_agents_positions(self, formation_goal, crazyflies=None):
         """Compute goal of each agent and updates corresponding CF goal.
 
         Agent goal is calculated based on distance and angle of agent id from formation center.
 
+        If crazyflies is not None, will update their goal.
+
         Args:
-            crazyflies (dict): Information of each Crazyflie
             formation_goal (Position): Goal of the formation
+            crazyflies (dict, optional): Information of each Crazyflie
         """
         # Compute position of all CF
         for swarm_id in range(self.n_agents):
@@ -87,18 +101,19 @@ class FormationClass(object):
             self.agents_goals[swarm_id].yaw = yaw
 
         # Update all CF formation goal based on swarm ID
-        for _, cf_attrs in crazyflies.items():
-            if rospy.is_shutdown():
-                break
-            cf_id = cf_attrs["swarm_id"]
-            try:
-                cf_attrs["formation_goal"].x = self.agents_goals[cf_id].x
-                cf_attrs["formation_goal"].y = self.agents_goals[cf_id].y
-                cf_attrs["formation_goal"].z = self.agents_goals[cf_id].z
-                cf_attrs["formation_goal"].yaw = self.agents_goals[cf_id].yaw
-            except KeyError:
-                # Pass, keys arn't initialized yet because of new formation
-                pass
+        if crazyflies is not None:
+            for _, cf_attrs in crazyflies.items():
+                if rospy.is_shutdown():
+                    break
+                cf_id = cf_attrs["swarm_id"]
+                try:
+                    cf_attrs["formation_goal"].x = self.agents_goals[cf_id].x
+                    cf_attrs["formation_goal"].y = self.agents_goals[cf_id].y
+                    cf_attrs["formation_goal"].z = self.agents_goals[cf_id].z
+                    cf_attrs["formation_goal"].yaw = self.agents_goals[cf_id].yaw
+                except KeyError:
+                    # Pass, keys arn't initialized yet because of new formation
+                    pass
 
     def find_extra_agents(self):
         """Find extra agents formation id

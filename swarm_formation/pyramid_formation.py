@@ -118,9 +118,8 @@ class PyramidFormation(FormationClass):
             self.center_height[i] = center_height
 
     def update_formation_scale(self):
-        self.min_height = self.scale + 0.5
-
         self.n_tier = (self.n_agents - 1) / 4
+        self.min_height = self.scale + 0.5 if self.n_tier > 1 else 0.5
 
         # Space between tiers
         self.tier_dist = self.scale/self.n_tier if self.n_tier > 0 else 0
