@@ -29,22 +29,23 @@ TODO:
     * Augmenter eps_max quand sol est pas trouvee
     * Test en z
 """
+# pylint: disable=relative-import
 
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv, matrix_power
-# import scipy.interpolate
-from qpsolvers import solve_qp
-from trajectory_plotting import TrajPlot
 # from scipy.sparse import csc_matrix
+from qpsolvers import solve_qp
 
-IN_DEBUG = False
+from trajectory_plotting import TrajPlot
+
+IN_DEBUG = True
 
 # Global attributes
 MAX_TIME = 15
 
 GOAL_THRES = 0.01 # 5 cm
-R_MIN = 0.1
+R_MIN = 0.35
 STEP_INVERVAL = 0.1
 HORIZON_TIME = 2.0
 COLL_RADIUS = 2*R_MIN
@@ -54,34 +55,23 @@ INTERP_STEP = 0.01
 ERROR_WEIGHT = 100
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
-RELAX_WEIGHT_SQ = 50
-RELAX_WEIGHT_LIN = -5*10e-4
-RELAX_MIN = -5
-RELAX_INC = 0.1
+RELAX_WEIGHT_SQ = 0.0001
+RELAX_WEIGHT_LIN = 0.0001
+RELAX_MIN = -0.7
+RELAX_INC = 0.05
 
-# # pour 7
+# # Tested
+# MAX_TIME = 15
+
 # GOAL_THRES = 0.01 # 5 cm
 # R_MIN = 0.35
 # STEP_INVERVAL = 0.1
 # HORIZON_TIME = 2.0
-# COLL_RADIUS = 2
+# COLL_RADIUS = 2*R_MIN
+# KAPPA = 3
+# INTERP_STEP = 0.01
 
-# ERROR_WEIGHT = 10
-# EFFORT_WEIGHT = 0.001
-# INPUT_WEIGHT = 0.001
-# RELAX_WEIGHT_SQ = 50
-# RELAX_WEIGHT_LIN = -5*10e-4
-# RELAX_MIN = -0.5
-# RELAX_INC = 0.1
-
-# # pour 4
-# GOAL_THRES = 0.01 # 5 cm
-# R_MIN = 0.35
-# STEP_INVERVAL = 0.1
-# HORIZON_TIME = 1.0
-# COLL_RADIUS = 3
-
-# ERROR_WEIGHT = 10
+# ERROR_WEIGHT = 100
 # EFFORT_WEIGHT = 0.001
 # INPUT_WEIGHT = 0.001
 # RELAX_WEIGHT_SQ = 50
@@ -412,7 +402,8 @@ class TrajectorySolver(object):
         self.initialize_matrices()
 
         # Graph parameters
-        self.trajectory_plotter = None
+        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval)
+
 
         # Debug
         self.agents_distances = []
@@ -692,9 +683,6 @@ class TrajectorySolver(object):
 
         # For each time step
         while not self.at_goal and self.k_t < self.k_max and not self.in_collision:
-            if IN_DEBUG:
-                print "Time %.2f at step %i" % (self.k_t*self.step_interval, self.k_t)
-
             # New trajectories
             new_trajectories = np.copy(self.all_agents_traj)
 
@@ -738,8 +726,9 @@ class TrajectorySolver(object):
                 each_agent.interpolate_traj(self.step_interval, self.interp_time_step)
 
         # TODO REMOVE
-        if not self.k_t < self.k_max:
-            self.at_goal = True
+        # if not self.k_t < self.k_max:
+        #     print "Max Time Reached"
+        #     self.at_goal = True
 
         return self.at_goal
 
@@ -758,7 +747,8 @@ class TrajectorySolver(object):
         avoid_collision = agent.check_collisions()  #: True if trajectory in collision
 
         if avoid_collision and IN_DEBUG:
-            print "\t Agent %i" % agent.agent_idx
+            print "\nTime %.2f at step %i: Agent %i" % (self.k_t*self.step_interval,\
+                self.k_t, agent.agent_idx)
 
         # Build optimization problem: 1/2 x.T * p_mat * x + q_mat.T * x  s.t. g_mat*x <= h_mat
         if not AVOID_COLLISIONS: # Just for testing, option to deactivate collisions
@@ -775,19 +765,22 @@ class TrajectorySolver(object):
             return None
 
         # Solve optimization problem, increase max relaxation if no solution is found
-        relax_max = self.relaxation_min_bound
+        # accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
+
+        cur_relaxation = self.relaxation_min_bound  # To locally increase relaxation bound
         find_solution = True
         while find_solution:
             try:
                 accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
                 find_solution = False
             except ValueError:
-                if relax_max > -10 and avoid_collision:
-                    relax_max -= RELAX_INC
-                    n_coll = int((h_mat.shape[0] - self.steps_in_horizon*3*4)/3)
+                if cur_relaxation > 2*self.relaxation_min_bound and avoid_collision:
+                    cur_relaxation -= RELAX_INC
+                    print "No solution, relaxing constraints: %.2f" % cur_relaxation
+                    n_collision = len(agent.close_agents.keys())
 
-                    for i in range(n_coll):
-                        h_mat[(-1 - i*3), 0] = -relax_max
+                    for i in range(n_collision):
+                        h_mat[(-1 - i*3), 0] = -cur_relaxation
 
                 else:
                     self.in_collision = True
@@ -795,7 +788,7 @@ class TrajectorySolver(object):
                     if self.verbose:
                         print ''
                         err_msg = ", Check max space"
-                        if relax_max < -10:
+                        if cur_relaxation < -10:
                             err_msg = ", Max relaxation reached"
                         print "ERROR: No solution in constraints %s" % err_msg
                     return None
@@ -1094,7 +1087,6 @@ class TrajectorySolver(object):
     def plot_trajectories(self):
         """Plot all computed trajectories
         """
-        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval)
         if self.has_fix_obstacle:
             self.trajectory_plotter.plot_obstacle(self.obstacle_positions)
 

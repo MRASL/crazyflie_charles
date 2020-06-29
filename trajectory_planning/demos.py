@@ -9,6 +9,7 @@ import numpy as np
 from numpy import array, mean
 from numpy.linalg import norm
 
+# pylint: disable=relative-import
 from trajectory_solver import Agent, TrajectorySolver
 
 def demo():
@@ -25,13 +26,13 @@ def demo():
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
-    # agents = corners_4()
+    agents = corners_4()
     # agents = corners_6()
 
     # agents = seven_agents()
     # agents = nine_agents()
 
-    agents, arena_max = random_pos(9, 1)
+    # agents, arena_max = random_pos(9, 1)
 
     start_time = time.time()
     solver = TrajectorySolver(agents)
@@ -304,8 +305,8 @@ def algo_performance(n_agents, density, n_tests):
     print 'Compute time average: %.2f ms' % time_average
 
 if __name__ == '__main__':
-    # demo()
-    update_test()
+    demo()
+    # update_test()
     # algo_performance(4, 1, 30)  #: n_agents, density, n_tests
 
     # Results (4, 1, 10):
