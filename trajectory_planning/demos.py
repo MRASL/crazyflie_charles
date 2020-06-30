@@ -21,12 +21,12 @@ def demo():
     arena_max = 5
 
     # Choose demo to execute
-    # agents = demo_two_agents()
+    agents = demo_two_agents()
     # agents, obstacles = demo_wall()
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
-    agents = corners_4()
+    # agents = corners_4()
     # agents = corners_6()
 
     # agents = seven_agents()
@@ -51,9 +51,9 @@ def demo():
 def demo_two_agents():
     """Two agents trading spots
     """
-    a_1 = Agent(start_pos=[0.0, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
+    a_1 = Agent(start_pos=[0.5, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
 
-    a_2 = Agent(start_pos=[4.0, 2.0, 0.0], goal=[0.0, 2.0, 0.0])
+    a_2 = Agent(start_pos=[4.0, 2.0, 0.0], goal=[0.5, 2.0, 0.0])
 
     return [a_1, a_2]
 
