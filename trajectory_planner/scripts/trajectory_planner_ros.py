@@ -72,7 +72,8 @@ import rospy
 from std_srvs.srv import Empty, SetBool
 from crazyflie_driver.msg import Position
 from crazyflie_charles.srv import SetPositions
-from trajectory_solver import TrajectorySolver, Agent
+from trajectory_solver import TrajectorySolver
+from agent import Agent
 
 
 class TrajectoryPlanner(object):
@@ -83,17 +84,17 @@ class TrajectoryPlanner(object):
         Args:
             cf_list (list of str): List of all CF in the swarm
         """
-        self.agents = {}
+        self.agents_dict = {}
         """dict of str: dict of str: Keys are the id of the CF.
         Items are a dict containing: ``Agent``, trajectory_publisher, start_yaw"""
         for each_cf in cf_list:
-            self.agents[each_cf] = {}
-            self.agents[each_cf]['agent'] = Agent()
-            self.agents[each_cf]['trajectory_pub'] =\
+            self.agents_dict[each_cf] = {}
+            self.agents_dict[each_cf]['agent'] = Agent()
+            self.agents_dict[each_cf]['trajectory_pub'] =\
                 rospy.Publisher('/' + each_cf + '/trajectory_goal', Position, queue_size=1)
-            self.agents[each_cf]['start_yaw'] = 0
+            self.agents_dict[each_cf]['start_yaw'] = 0
 
-        agent_list = [agent_dict['agent'] for (_, agent_dict) in self.agents.items()]
+        agent_list = [agent_dict['agent'] for (_, agent_dict) in self.agents_dict.items()]
         self.solver = TrajectorySolver(agent_list, verbose=False)
 
         #: bool: True if a trajectories are to be planned
@@ -134,8 +135,8 @@ class TrajectoryPlanner(object):
             for cf_id, start_pos in cf_positions.items():
                 start_coord = start_pos[0:3]
                 start_yaw = start_pos[3]
-                self.agents[cf_id]['agent'].set_starting_position(start_coord)
-                self.agents[cf_id]['start_yaw'] = start_yaw
+                self.agents_dict[cf_id]['agent'].set_starting_position(start_coord)
+                self.agents_dict[cf_id]['start_yaw'] = start_yaw
 
         elif pos_type == "goal":
             # print "Setting goals to:"
@@ -145,7 +146,7 @@ class TrajectoryPlanner(object):
             for cf_id, goal in cf_positions.items():
                 goal_coord = goal[0:3]
                 # goal_yaw = goal[3]
-                self.agents[cf_id]['agent'].set_goal(goal_coord)
+                self.agents_dict[cf_id]['agent'].set_goal(goal_coord)
 
         else:
             rospy.logerr("Invalid position type")
@@ -185,12 +186,12 @@ class TrajectoryPlanner(object):
         rate = rospy.Rate(10)
         time_step = 0
 
-        max_time_step = self.agents[self.agents.keys()[0]]['agent'].states.shape[1]
+        max_time_step = self.agents_dict[self.agents_dict.keys()[0]]['agent'].states.shape[1]
         while time_step < max_time_step:
             if rospy.is_shutdown():
                 break
 
-            for _, agent_dict in self.agents.items():
+            for _, agent_dict in self.agents_dict.items():
                 agent_pos = agent_dict["agent"].states[0:3, time_step]
                 goal_msg = Position()
 
