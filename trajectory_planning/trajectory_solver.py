@@ -29,59 +29,49 @@ TODO:
     * Augmenter eps_max quand sol est pas trouvee
     * Test en z
 """
+# pylint: disable=relative-import
 
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv, matrix_power
-# import scipy.interpolate
-from qpsolvers import solve_qp
-from trajectory_plotting import TrajPlot
 # from scipy.sparse import csc_matrix
+from qpsolvers import solve_qp
 
-IN_DEBUG = False
+from trajectory_plotting import TrajPlot
+
+IN_DEBUG = True
 
 # Global attributes
 MAX_TIME = 15
 
 GOAL_THRES = 0.01 # 5 cm
-R_MIN = 0.1
+R_MIN = 0.35
 STEP_INVERVAL = 0.1
 HORIZON_TIME = 2.0
 COLL_RADIUS = 2*R_MIN
 KAPPA = 3
 INTERP_STEP = 0.01
 
-ERROR_WEIGHT = 100
+ERROR_WEIGHT = 10000
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
-RELAX_WEIGHT_SQ = 50
-RELAX_WEIGHT_LIN = -5*10e-4
-RELAX_MIN = -5
-RELAX_INC = 0.1
+RELAX_WEIGHT_SQ = 10000
+RELAX_WEIGHT_LIN = 10000
+RELAX_MIN = -0.35
+RELAX_INC = 0.05
 
-# # pour 7
+# # Tested
+# MAX_TIME = 15
+
 # GOAL_THRES = 0.01 # 5 cm
 # R_MIN = 0.35
 # STEP_INVERVAL = 0.1
 # HORIZON_TIME = 2.0
-# COLL_RADIUS = 2
+# COLL_RADIUS = 2*R_MIN
+# KAPPA = 3
+# INTERP_STEP = 0.01
 
-# ERROR_WEIGHT = 10
-# EFFORT_WEIGHT = 0.001
-# INPUT_WEIGHT = 0.001
-# RELAX_WEIGHT_SQ = 50
-# RELAX_WEIGHT_LIN = -5*10e-4
-# RELAX_MIN = -0.5
-# RELAX_INC = 0.1
-
-# # pour 4
-# GOAL_THRES = 0.01 # 5 cm
-# R_MIN = 0.35
-# STEP_INVERVAL = 0.1
-# HORIZON_TIME = 1.0
-# COLL_RADIUS = 3
-
-# ERROR_WEIGHT = 10
+# ERROR_WEIGHT = 100
 # EFFORT_WEIGHT = 0.001
 # INPUT_WEIGHT = 0.001
 # RELAX_WEIGHT_SQ = 50
@@ -345,6 +335,7 @@ class TrajectorySolver(object):
 
         # bool: Collision detected between two agents, trajectory invalid
         self.in_collision = False
+        self.colliding_agent = None
 
         #: float: Number of time steps in horizon (k)
         self.steps_in_horizon = int(self.horizon_time/self.step_interval)
@@ -412,7 +403,8 @@ class TrajectorySolver(object):
         self.initialize_matrices()
 
         # Graph parameters
-        self.trajectory_plotter = None
+        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval)
+
 
         # Debug
         self.agents_distances = []
@@ -692,9 +684,6 @@ class TrajectorySolver(object):
 
         # For each time step
         while not self.at_goal and self.k_t < self.k_max and not self.in_collision:
-            if IN_DEBUG:
-                print "Time %.2f at step %i" % (self.k_t*self.step_interval, self.k_t)
-
             # New trajectories
             new_trajectories = np.copy(self.all_agents_traj)
 
@@ -738,8 +727,9 @@ class TrajectorySolver(object):
                 each_agent.interpolate_traj(self.step_interval, self.interp_time_step)
 
         # TODO REMOVE
-        if not self.k_t < self.k_max:
-            self.at_goal = True
+        # if not self.k_t < self.k_max:
+        #     print "Max Time Reached"
+        #     self.at_goal = True
 
         return self.at_goal
 
@@ -758,7 +748,8 @@ class TrajectorySolver(object):
         avoid_collision = agent.check_collisions()  #: True if trajectory in collision
 
         if avoid_collision and IN_DEBUG:
-            print "\t Agent %i" % agent.agent_idx
+            print "\nTime %.2f at step %i: Agent %i" % (self.k_t*self.step_interval,\
+                self.k_t, agent.agent_idx)
 
         # Build optimization problem: 1/2 x.T * p_mat * x + q_mat.T * x  s.t. g_mat*x <= h_mat
         if not AVOID_COLLISIONS: # Just for testing, option to deactivate collisions
@@ -775,30 +766,33 @@ class TrajectorySolver(object):
             return None
 
         # Solve optimization problem, increase max relaxation if no solution is found
-        relax_max = self.relaxation_min_bound
-        find_solution = True
-        while find_solution:
-            try:
-                accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
-                find_solution = False
-            except ValueError:
-                if relax_max > -10 and avoid_collision:
-                    relax_max -= RELAX_INC
-                    n_coll = int((h_mat.shape[0] - self.steps_in_horizon*3*4)/3)
+        accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
 
-                    for i in range(n_coll):
-                        h_mat[(-1 - i*3), 0] = -relax_max
+        # cur_relaxation = self.relaxation_min_bound  # To locally increase relaxation bound
+        # find_solution = True
+        # while find_solution:
+        #     try:
+        #         accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
+        #         find_solution = False
+        #     except ValueError:
+        #         if cur_relaxation > 2*self.relaxation_min_bound and avoid_collision:
+        #             cur_relaxation -= RELAX_INC
+        #             print "No solution, relaxing constraints: %.2f" % cur_relaxation
+        #             n_collision = len(agent.close_agents.keys())
 
-                else:
-                    self.in_collision = True
-                    find_solution = False
-                    if self.verbose:
-                        print ''
-                        err_msg = ", Check max space"
-                        if relax_max < -10:
-                            err_msg = ", Max relaxation reached"
-                        print "ERROR: No solution in constraints %s" % err_msg
-                    return None
+        #             for i in range(n_collision):
+        #                 h_mat[(-1 - i*3), 0] = -cur_relaxation
+
+        #         else:
+        #             self.in_collision = True
+        #             find_solution = False
+        #             if self.verbose:
+        #                 print ''
+        #                 err_msg = ", Check max space"
+        #                 if cur_relaxation < -10:
+        #                     err_msg = ", Max relaxation reached"
+        #                 print "ERROR: No solution in constraints %s" % err_msg
+        #             return None
 
         if IN_DEBUG and avoid_collision:
             print "\t\t Relaxation: {}".format(accel_input[3*self.steps_in_horizon:])
@@ -920,6 +914,7 @@ class TrajectorySolver(object):
             if self.verbose:
                 print "Agent %i in collision" % agent.agent_idx
             self.in_collision = True
+            self.colliding_agent = agent.agent_idx
             return 0, 0, 0, 0
 
         # Agent start_position at collision time step
@@ -939,7 +934,7 @@ class TrajectorySolver(object):
             other_dy = other_start_pos[1] - agent_start_pos[1]
             other_line = other_dy/other_dx if other_dx != 0 else 0
 
-            if goal_line - other_line < 0.01:
+            if abs(goal_line - other_line) < 0.01:
                 agent_goal[1, 0] += 0.5 if agent_dx > 0 else -0.5
 
         # Get no collision problem
@@ -970,7 +965,7 @@ class TrajectorySolver(object):
                            agent_position_coll - other_position_coll)
 
             #: 1x1 array, rho_ij = r_min*ksi_ik + ksi_ij**2 + v_ij' * p_i
-            rho_constraint = R_MIN*dist + dist**2 + dot(v_matrix.T, agent_position_coll)
+            rho_constraint = R_MIN*dist - dist**2 + dot(v_matrix.T, agent_position_coll)
 
             #: 3k x 1 array
             mu_matrix = np.zeros((3*(agent.collision_step), 1))
@@ -1017,6 +1012,82 @@ class TrajectorySolver(object):
         q_coll = q_aug + q_relaxation
 
         return p_coll, q_coll, g_coll, h_coll
+
+    def hard_constraints(self, agent, initial_state):
+        # Check number of close agents
+        collisions_list = agent.close_agents.keys() # list of int: Idx of all other agents colliding
+
+        if IN_DEBUG:
+            print "\t\t Collision detected with: {}".format(collisions_list)
+            print "\t\t At step of horizon:  %i" % agent.collision_step
+
+        # Collision at step 0 means two agents collided
+        if agent.collision_step == 0:
+            if self.verbose:
+                print "Agent %i in collision" % agent.agent_idx
+            self.in_collision = True
+            self.colliding_agent = agent.agent_idx
+            return 0, 0, 0, 0
+
+        # Agent start_position at collision time step
+        agent_goal = np.copy(agent.goal)
+        start_rows = slice(0, 3)
+        agent_start_pos = self.all_agents_traj[start_rows, agent.agent_idx]
+        agent_dy = agent_goal[1, 0] - agent_start_pos[1]
+        agent_dx = agent_goal[0, 0] - agent_start_pos[0]
+        goal_line = agent_dy/agent_dx if agent_dx != 0 else 0
+
+        # Check if an agent is on a direct line to goal, used to avoid deadlocks
+        for agent_idx in agent.close_agents:
+            # Other agent position
+            other_start_pos = self.all_agents_traj[start_rows, agent_idx]
+
+            other_dx = other_start_pos[0] - agent_start_pos[0]
+            other_dy = other_start_pos[1] - agent_start_pos[1]
+            other_line = other_dy/other_dx if other_dx != 0 else 0
+
+            if abs(goal_line - other_line) < 0.01:
+                agent_goal[1, 0] += 0.5 if agent_dx > 0 else -0.5
+
+        # Get no collision problem
+        p_no_coll, q_no_coll, g_no_coll, h_no_coll = self.solve_accel_no_coll(initial_state,
+                                                                              agent_goal,
+                                                                              agent.prev_input)
+
+        # Agent position at collision time step
+        collision_rows = slice(agent.collision_step*3, (agent.collision_step+1)*3)
+        agent_position_coll = self.all_agents_traj[collision_rows, agent.agent_idx]
+
+        for agent_j_idx, dist in agent.close_agents.items():
+            # Other agent position at collision time step
+            other_position_coll = self.all_agents_traj[collision_rows, agent_j_idx]
+
+            # Build matrices
+            #: 3x1 array, v_ij = scaling_matrix**-2 @ (p_i - p_j)
+            v_matrix = dot(matrix_power(agent.scaling_matrix, -2),
+                           agent_position_coll - other_position_coll)
+
+            #: 1x1 array
+            rho_constraint = (R_MIN - dist)*dist + dot(v_matrix.T, agent_position_coll)
+            # rho_constraint = (R_MIN**2 - dist**2)/2 + dot(v_matrix.T, agent_position_coll)
+
+            #: 3k x 1 array
+            mu_matrix = np.zeros((3*(agent.collision_step - 1), 1))
+            mu_matrix = vstack((mu_matrix, v_matrix.reshape(3, 1)))
+            mu_matrix = vstack((mu_matrix,
+                                np.zeros((3*(self.steps_in_horizon - agent.collision_step),
+                                          1))))
+
+            # Contraintes
+            accel_constraint = dot(mu_matrix.T, self.lambda_accel)[0]
+            h_relaxation_const = rho_constraint - dot(mu_matrix.T,
+                                                      dot(self.a0_accel, initial_state))[0, 0]
+
+            # Add constraints
+            g_coll = vstack((g_no_coll, -1*accel_constraint))
+            h_coll = vstack((h_no_coll, -h_relaxation_const))
+
+        return p_no_coll, q_no_coll, g_coll, h_coll
 
     def predict_trajectory(self, current_state, accel):
         """Predict an agent trajectory based on it's position and acceleration
@@ -1094,8 +1165,7 @@ class TrajectorySolver(object):
     def plot_trajectories(self):
         """Plot all computed trajectories
         """
-        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval)
         if self.has_fix_obstacle:
             self.trajectory_plotter.plot_obstacle(self.obstacle_positions)
 
-        self.trajectory_plotter.run()
+        self.trajectory_plotter.run(self.in_collision, self.colliding_agent)
