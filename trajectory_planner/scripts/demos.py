@@ -9,6 +9,7 @@ import numpy as np
 from numpy import array, mean
 from numpy.linalg import norm
 
+# pylint: disable=relative-import
 from trajectory_solver import Agent, TrajectorySolver
 
 def demo():
@@ -25,6 +26,7 @@ def demo():
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
+    # agents = corners_2_2()
     # agents = corners_4()
     # agents = corners_6()
 
@@ -50,9 +52,9 @@ def demo():
 def demo_two_agents():
     """Two agents trading spots
     """
-    a_1 = Agent(start_pos=[0.0, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
+    a_1 = Agent(start_pos=[0.5, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
 
-    a_2 = Agent(start_pos=[4.0, 2.0, 0.0], goal=[0.0, 2.0, 0.0])
+    a_2 = Agent(start_pos=[4.0, 2.0, 0.0], goal=[0.5, 2.0, 0.0])
 
     return [a_1, a_2]
 
@@ -83,6 +85,14 @@ def corners_2():
 
     a_1 = Agent(start_pos=[0.0, 0.0, 0.0], goal=[4.0, 4.0, 0.0])
     a_2 = Agent(start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
+
+    return [a_1, a_2]
+
+def corners_2_2():
+    """Corners 2, v2
+    """
+    a_1 = Agent(start_pos=[0.0, 4.0, 0.0], goal=[4.0, 0.0, 0.0])
+    a_2 = Agent(start_pos=[4.0, 0.0, 0.0], goal=[0.0, 4.0, 0.0])
 
     return [a_1, a_2]
 
@@ -304,8 +314,8 @@ def algo_performance(n_agents, density, n_tests):
     print 'Compute time average: %.2f ms' % time_average
 
 if __name__ == '__main__':
-    # demo()
-    update_test()
+    demo()
+    # update_test()
     # algo_performance(4, 1, 30)  #: n_agents, density, n_tests
 
     # Results (4, 1, 10):

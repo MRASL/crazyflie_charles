@@ -9,9 +9,11 @@ Circles represent the agents, dashed line the predicted trajectory over the hori
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
+
 plt.style.use('seaborn-pastel')
 
 SAVE_ANIMATION = False
+N_PER_AGENT = 3
 
 class TrajPlot(object):
     """To plot trajectories of agents
@@ -101,12 +103,16 @@ class TrajPlot(object):
         color_idx = 0
         for each_agent in self.agents:
             color = self.color_list[color_idx%len(self.color_list)]
-            circle = Circle((0, 0), 0.15, alpha=0.8, fc=color)
+            circle = Circle((0, 0), 0.1, alpha=0.8, fc=color)
             line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
 
+            col_circle = Circle((0, 0), 0.35, alpha=0.2, fc=color)
+
             self.axes.add_patch(circle)
+            self.axes.add_patch(col_circle)
 
             self.animated_objects.append(circle)
+            self.animated_objects.append(col_circle)
             self.animated_objects.append(line)
 
             # Draw goal
@@ -127,11 +133,15 @@ class TrajPlot(object):
             agent = self.agents[i]
 
             # Circle
-            self.animated_objects[2*i].center = (agent.states[0, 0],
-                                                 agent.states[1, 0])
+            self.animated_objects[N_PER_AGENT*i].center = (agent.states[0, 0],
+                                                           agent.states[1, 0])
+
+            # Col Circle
+            self.animated_objects[N_PER_AGENT*i].center = (agent.states[0, 0],
+                                                           agent.states[1, 0])
 
             # Line
-            self.animated_objects[2*i+1].set_data([], [])
+            self.animated_objects[N_PER_AGENT*i+2].set_data([], [])
 
         # Set text
         self.animated_objects[-1].set_text('')
@@ -150,8 +160,10 @@ class TrajPlot(object):
             data = agent.states[:, frame]
 
             # Circle
-            self.animated_objects[2*i].center = (data[0], data[1])
+            self.animated_objects[N_PER_AGENT*i].center = (data[0], data[1])
+            self.animated_objects[N_PER_AGENT*i + 1].center = (data[0], data[1])
 
+            # Prediction line
             x_data = []
             y_data = []
             z_data = []
@@ -161,7 +173,7 @@ class TrajPlot(object):
                 y_data.append(data[6*k + 1])
                 z_data.append(data[6*k + 2])
 
-            self.animated_objects[2*i + 1].set_data(x_data, y_data)
+            self.animated_objects[N_PER_AGENT*i + 2].set_data(x_data, y_data)
 
         time = frame*self.time_step
         self.time_text.set_text("Time (sec): %.1f" % time)
@@ -171,10 +183,13 @@ class TrajPlot(object):
 
         return self.animated_objects
 
-    def run(self):
+    def run(self, in_collision, colliding_agent):
         """Start animation
         """
         self.n_frame = self.agents[-1].states.shape[1]
+
+        self.collision = in_collision
+        self.colliding_agent = colliding_agent
 
         anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
                              frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),
