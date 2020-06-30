@@ -26,7 +26,7 @@
 import os
 import sys
 import sphinx_rtd_theme
-sys.path.insert(0, os.path.abspath('../trajectory_planning'))
+sys.path.insert(0, os.path.abspath('../trajectory_planner/scripts'))
 
 # -- General configuration ------------------------------------------------
 
