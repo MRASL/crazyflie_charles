@@ -21,18 +21,19 @@ def demo():
     arena_max = 5
 
     # Choose demo to execute
-    agents = demo_two_agents()
+    # agents = demo_two_agents()
     # agents, obstacles = demo_wall()
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
+    # agents = corners_2_2()
     # agents = corners_4()
     # agents = corners_6()
 
     # agents = seven_agents()
     # agents = nine_agents()
 
-    # agents, arena_max = random_pos(9, 1)
+    agents, arena_max = random_pos(9, 1)
 
     start_time = time.time()
     solver = TrajectorySolver(agents)
@@ -84,6 +85,14 @@ def corners_2():
 
     a_1 = Agent(start_pos=[0.0, 0.0, 0.0], goal=[4.0, 4.0, 0.0])
     a_2 = Agent(start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
+
+    return [a_1, a_2]
+
+def corners_2_2():
+    """Corners 2, v2
+    """
+    a_1 = Agent(start_pos=[0.0, 4.0, 0.0], goal=[4.0, 0.0, 0.0])
+    a_2 = Agent(start_pos=[4.0, 0.0, 0.0], goal=[0.0, 4.0, 0.0])
 
     return [a_1, a_2]
 

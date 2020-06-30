@@ -52,7 +52,7 @@ COLL_RADIUS = 2*R_MIN
 KAPPA = 3
 INTERP_STEP = 0.01
 
-ERROR_WEIGHT = 100
+ERROR_WEIGHT = 10000
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 10000
@@ -766,33 +766,33 @@ class TrajectorySolver(object):
             return None
 
         # Solve optimization problem, increase max relaxation if no solution is found
-        # accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
+        accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
 
-        cur_relaxation = self.relaxation_min_bound  # To locally increase relaxation bound
-        find_solution = True
-        while find_solution:
-            try:
-                accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
-                find_solution = False
-            except ValueError:
-                if cur_relaxation > 2*self.relaxation_min_bound and avoid_collision:
-                    cur_relaxation -= RELAX_INC
-                    print "No solution, relaxing constraints: %.2f" % cur_relaxation
-                    n_collision = len(agent.close_agents.keys())
+        # cur_relaxation = self.relaxation_min_bound  # To locally increase relaxation bound
+        # find_solution = True
+        # while find_solution:
+        #     try:
+        #         accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
+        #         find_solution = False
+        #     except ValueError:
+        #         if cur_relaxation > 2*self.relaxation_min_bound and avoid_collision:
+        #             cur_relaxation -= RELAX_INC
+        #             print "No solution, relaxing constraints: %.2f" % cur_relaxation
+        #             n_collision = len(agent.close_agents.keys())
 
-                    for i in range(n_collision):
-                        h_mat[(-1 - i*3), 0] = -cur_relaxation
+        #             for i in range(n_collision):
+        #                 h_mat[(-1 - i*3), 0] = -cur_relaxation
 
-                else:
-                    self.in_collision = True
-                    find_solution = False
-                    if self.verbose:
-                        print ''
-                        err_msg = ", Check max space"
-                        if cur_relaxation < -10:
-                            err_msg = ", Max relaxation reached"
-                        print "ERROR: No solution in constraints %s" % err_msg
-                    return None
+        #         else:
+        #             self.in_collision = True
+        #             find_solution = False
+        #             if self.verbose:
+        #                 print ''
+        #                 err_msg = ", Check max space"
+        #                 if cur_relaxation < -10:
+        #                     err_msg = ", Max relaxation reached"
+        #                 print "ERROR: No solution in constraints %s" % err_msg
+        #             return None
 
         if IN_DEBUG and avoid_collision:
             print "\t\t Relaxation: {}".format(accel_input[3*self.steps_in_horizon:])
@@ -829,7 +829,7 @@ class TrajectorySolver(object):
                                                                   prev_input)
 
         else:
-            p_mat, q_mat, g_mat, h_mat = self.hard_constraints(agent, initial_state)
+            p_mat, q_mat, g_mat, h_mat = self.solve_accel_coll(agent, initial_state)
 
         # If two agents are in collision
         if self.in_collision:
@@ -934,7 +934,7 @@ class TrajectorySolver(object):
             other_dy = other_start_pos[1] - agent_start_pos[1]
             other_line = other_dy/other_dx if other_dx != 0 else 0
 
-            if goal_line - other_line < 0.01:
+            if abs(goal_line - other_line) < 0.01:
                 agent_goal[1, 0] += 0.5 if agent_dx > 0 else -0.5
 
         # Get no collision problem
@@ -1021,7 +1021,7 @@ class TrajectorySolver(object):
             print "\t\t Collision detected with: {}".format(collisions_list)
             print "\t\t At step of horizon:  %i" % agent.collision_step
 
-        # Collision at step 0 mean two agents collided
+        # Collision at step 0 means two agents collided
         if agent.collision_step == 0:
             if self.verbose:
                 print "Agent %i in collision" % agent.agent_idx
@@ -1046,7 +1046,7 @@ class TrajectorySolver(object):
             other_dy = other_start_pos[1] - agent_start_pos[1]
             other_line = other_dy/other_dx if other_dx != 0 else 0
 
-            if goal_line - other_line < 0.01:
+            if abs(goal_line - other_line) < 0.01:
                 agent_goal[1, 0] += 0.5 if agent_dx > 0 else -0.5
 
         # Get no collision problem
@@ -1069,6 +1069,7 @@ class TrajectorySolver(object):
 
             #: 1x1 array
             rho_constraint = (R_MIN - dist)*dist + dot(v_matrix.T, agent_position_coll)
+            # rho_constraint = (R_MIN**2 - dist**2)/2 + dot(v_matrix.T, agent_position_coll)
 
             #: 3k x 1 array
             mu_matrix = np.zeros((3*(agent.collision_step - 1), 1))

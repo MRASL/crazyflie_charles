@@ -104,7 +104,7 @@ class TrajPlot(object):
         for each_agent in self.agents:
             color = self.color_list[color_idx%len(self.color_list)]
             circle = Circle((0, 0), 0.1, alpha=0.8, fc=color)
-            line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color, marker='o')
+            line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
 
             col_circle = Circle((0, 0), 0.35, alpha=0.2, fc=color)
 
