@@ -67,7 +67,7 @@ if __name__ == '__main__':
     cf_list = [('cf' + str(i + 1)) for i in range(n_cf)]
 
     # Launch server
-    cli_server = ['crazyflie_charles', 'init_server.launch', 'cf_list:='+str(cf_list),
+    cli_server = ['swarm_manager', 'init_server.launch', 'cf_list:='+str(cf_list),
                   'to_sim:=%s' % to_sim]
     launch_file(cli_server)
 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     for each_cf in cf_list:
         # TODO: Find uris of active CFs
         uri = 'radio://0/105/2M/0xE7E7E7E702'
-        cli_add_cf = ['crazyflie_charles', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri,
+        cli_add_cf = ['swarm_manager', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri,
                       'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
         launch_file(cli_add_cf)
 

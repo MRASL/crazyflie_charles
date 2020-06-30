@@ -25,8 +25,8 @@ installation, dependencies, ressources
    first_steps/ressources
 
 Architecture
-----------------
-To control the swarm, three different packages are used:
+------------
+To control the swarm, three different ros packages are used:
 
 * :doc:`/architecture/swarm_manager`: Main package. Link between the other packages and `crazyflie ros stack`_.
 * :doc:`/architecture/formation_manager`: Handles movement of swarm in a specific formation
@@ -49,22 +49,19 @@ User Guide
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Package Description
+   :caption: User Guide
 
-   trajectory_planning
-
-Code Description
-----------------
-Code explication of each Package
+Package Description
+-------------------
+In-depth description of each package
 
 .. toctree::
    :maxdepth: 2
-   :hidden:
    :caption: Package Description
 
-   trajectory_planning
-
-
+   package_description/swarm_manager
+   package_description/formation_manager
+   package_description/trajectory_planner
 
 Indices and tables
 ------------------
