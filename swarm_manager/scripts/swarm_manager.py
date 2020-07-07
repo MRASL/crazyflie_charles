@@ -86,7 +86,7 @@ from crazyflie_driver.msg import Position
 from state_machine import StateMachine
 from crazyflie import yaw_from_quat
 
-TAKE_OFF_DZ = 0.5 #: (float) Take off height in meters
+TAKE_OFF_DZ = 1.0 #: (float) Take off height in meters
 GND_HEIGHT = 0.2 #: (float) Height of the ground
 
 PRINT_SRV_WAIT = False

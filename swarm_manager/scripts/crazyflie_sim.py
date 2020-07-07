@@ -11,8 +11,8 @@ from crazyflie_driver.msg import Position, Hover
 from geometry_msgs.msg import Twist, PoseStamped
 from std_msgs.msg import Empty
 
-STARTING_POSITIONS = {'/cf1': [0.0, 0.0, 0.0],
-                      '/cf2': [0.0, 0.5, 0.0],
+STARTING_POSITIONS = {'/cf1': [2.3, 2.96, 0.2],
+                      '/cf2': [2.3, 1.36, 0.2],
                       '/cf3': [0.0, 1.0, 0.0],
                       '/cf4': [0.5, 0.0, 0.0],
                       '/cf5': [0.5, 0.5, 0.0],
@@ -107,4 +107,3 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         CF_SIM.send_pose()
-    
