@@ -1,5 +1,4 @@
 # Inventaire
-
 ## Matériel
 Au 6/06/2020
 
@@ -20,9 +19,7 @@ Au 6/06/2020
 \*Certains cables peuvent seulement charger
 
 
-
 ## Crazyflies
-
 |   Id 	|    Address    | Status |  Roll trim  | Pitch trim  |
 |:-----:|:-------------:|:------:|:-----------:|:-----------:|
 |   0   | 0xE7E7E7E700  |   OK   |     0.0     |     0.0     |
