@@ -39,7 +39,7 @@ def demo():
     # agents = nine_agents()
 
     # agents, arena_max = random_pos(9, 1)
-    agents = formation_demo(9, "square")
+    agents = formation_demo(9, "circle")
 
     start_time = time.time()
     solver = TrajectorySolver(agents)
