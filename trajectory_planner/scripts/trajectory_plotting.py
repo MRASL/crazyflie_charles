@@ -110,7 +110,7 @@ class TrajPlot(object):
             circle = Circle((0, 0), 0.1, alpha=0.8, fc=color)
             line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
 
-            col_circle = Circle((0, 0), 0.35, alpha=0.2, fc=color)
+            col_circle = Circle((0, 0), 0.45, alpha=0.2, fc=color)
 
             self.axes.add_patch(circle)
             self.axes.add_patch(col_circle)

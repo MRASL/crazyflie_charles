@@ -158,8 +158,8 @@ class Controller(object):
             rospy.wait_for_service('/update_swarm_params')
             self._update_params = rospy.ServiceProxy('/update_swarm_params', UpdateParams)
 
-            rospy.wait_for_service('/swarm_emergency')
-            self._emergency = rospy.ServiceProxy('/swarm_emergency', Empty)
+        rospy.wait_for_service('/swarm_emergency')
+        self._emergency = rospy.ServiceProxy('/swarm_emergency', Empty)
 
         rospy.wait_for_service('/toggle_teleop')
         self._toggle_teleop_srv = rospy.ServiceProxy('/toggle_teleop', Empty)
