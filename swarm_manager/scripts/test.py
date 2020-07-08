@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
-lst = ['a', 'b', 'c']
+base_address = 0xE7E7E7E700
+base_radio = 'radio://0/80/2M/'
 
-str_lst = ','.join(lst)
-
-print str_lst
-print str_lst.split(',')
+# Add n CFs
+for i in range(3):
+    base_address = base_address + i
+    uri = base_radio + hex(base_address).upper()
+    print "URI:"
+    print uri

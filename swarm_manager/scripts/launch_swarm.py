@@ -47,7 +47,7 @@ def add_args(arg_list):
 
 if __name__ == '__main__':
     # pylint: disable=invalid-name
-    # snake_case naming is okay
+    # snake_case naming is ok
 
     parser = argparse.ArgumentParser(description='Start crazyflie swarm')
     parser.add_argument('-n', type=int, help='Number of crazyflie in the swarm', default=1)
@@ -71,12 +71,20 @@ if __name__ == '__main__':
                   'to_sim:=%s' % to_sim]
     launch_file(cli_server)
 
+    base_address = 0xE7E7E7E700
+    base_radio = 'radio://0/80/2M/'
+
     # Add n CFs
     for each_cf in cf_list:
         # TODO: Find uris of active CFs
-        uri = 'radio://0/105/2M/0xE7E7E7E702'
+        uri = base_radio + hex(base_address).upper()
+        print "URI:"
+        print uri
         cli_add_cf = ['swarm_manager', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri,
                       'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
         launch_file(cli_add_cf)
+
+        base_address = base_address + 1
+
 
     rospy.spin()
