@@ -9,7 +9,8 @@ from tf.transformations import quaternion_from_euler
 
 from crazyflie_driver.msg import Position, Hover
 from geometry_msgs.msg import Twist, PoseStamped
-from std_msgs.msg import Empty
+from std_srvs.srv import Empty as Empty_srv
+from std_msgs.msg import Empty as Empty_msg
 
 STARTING_POSITIONS = {'/cf1': [2.3, 2.96, 0.2],
                       '/cf2': [2.3, 1.36, 0.2],
@@ -44,10 +45,6 @@ class CrazyflieSim(object):
         self.position.header.frame_id = self.world_frame
         self.position.pose.orientation.w = 1
 
-        # rospy.logwarn("WAITING")
-        # rospy.sleep(30)
-        # rospy.logwarn("DONE")
-
         if self.cf_id in STARTING_POSITIONS.keys():
             starting_pos = STARTING_POSITIONS[self.cf_id]
             self.position.pose.position.x = starting_pos[0]
@@ -55,15 +52,18 @@ class CrazyflieSim(object):
             self.position.pose.position.z = starting_pos[2]
 
         else:
+            rospy.logwarn("%s sim: Id not in starting position" % self.cf_id)
             self.position.pose.position.x = 0
             self.position.pose.position.y = 0
             self.position.pose.position.z = 0
 
         # Declare subscriptions and services
+        rospy.Service(self.cf_id + '/emergency', Empty_srv, self.emergency)
+
         rospy.Subscriber('%s/cmd_vel' % self.cf_id, Twist, self._cmd_vel_handler)
         rospy.Subscriber('%s/cmd_hovering' % self.cf_id, Hover, self._cmd_hover_handler)
         rospy.Subscriber('%s/cmd_position' % self.cf_id, Position, self._cmd_pos_handler)
-        rospy.Subscriber('%s/cmd_stop' % self.cf_id, Empty, self._cmd_pos_handler)
+        rospy.Subscriber('%s/cmd_stop' % self.cf_id, Empty_msg, self._cmd_pos_handler)
 
     def send_pose(self):
         """Publish current pose of CF
@@ -75,6 +75,12 @@ class CrazyflieSim(object):
             self.position_pub.publish(self.position)
 
             self.rate.sleep()
+
+    def emergency(self, _):
+        """Sim emergency service
+        """
+        rospy.logerr("%s: Emergency service called" % self.cf_id)
+        return {}
 
     def _cmd_vel_handler(self, vel_data):
         # rospy.logwarn("cmd_vel not implemented in simulation")

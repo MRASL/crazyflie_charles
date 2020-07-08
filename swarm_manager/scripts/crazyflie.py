@@ -165,10 +165,14 @@ class Crazyflie(object):
         """
         rate = rospy.Rate(100)
         while not self.localization_started:
-            pass
+            if rospy.is_shutdown():
+                break
 
         initial_pose = {'x':[], 'y':[], 'z':[], 'yaw':[]}
         while len(initial_pose['x']) < 10:
+            if rospy.is_shutdown():
+                break
+
             initial_pose['x'].append(self.pose.position.x)
             initial_pose['y'].append(self.pose.position.y)
             initial_pose['z'].append(self.pose.position.z)

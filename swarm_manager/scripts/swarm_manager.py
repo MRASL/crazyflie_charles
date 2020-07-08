@@ -226,11 +226,7 @@ class Swarm(object):
         self._link_service(cf_id, "hover", Empty)
         self._link_service(cf_id, "stop", Empty)
         self._link_service(cf_id, "toggle_teleop", Empty)
-
-        if not TO_SIM:
-            self._link_service(cf_id, "emergency", Empty)
-        else:
-            pass
+        self._link_service(cf_id, "emergency", Empty)
 
         rospy.loginfo("Swarm: found services of %s " % cf_id)
 
