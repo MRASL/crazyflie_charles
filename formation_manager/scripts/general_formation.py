@@ -8,7 +8,7 @@ import rospy
 from geometry_msgs.msg import Quaternion
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 
-R_MIN = 0.50
+R_MIN = 0.75
 
 class FormationClass(object):
     """Basic formation type
@@ -158,7 +158,6 @@ class FormationClass(object):
 
         """
         pass
-
 
 def compute_info_from_center(agent_position):
     """Calculate distance and angle from formation center

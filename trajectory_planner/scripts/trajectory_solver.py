@@ -40,7 +40,7 @@ from qpsolvers import solve_qp
 
 from trajectory_plotting import TrajPlot
 
-IN_DEBUG = False
+IN_DEBUG = True
 
 # Global attributes
 MAX_TIME = 15
@@ -53,7 +53,7 @@ COLL_RADIUS = 2*R_MIN
 KAPPA = 3
 INTERP_STEP = 0.01
 
-ERROR_WEIGHT = 100
+ERROR_WEIGHT = 0.1
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
 RELAX_WEIGHT_SQ = 100
@@ -952,4 +952,5 @@ class TrajectorySolver(object):
         if self.has_fix_obstacle:
             self.trajectory_plotter.plot_obstacle(self.obstacle_positions)
 
+        self.trajectory_plotter.update_objects(self.agents)
         self.trajectory_plotter.run()

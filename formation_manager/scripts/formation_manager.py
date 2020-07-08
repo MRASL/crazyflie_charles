@@ -49,10 +49,15 @@ from pyramid_formation import PyramidFormation
 from v_formation import VFormation
 
 FORMATION_INITIAL_GOAL = Position()
-FORMATION_INITIAL_GOAL.x = 2.30
-FORMATION_INITIAL_GOAL.y = 2.16
-FORMATION_INITIAL_GOAL.z = 1.0
+FORMATION_INITIAL_GOAL.x = 2.5
+FORMATION_INITIAL_GOAL.y = 2.5
+FORMATION_INITIAL_GOAL.z = 0.5
 FORMATION_INITIAL_GOAL.yaw = 0.0
+
+# FORMATION_INITIAL_GOAL.x = 2.30
+# FORMATION_INITIAL_GOAL.y = 2.16
+# FORMATION_INITIAL_GOAL.z = 1.0
+# FORMATION_INITIAL_GOAL.yaw = 0.0
 
 class FormationManager(object):
     """To manage to position of all CF in the formation.
