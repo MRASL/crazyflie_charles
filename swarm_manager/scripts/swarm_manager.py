@@ -77,6 +77,9 @@ Etapes generales:
 """
 
 import rospy
+import numpy as np
+from numpy import dot
+from numpy.linalg import norm, inv
 
 from geometry_msgs.msg import Twist, PoseStamped
 from std_srvs.srv import Empty, SetBool
@@ -88,6 +91,9 @@ from crazyflie import yaw_from_quat
 
 TAKE_OFF_DZ = 1.0 #: (float) Take off height in meters
 GND_HEIGHT = 0.2 #: (float) Height of the ground
+
+MIN_CF_DIST = 0.36
+MIN_GOAL_DIST = 0.40
 
 PRINT_SRV_WAIT = False
 
@@ -229,11 +235,19 @@ class Swarm(object):
         rospy.loginfo("Swarm: found services of %s " % cf_id)
 
         # CF pose
-        self.crazyflies[cf_id]["pose"] = PoseStamped()
+        self.crazyflies[cf_id]["pose"] = None
         rospy.Subscriber("/%s/pose" % cf_id, PoseStamped, self.cf_pose_handler, cf_id)
+
+        # Wait to receive first position
+        while self.crazyflies[cf_id]["pose"] is None:
+            pass
 
         # CF goal
         self.crazyflies[cf_id]["goal_msg"] = Position()
+        self.crazyflies[cf_id]["goal_msg"].x = self.crazyflies[cf_id]["pose"].pose.position.x
+        self.crazyflies[cf_id]["goal_msg"].y = self.crazyflies[cf_id]["pose"].pose.position.y
+        self.crazyflies[cf_id]["goal_msg"].z = self.crazyflies[cf_id]["pose"].pose.position.z
+
         self.crazyflies[cf_id]["goal_pub"] =\
             rospy.Publisher('/' + cf_id + '/goal', Position, queue_size=1)
 
@@ -787,12 +801,66 @@ class Swarm(object):
         self.state_machine.set_state("landed")
 
     # Execute state
+    def check_positions(self):
+        """Make sure position and goal of each CF respect min distance
+        """
+        position_dist = []
+        goal_dist = []
+
+        scaling_matrix_inv = inv(np.diag([1, 1, 2]))
+
+        for cf_id, cf_vals in self.crazyflies.items():
+
+            cf_position = cf_vals["pose"].pose
+            cf_position = np.array([cf_position.position.x,
+                                    cf_position.position.y,
+                                    cf_position.position.z])
+
+            cf_goal = cf_vals["goal_msg"]
+            cf_goal = np.array([cf_goal.x,
+                                cf_goal.y,
+                                cf_goal.z])
+
+            for other_id, other_vals in self.crazyflies.items():
+                if other_id != cf_id:
+                    other_pos = other_vals["pose"].pose
+                    other_pos = np.array([other_pos.position.x,
+                                          other_pos.position.y,
+                                          other_pos.position.z])
+
+                    other_goal = other_vals["goal_msg"]
+                    other_goal = np.array([other_goal.x,
+                                           other_goal.y,
+                                           other_goal.z])
+
+                    p_dist = norm(dot(scaling_matrix_inv, cf_position - other_pos))
+                    g_dist = norm(dot(scaling_matrix_inv, cf_goal - other_goal))
+
+                    position_dist.append(p_dist)
+                    goal_dist.append(g_dist)
+
+        min_pos_dist = min(position_dist)
+        min_goal_dist = min(goal_dist)
+
+        print "Min distances:"
+        print "\t position: %.2f" % min_pos_dist
+        print "\t goal: %.2f" % min_goal_dist
+
+        if min_goal_dist < MIN_GOAL_DIST:
+            rospy.logwarn("Goals are too close")
+
+        if min_pos_dist < MIN_CF_DIST:
+            rospy.logerr("CF too close, emergency")
+            self._swarm_emergency_srv(Empty())
+
     def control_swarm(self):
         """Publish on topics depending of current state
         """
         # Execute function depending on current state
         state_function = self.state_machine.run_state()
         state_function()
+
+        self.check_positions()
 
         # Publish goal of each CF
         self.pub_cf_goals()
