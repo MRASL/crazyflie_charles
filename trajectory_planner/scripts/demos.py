@@ -9,8 +9,8 @@ import numpy as np
 from numpy import array, mean
 from numpy.linalg import norm
 
-# pylint: disable=relative-import
-from trajectory_solver import Agent, TrajectorySolver
+from trajectory_solver import TrajectorySolver
+from agent import Agent
 
 def demo():
     """Launch trajectories tests
@@ -37,9 +37,9 @@ def demo():
 
     start_time = time.time()
     solver = TrajectorySolver(agents)
-    solver.set_obstacle(obstacles)
+    solver.set_obstacles(obstacles)
 
-    solver.set_wait_for_input(False)
+    solver.wait_for_input(False)
     solver.set_slow_rate(1.0)
     solver.set_arena_max(arena_max)
 

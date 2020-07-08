@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Module to plot the trajectories of agents.
+"""
+Trajectory Plotter
+------------------
+
+Module to plot the trajectories of agents.
 
 Circles represent the agents, dashed line the predicted trajectory over the horizon
 
@@ -183,13 +187,10 @@ class TrajPlot(object):
 
         return self.animated_objects
 
-    def run(self, in_collision, colliding_agent):
+    def run(self):
         """Start animation
         """
         self.n_frame = self.agents[-1].states.shape[1]
-
-        self.collision = in_collision
-        self.colliding_agent = colliding_agent
 
         anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
                              frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),
