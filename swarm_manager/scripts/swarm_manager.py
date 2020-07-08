@@ -92,7 +92,7 @@ from crazyflie import yaw_from_quat
 TAKE_OFF_DZ = 1.0 #: (float) Take off height in meters
 GND_HEIGHT = 0.2 #: (float) Height of the ground
 
-MIN_CF_DIST = 0.36
+MIN_CF_DIST = 0.40
 MIN_GOAL_DIST = 0.40
 
 PRINT_SRV_WAIT = False
@@ -838,9 +838,9 @@ class Swarm(object):
         min_pos_dist = min(position_dist)
         min_goal_dist = min(goal_dist)
 
-        print "Min distances:"
-        print "\t position: %.2f" % min_pos_dist
-        print "\t goal: %.2f" % min_goal_dist
+        # print "Min distances:"
+        # print "\t position: %.2f" % min_pos_dist
+        # print "\t goal: %.2f" % min_goal_dist
 
         if min_goal_dist < MIN_GOAL_DIST:
             rospy.logwarn("Goals are too close")
@@ -862,7 +862,6 @@ class Swarm(object):
         self.pub_cf_goals()
 
         self.rate.sleep()
-
 
 if __name__ == '__main__':
     # Launch node
