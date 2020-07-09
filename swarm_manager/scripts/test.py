@@ -1,11 +1,13 @@
 #!/usr/bin/env python
+import os
+import yaml
 
-base_address = 0xE7E7E7E700
-base_radio = 'radio://0/80/2M/'
+parentdir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(parentdir, 'conf.yaml')
 
-# Add n CFs
-for i in range(3):
-    base_address = base_address + i
-    uri = base_radio + hex(base_address).upper()
-    print "URI:"
-    print uri
+with open(file_path) as f:
+    data = yaml.load(f, Loader=yaml.FullLoader)
+    print data
+    for group, args_dict in data.items():
+        for arg_name, arg_val in args_dict.items():
+            print arg_name + ':=' + str(arg_val)

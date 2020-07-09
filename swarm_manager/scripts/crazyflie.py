@@ -22,9 +22,6 @@ from geometry_msgs.msg import Twist, PoseStamped, Pose, Quaternion
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from state_machine import StateMachine
 
-GND_HEIGHT = 0.0
-TAKE_OFF_HEIGHT = 0.5
-
 class Crazyflie(object):
     """Controller of a single crazyflie.
 
@@ -414,6 +411,8 @@ if __name__ == '__main__':
     # Get params
     CF_ID = rospy.get_param("~cf_name", "cf_default")
     TO_SIM = rospy.get_param("~to_sim", "False")
+    TAKE_OFF_HEIGHT = rospy.get_param("~take_off_height")
+    GND_HEIGHT = rospy.get_param("~gnd_height")
 
     # Initialize cfx
     CF = Crazyflie(CF_ID, TO_SIM)

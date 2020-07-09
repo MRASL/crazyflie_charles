@@ -89,14 +89,6 @@ from crazyflie_driver.msg import Position
 from state_machine import StateMachine
 from crazyflie import yaw_from_quat
 
-TAKE_OFF_DZ = 1.0 #: (float) Take off height in meters
-GND_HEIGHT = 0.2 #: (float) Height of the ground
-
-MIN_CF_DIST = 0.40
-MIN_GOAL_DIST = 0.40
-
-PRINT_SRV_WAIT = False
-
 class Swarm(object):
     """Controls the swarm """
 
@@ -870,6 +862,9 @@ if __name__ == '__main__':
     # Get params
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")
     TO_SIM = rospy.get_param("~to_sim", "False")
+
+    MIN_CF_DIST = rospy.get_param("~min_dist")
+    MIN_GOAL_DIST = rospy.get_param("~min_goal_dist")
 
     # Initialize swarm
     SWARM = Swarm(CF_LIST, TO_SIM)

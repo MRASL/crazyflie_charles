@@ -5,6 +5,9 @@
   <arg name="cf_list" default="['cf1']" />
   <arg name="to_sim" default="False" />
 
+  <arg name="min_dist" default="0.50" />
+  <arg name="min_goal_dist" default="0.50" />
+
   <!-- Launch server -->
   <group unless="$(arg to_sim)">
     <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
@@ -37,6 +40,10 @@
   <node name="swarm_manager" pkg="swarm_manager" type="swarm_manager.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
     <param name="to_sim" value="$(arg to_sim)"/>
+
+    <param name="min_dist" value="$(arg min_dist)"/>
+    <param name="min_goal_dist" value="$(arg min_goal_dist)"/>
+
   </node>
 
   <!-- Launch formation manager-->

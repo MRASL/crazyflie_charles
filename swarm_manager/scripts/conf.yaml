@@ -1,0 +1,7 @@
+crazyflie:
+  take_off_height: 0.5
+  gnd_height: 0.0
+
+swarm_manager:
+  min_dist: 0.40  # Absolute min distance between CFs
+  min_goal_dist: 0.40 # Absolute min distance between CFs goals
