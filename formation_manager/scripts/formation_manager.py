@@ -275,8 +275,7 @@ class FormationManager(object):
     def link_swarm_and_formation(self):
         """Link each agent of formation to a CF of the swarm and initialize formation goals
         """
-        agents_goals = self.formation.get_agents_goals()
-        agents_id_list, goal_mat = self.create_goal_matrix(agents_goals)
+        agents_id_list, goal_mat = self.create_goal_matrix()
         n_goals = len(agents_id_list)
 
         cf_id_list, initial_position_mat = self.create_initial_pos_matrix(n_goals)
@@ -288,12 +287,13 @@ class FormationManager(object):
 
         self.update_associations(cf_id_list, match_positions)
 
-    def create_goal_matrix(self, agents_goals):
+    def create_goal_matrix(self):
         """Create a matrix with all the goals stacked vertically
 
         Returns:
             tuple: (Agent id corresponding to each row, goal matrix)
         """
+        agents_goals = self.formation.get_agents_goals()
         agents_id_list = []
         goal_mat = None
 
