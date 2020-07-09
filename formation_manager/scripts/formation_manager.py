@@ -264,33 +264,54 @@ class FormationManager(object):
         for cf_id, initial_position in initial_positions.items():
             self.crazyflies[cf_id]["initial_position"] = initial_position
 
+    def check_goal_height(self):
+        """Make sure formation goal is above formation minimum height.
+
+        If it's not the case, set formation goal height to mimimum
+        """
+        if self.formation.min_height > self.formation_goal.z:
+            self.formation_goal.z = self.formation.min_height
+
     def link_swarm_and_formation(self):
         """Link each agent of formation to a CF of the swarm and initialize formation goals
         """
-        # Dumb association
-        # for (_, cf_attrs), (swarm_id, _) in\
-        #     zip(self.crazyflies.items(), self.formation.agents_goals.items()):
-        #     cf_attrs["swarm_id"] = swarm_id
-
-        # Minimize total distance
-        self.minimize_total_dist()
-
-    def minimize_total_dist(self):
-        """To minimze total distance traveled when linking cf and formation agents
-        """
-        # Create goal matrix
         agents_goals = self.formation.get_agents_goals()
-        agents_id_list = [] # list of int: Agent id corresponding to each row
+        agents_id_list, goal_mat = self.create_goal_matrix(agents_goals)
+        n_goals = len(agents_id_list)
+
+        cf_id_list, initial_position_mat = self.create_initial_pos_matrix(n_goals)
+
+        all_distances = self.compute_distances(cf_id_list, initial_position_mat,
+                                               agents_id_list, goal_mat)
+
+        match_positions = self.find_association(all_distances)
+
+        self.update_associations(cf_id_list, match_positions)
+
+    def create_goal_matrix(self, agents_goals):
+        """Create a matrix with all the goals stacked vertically
+
+        Returns:
+            tuple: (Agent id corresponding to each row, goal matrix)
+        """
+        agents_id_list = []
         goal_mat = None
+
         for agent_id, agent_goal in agents_goals.items():
             agents_id_list.append(agent_id)
             if goal_mat is None:
                 goal_mat = np.array([agent_goal]).reshape(3, 1)
             else:
                 goal_mat = np.vstack((goal_mat, np.array(agent_goal).reshape(3, 1)))
-        n_goals = len(agents_id_list)
 
-        # Create initial position matrix: cols Initial position of cf, rows: for each goal
+        return agents_id_list, goal_mat
+
+    def create_initial_pos_matrix(self, n_goals):
+        """Create initial position matrix: cols Initial position of cf, rows: for each goal
+
+        Returns:
+            tuple: (List of cf ids, initial position matrix)
+        """
         initial_position_mat = None
         cf_id_list = [] # list of str: Cf id corresponding to each col
         for cf_id, cf_vals in self.crazyflies.items():
@@ -306,6 +327,21 @@ class FormationManager(object):
             else:
                 initial_position_mat = np.hstack((initial_position_mat, current_pos))
 
+        return cf_id_list, initial_position_mat
+
+    def compute_distances(self, cf_id_list, initial_position_mat, agents_id_list, goal_mat):
+        """Compute distance from each goal and CF
+
+        Args:
+            cf_id_list (list): Ids of all CF in swarm
+            initial_position_mat (arrray): Initial position matrix
+            agents_id_list (list): Ids of all agents in formation
+            goal_mat (array): Goal matrix
+
+        Returns:
+            pd.DataFrame: Index: Agent id, Cols: CF id, vals: Distance
+        """
+        n_goals = len(agents_id_list)
 
         # Find distances
         all_distances = np.zeros((n_goals, self.n_cf))
@@ -317,30 +353,63 @@ class FormationManager(object):
                 all_distances[goal_idx, cf_idx] = dist
 
         all_distances = pd.DataFrame(all_distances, index=agents_id_list, columns=cf_id_list)
+        return all_distances
 
-        # Find closest CF to each goal
-        linked_cf = [] #: list of str: Ids of CF that have been linked
-        for cf_idx in all_distances.index:
-            goal_dist = all_distances.loc[cf_idx].sort_values()
-
-            sorted_cf = goal_dist.index
-
-            for each_cf in sorted_cf:
-                if each_cf not in linked_cf:
-                    linked_cf.append(each_cf)
-                    self.crazyflies[each_cf]['swarm_id'] = cf_idx
-                    break
-
-        # Update extra agents
-        self.extra_agents = [cf_id for cf_id in cf_id_list if cf_id not in linked_cf]
-
-    def check_goal_height(self):
-        """Make sure formation goal is above formation minimum height.
-
-        If it's not the case, set formation goal height to mimimum
+    def find_association(self, all_distances):
+        """To minimze total distance traveled when linking cf and formation agents
         """
-        if self.formation.min_height > self.formation_goal.z:
-            self.formation_goal.z = self.formation.min_height
+        n_goals = len(all_distances.index)
+        linked_goals = [] #: list of str: Ids of Agents (goals) that have been linked
+        match_positions = []
+
+        while len(linked_goals) < n_goals:
+            close_cf = {} #: dict: Keys: Id of close cf, vals: list of (goal, goal_dist)
+
+            # Find closest CF to each goal
+            for agent_idx in all_distances.index:
+                if agent_idx not in linked_goals:
+                    goal_dist = all_distances.loc[agent_idx].sort_values()
+
+                    closest_cf_id = goal_dist.index[0]
+                    try:
+                        close_cf[closest_cf_id].append((agent_idx, goal_dist[closest_cf_id]))
+                    except KeyError:
+                        close_cf[closest_cf_id] = [(agent_idx, goal_dist[closest_cf_id])]
+
+            # Link each close CF to farthest goal
+            for cf_id, close_goals in close_cf.items():
+                goal_to_link = None
+                max_dist = 0.0
+
+                for each_close_goal in close_goals:
+                    dist = each_close_goal[1]
+
+                    if goal_to_link is None:
+                        goal_to_link = each_close_goal[0]
+                        max_dist = dist
+
+                    elif dist > max_dist:
+                        goal_to_link = each_close_goal[0]
+                        max_dist = dist
+
+                all_distances = all_distances.drop(cf_id, axis='columns')
+                linked_goals.append(goal_to_link)
+                match_positions.append((cf_id, goal_to_link))
+
+        return match_positions
+
+    def update_associations(self, cf_id_list, match_positions):
+        """Update CF associations and extra agents list
+        """
+        linked_cf = []
+
+        for each_match in match_positions:
+            cf_id = each_match[0]
+            agent_id = each_match[1]
+            self.crazyflies[cf_id]['swarm_id'] = agent_id
+            linked_cf.append(cf_id)
+
+        self.extra_agents = [cf_id for cf_id in cf_id_list if cf_id not in linked_cf]
 
     # Publishers
     def publish_cf_formation_goal(self):

@@ -51,6 +51,7 @@ class TrajPlot(object):
 
         self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k']
         self.animated_objects = [] # List of all objects to animate
+        self.time_text = None
 
     def __del__(self):
         plt.close()
@@ -130,6 +131,12 @@ class TrajPlot(object):
             x_goal = each_agent.goal[0]
             y_goal = each_agent.goal[1]
             self.axes.scatter(x_goal, y_goal, s=250, c=color, marker='X')
+
+            # Draw start pos
+            x_start = each_agent.states[0, 0]
+            y_start = each_agent.states[1, 0]
+
+            self.axes.scatter(x_start, y_start, s=100, c=color, marker='X')
 
             color_idx += 1
 
