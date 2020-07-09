@@ -12,8 +12,8 @@ from geometry_msgs.msg import Twist, PoseStamped
 from std_srvs.srv import Empty as Empty_srv
 from std_msgs.msg import Empty as Empty_msg
 
-STARTING_POSITIONS = {'/cf1': [2.3, 2.96, 0.2],
-                      '/cf2': [2.3, 1.36, 0.2],
+STARTING_POSITIONS = {'/cf1': [0.0, 0.0, 0.0],
+                      '/cf2': [0.0, 0.5, 0.0],
                       '/cf3': [0.0, 1.0, 0.0],
                       '/cf4': [0.5, 0.0, 0.0],
                       '/cf5': [0.5, 0.5, 0.0],
@@ -27,6 +27,22 @@ STARTING_POSITIONS = {'/cf1': [2.3, 2.96, 0.2],
                       '/cf13': [0.5, 2.0, 0.0],
                       '/cf14': [1.0, 1.5, 0.0],
                       '/cf15': [1.0, 2.0, 0.0],}
+
+# STARTING_POSITIONS = {'/cf1': [2.3, 2.96, 0.2],
+#                       '/cf2': [2.3, 1.36, 0.2],
+#                       '/cf3': [0.0, 1.0, 0.0],
+#                       '/cf4': [0.5, 0.0, 0.0],
+#                       '/cf5': [0.5, 0.5, 0.0],
+#                       '/cf6': [0.5, 1.0, 0.0],
+#                       '/cf7': [1.0, 0.0, 0.0],
+#                       '/cf8': [1.0, 0.5, 0.0],
+#                       '/cf9': [1.0, 1.0, 0.0],
+#                       '/cf10': [0.0, 1.5, 0.0],
+#                       '/cf11': [0.0, 2.0, 0.0],
+#                       '/cf12': [0.5, 1.5, 0.0],
+#                       '/cf13': [0.5, 2.0, 0.0],
+#                       '/cf14': [1.0, 1.5, 0.0],
+#                       '/cf15': [1.0, 2.0, 0.0],}
 
 class CrazyflieSim(object):
     """To simulate position of CF based on received cmd.

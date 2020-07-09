@@ -51,7 +51,7 @@ class TrajPlot(object):
 
         self.color_list = ['b', 'r', 'g', 'c', 'm', 'y', 'k']
         self.animated_objects = [] # List of all objects to animate
-        self.init_animated_objects()
+        self.time_text = None
 
     def __del__(self):
         plt.close()
@@ -86,6 +86,14 @@ class TrajPlot(object):
         self.axes.set_ylim(ylim)
 
     # Animation
+    def update_objects(self, agent_list):
+        """Update agents
+
+        Args:
+            agent_list (list of Agent): All agents with their trajectories and goal
+        """
+        self.agents = agent_list
+
     def init_animated_objects(self):
         """Creates all objects to animate.
 
@@ -123,6 +131,12 @@ class TrajPlot(object):
             x_goal = each_agent.goal[0]
             y_goal = each_agent.goal[1]
             self.axes.scatter(x_goal, y_goal, s=250, c=color, marker='X')
+
+            # Draw start pos
+            x_start = each_agent.states[0, 0]
+            y_start = each_agent.states[1, 0]
+
+            self.axes.scatter(x_start, y_start, s=100, c=color, marker='X')
 
             color_idx += 1
 
@@ -191,6 +205,7 @@ class TrajPlot(object):
         """Start animation
         """
         self.n_frame = self.agents[-1].states.shape[1]
+        self.init_animated_objects()
 
         anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
                              frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),

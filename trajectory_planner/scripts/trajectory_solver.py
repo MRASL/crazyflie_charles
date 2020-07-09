@@ -40,7 +40,7 @@ from qpsolvers import solve_qp
 
 from trajectory_plotting import TrajPlot
 
-IN_DEBUG = False
+IN_DEBUG = True
 
 # Global attributes
 MAX_TIME = 15
@@ -53,10 +53,10 @@ COLL_RADIUS = 2*R_MIN
 KAPPA = 3
 INTERP_STEP = 0.01
 
-ERROR_WEIGHT = 100
+ERROR_WEIGHT = 0.1
 EFFORT_WEIGHT = 0.001
 INPUT_WEIGHT = 0.001
-RELAX_WEIGHT_SQ = 100
+RELAX_WEIGHT_SQ = 10
 RELAX_WEIGHT_LIN = 0.001
 RELAX_MIN = -0.45
 RELAX_INC = 0.05
@@ -536,9 +536,6 @@ class TrajectorySolver(object):
                 self.k_t, agent.agent_idx)
 
         # Build optimization problem: 1/2 x.T * p_mat * x + q_mat.T * x  s.t. g_mat*x <= h_mat
-        if not AVOID_COLLISIONS: # Just for testing, option to deactivate collisions
-            avoid_collision = False
-
         try:
             p_mat, q_mat, g_mat, h_mat = self.build_optimization_matrices(agent,
                                                                           initial_state,
@@ -581,7 +578,6 @@ class TrajectorySolver(object):
         if IN_DEBUG and avoid_collision:
             print "\t\t Relaxation: {}".format(accel_input[3*self.steps_in_horizon:])
 
-
         # Return acceleration
         accel_input = accel_input[0:3*self.steps_in_horizon]
         accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
@@ -605,9 +601,6 @@ class TrajectorySolver(object):
         prev_input = agent.prev_input
 
         if not avoid_collision:
-            # if IN_DEBUG:
-            #     print "\t\t No collision detected"
-
             p_mat, q_mat, g_mat, h_mat = self.solve_accel_no_coll(initial_state,
                                                                   agent_goal,
                                                                   prev_input)
@@ -690,13 +683,14 @@ class TrajectorySolver(object):
         n_collisions = len(collisions_list)
 
         if IN_DEBUG:
-            print "\t\t Collision detected with: {}".format(collisions_list)
+            print "\t\t Close agents: {}".format(collisions_list)
             print "\t\t At step of horizon:  %i" % agent.collision_step
 
         # Collision at step 0 mean two agents collided
         if agent.collision_step == 0:
             if self.verbose:
                 print "Agent %i in collision" % agent.agent_idx
+                print "Min Distance: %.2f" % min([dist for _, dist in agent.close_agents.items()])
             self.in_collision = True
             return 0, 0, 0, 0
 
@@ -952,4 +946,5 @@ class TrajectorySolver(object):
         if self.has_fix_obstacle:
             self.trajectory_plotter.plot_obstacle(self.obstacle_positions)
 
+        self.trajectory_plotter.update_objects(self.agents)
         self.trajectory_plotter.run()

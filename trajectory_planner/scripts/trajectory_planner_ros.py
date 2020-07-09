@@ -223,6 +223,7 @@ class TrajectoryPlanner(object):
             else:
                 self.trajectory_found = False
                 rospy.logerr("Planner: No trajectory found")
+                self.solver.plot_trajectories()
 
             self.send_result(self.trajectory_found)
 
