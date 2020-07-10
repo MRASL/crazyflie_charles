@@ -6,6 +6,7 @@
 # pylint: disable=unused-wildcard-import
 
 import os
+import sys
 import time
 import random as rand
 import numpy as np
@@ -13,8 +14,18 @@ from numpy import array, mean
 from numpy.linalg import norm
 import yaml
 
+# pylint: disable=invalid-name
+# pylint: disable=import-error
+# pylint: disable=wrong-import-position
+parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+traj_path = os.path.join(parentdir, 'scripts')
+os.sys.path.insert(0, traj_path)
+
 from trajectory_solver import TrajectorySolver
 from agent import Agent
+# pylint: enable=invalid-name
+# pylint: enable=import-error
+# pylint: enable=wrong-import-position
 
 from demos_positions import *
 from demos_formations import formation_demo
@@ -29,7 +40,7 @@ def demo():
 
     # Choose demo to execute
     # agents = demo_two_agents()
-    # agents, obstacles = demo_wall()
+    agents, obstacles = demo_wall()
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
@@ -38,13 +49,12 @@ def demo():
     # agents = corners_6()
 
     # agents = seven_agents()
-    # agents = nine_agents()
 
-    # agents, arena_max = random_pos(9, 1)
-    agents = formation_demo(9, "v")
+    agents, arena_max = random_pos(9, 1, seed=None)
+    # agents = formation_demo(9, "v")
 
     start_time = time.time()
-    solver = TrajectorySolver(agents, SOLVER_ARGS)
+    solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=True)
     solver.set_obstacles(obstacles)
 
     solver.wait_for_input(False)
@@ -58,12 +68,13 @@ def demo():
     solver.plot_trajectories()
 
 # Random positions
-def random_pos(n_agents, density):
+def random_pos(n_agents, density, seed=None):
     """Compute starting and final positions of agents
 
     Args:
         n_agents (int): Number of agents
         density (float): Agents/m**3
+        seed (float): To specify seed
     """
     min_distance = 0.7 #: float: min distance between two agents starting pos or goal
     total_vol = n_agents/density
@@ -72,6 +83,12 @@ def random_pos(n_agents, density):
     agent_list = []  #: list of Agent
     start_list = [] #: list of [x, y, z]
     goal_list = [] #: list of [x, y, z]
+
+    if seed is None:
+        seed = rand.randrange(sys.maxsize)
+
+    rand.seed(seed)
+    print "Seed used:", seed
 
     for _ in range(n_agents):
         new_agent = Agent(AGENT_ARGS)
@@ -126,7 +143,7 @@ def find_position_at_dist(max_coord, min_dist, other_positions):
 
 # Performances
 def algo_performance(n_agents, density, n_tests):
-    """Check algorithm performances"""
+    """Check algorithm performances for random configurations"""
 
     time_list = []
     res_list = []
@@ -158,6 +175,71 @@ def algo_performance(n_agents, density, n_tests):
     print 'Success rate: %.2f%%' % success_average
     print 'Compute time average: %.2f ms' % time_average
 
+def benchmark_algo():
+    """To benchmark current performances of algorithm
+
+    Stats:
+        - Success rate
+        - Total compute time
+        - Total travel time
+
+    Tests:
+        - corners_4
+        - demo_wall (wall from (2.0, -1.0, 0.) to (2.0, 2.5, 0.0))
+        - seven_agents
+        - 9 agents (seed: 6441753598703859782L, density: 1)
+        - 15 agents (seed: 7125329410299779625L, density: 1)
+        - 25 agents (seed: 8430841635042043371L, density: 1)
+        - 50 agents (seed: 3963364070630474782L, density: 1)
+        - square formation, 9 agents
+        - v formation, 9 agents
+    """
+    test_to_run = [(corners_4, (), {}),
+                   (demo_wall, (), {}),
+                   (seven_agents, (), {}),
+                   (random_pos, (9, 1), {'seed':6441753598703859782L}),
+                   (random_pos, (15, 1), {'seed':7125329410299779625L}),
+                   (random_pos, (25, 1), {'seed':8430841635042043371L}),
+                   (random_pos, (50, 1), {'seed':3963364070630474782L}),
+                   (formation_demo, (9, "square"), {}),
+                   (formation_demo, (9, "v"), {}),]
+
+    for each_test in test_to_run:
+        print "Running test: %s" % str(each_test[0].__name__)
+        agents = []
+        obstacles = []
+        arena_max = 5
+
+        func = each_test[0]
+        args = each_test[1]
+        kwargs = each_test[2]
+        res = func(*args, **kwargs)
+
+        if isinstance(res[0], list):
+            agents = res[0]
+
+            if isinstance(res[1], list):
+                obstacles = res[1]
+            else:
+                arena_max = res[1]
+        else:
+            agents = res
+
+        start_time = time.time()
+        solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=True)
+        solver.set_obstacles(obstacles)
+
+        solver.wait_for_input(False)
+        solver.set_slow_rate(1.0)
+        solver.set_arena_max(arena_max)
+
+        solver.solve_trajectories()
+
+        print "Compute time:", (time.time() - start_time)*1000, "ms"
+        print "\n"
+        # solver.plot_trajectories()
+
+
 if __name__ == '__main__':
     # Read arguments from yaml file
     PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -172,17 +254,9 @@ if __name__ == '__main__':
                   'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
                   'goal_thres': SOLVER_ARGS['goal_thres']}
 
-    demo()
+    # demo()
+
+    benchmark_algo()
+
     # update_test()
     # algo_performance(4, 1, 30)  #: n_agents, density, n_tests
-
-    # Results (4, 1, 10):
-    # 80%, 3075
-    # 50%, 2201
-    # 70%, 2211
-
-    # Updated algo (4, 1, 20):
-    # 100%, 737
-
-    # Results (9, 1, 10):
-    # 0%, 8444

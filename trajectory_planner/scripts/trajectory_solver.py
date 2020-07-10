@@ -40,7 +40,7 @@ from qpsolvers import solve_qp
 
 from trajectory_plotting import TrajPlot
 
-IN_DEBUG = True
+IN_DEBUG = False
 
 # Global attributes
 
