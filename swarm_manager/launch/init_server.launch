@@ -13,6 +13,31 @@
   <arg name="formation_min_dist" default="0.50" />
   <arg name="formation_start_pos" default="[0.0, 0.0, 0.0]" />
 
+  <arg name="max_acc" default="1.0" />
+  <arg name="min_acc" default="-1.0" />
+  <arg name="max_pos" default="10.0" />
+  <arg name="min_pos" default="0.0" />
+
+  <arg name="max_time" default="15.0" />
+  <arg name="goal_thres" default="0.01" />
+  <arg name="r_min" default="0.45" />
+  <arg name="step_interval" default="0.1" />
+  <arg name="interp_step" default="0.01" />
+  <arg name="horizon_time" default="2.0" />
+  <arg name="col_radius_ratio" default="2.0" />
+
+  <arg name="goal_agg" default="3" />
+  <arg name="error_weight" default="0.1" />
+  <arg name="effort_weight" default="0.001" />
+  <arg name="input_weight" default="0.001" />
+  <arg name="relax_weight_sq" default="10" />
+  <arg name="relax_weight_lin" default="0.001" />
+
+  <arg name="relax_max" default="-0.45" />
+  <arg name="relax_min" default="-0.45" />
+  <arg name="relax_inc" default="0.05" />
+
+
   <!-- Launch server -->
   <group unless="$(arg to_sim)">
     <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
@@ -63,6 +88,28 @@
   <!-- Launch trajectory planner -->
   <node name="trajectory_planner" pkg="trajectory_planner" type="trajectory_planner_ros.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
+
+    <param name="max_acc" value="$(arg max_acc)" />
+    <param name="min_acc" value="$(arg min_acc)" />
+    <param name="max_pos" value="$(arg max_pos)" />
+    <param name="min_pos" value="$(arg min_pos)" />
+
+    <param name="max_time" value="$(arg max_time)" />
+    <param name="goal_thres" value="$(arg goal_thres)" />
+    <param name="r_min" value="$(arg r_min)" />
+    <param name="step_interval" value="$(arg step_interval)" />
+    <param name="interp_step" value="$(arg interp_step)" />
+    <param name="horizon_time" value="$(arg horizon_time)" />
+    <param name="col_radius_ratio" value="$(arg col_radius_ratio)" />
+    <param name="goal_agg" value="$(arg goal_agg)" />
+    <param name="error_weight" value="$(arg error_weight)" />
+    <param name="effort_weight" value="$(arg effort_weight)" />
+    <param name="input_weight" value="$(arg input_weight)" />
+    <param name="relax_weight_sq" value="$(arg relax_weight_sq)" />
+    <param name="relax_weight_lin" value="$(arg relax_weight_lin)" />
+    <param name="relax_max" value="$(arg relax_max)" />
+    <param name="relax_min" value="$(arg relax_min)" />
+    <param name="relax_inc" value="$(arg relax_inc)" />
   </node>
 
   <!-- Rviz markers -->

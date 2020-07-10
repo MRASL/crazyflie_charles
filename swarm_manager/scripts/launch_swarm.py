@@ -98,7 +98,8 @@ if __name__ == '__main__':
 
     server_args = get_args('crazyflie', yaml_conf)
     formation_args = get_args('formation', yaml_conf)
-    cli_server = cli_server + server_args + formation_args
+    solver_args = get_args('trajectory_solver', yaml_conf)
+    cli_server = cli_server + server_args + formation_args + solver_args
 
     launch_file(cli_server)
 

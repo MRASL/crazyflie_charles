@@ -5,11 +5,13 @@
 # pylint: disable=wildcard-import
 # pylint: disable=unused-wildcard-import
 
+import os
 import time
 import random as rand
 import numpy as np
 from numpy import array, mean
 from numpy.linalg import norm
+import yaml
 
 from trajectory_solver import TrajectorySolver
 from agent import Agent
@@ -42,7 +44,7 @@ def demo():
     agents = formation_demo(9, "v")
 
     start_time = time.time()
-    solver = TrajectorySolver(agents)
+    solver = TrajectorySolver(agents, SOLVER_ARGS)
     solver.set_obstacles(obstacles)
 
     solver.wait_for_input(False)
@@ -72,7 +74,7 @@ def random_pos(n_agents, density):
     goal_list = [] #: list of [x, y, z]
 
     for _ in range(n_agents):
-        new_agent = Agent()
+        new_agent = Agent(AGENT_ARGS)
 
         start = find_position_at_dist(max_coord, min_distance, start_list)
         goal = find_position_at_dist(max_coord, min_distance, goal_list)
@@ -157,6 +159,19 @@ def algo_performance(n_agents, density, n_tests):
     print 'Compute time average: %.2f ms' % time_average
 
 if __name__ == '__main__':
+    # Read arguments from yaml file
+    PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+
+    with open(FILE_PATH) as f:
+        YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)
+
+    SOLVER_ARGS = YAML_CONF['trajectory_solver']
+
+    AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
+                  'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
+                  'goal_thres': SOLVER_ARGS['goal_thres']}
+
     demo()
     # update_test()
     # algo_performance(4, 1, 30)  #: n_agents, density, n_tests
