@@ -6,6 +6,10 @@
   <arg name="uri" default="radio://0/105/2M/0xE7E7E7E701" />
   <arg name="frame" default="crazyflie/crazyflie" />
   <arg name="to_sim" default="False"/>
+  <arg name="starting_position" default="[0.0, 0.0, 0.0]" />
+
+  <arg name="take_off_height" default="0.5" />
+  <arg name="gnd_height" default="0.0" />
 
   <!-- Create crazyflie -->
   <group ns="$(arg cf_name)">
@@ -35,12 +39,16 @@
     <node name="$(arg cf_name)_controller" pkg="swarm_manager" type="crazyflie.py" output="screen">
         <param name="cf_name" value="$(arg cf_name)"/>
         <param name="to_sim" value="$(arg to_sim)"/>
+
+        <param name="take_off_height" value="$(arg take_off_height)"/>
+        <param name="gnd_height" value="$(arg gnd_height)"/>
     </node>
 
     <!-- Simulation of CF -->
     <group if="$(arg to_sim)">
       <node name="$(arg cf_name)_sim" pkg="swarm_manager" type="crazyflie_sim.py" output="screen">
         <param name="cf_name" value="$(arg cf_name)"/>
+        <rosparam param="starting_position" subst_value="True">$(arg starting_position) </rosparam>
       </node>
     </group>
 

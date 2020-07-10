@@ -8,7 +8,7 @@ from math import sin, cos, pi, ceil
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, R_MIN, compute_info_from_center
+from general_formation import FormationClass, compute_info_from_center
 
 
 class VFormation(FormationClass):
@@ -48,8 +48,8 @@ class VFormation(FormationClass):
         3
 
     """
-    def __init__(self):
-        super(VFormation, self).__init__()
+    def __init__(self, min_dist):
+        super(VFormation, self).__init__(min_dist)
 
         # Attrs specific to square
         #: (float) Number of CF per side. index 0 is right side, 1 is left side
@@ -85,7 +85,7 @@ class VFormation(FormationClass):
 
     # Computing
     def compute_min_scale(self):
-        self.min_scale = R_MIN * self.agents_per_side[0]
+        self.min_scale = self.min_dist * self.agents_per_side[0]
 
     def compute_formation_positions(self):
         for i in range(self.n_agents):

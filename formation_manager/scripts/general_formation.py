@@ -8,15 +8,14 @@ import rospy
 from geometry_msgs.msg import Quaternion
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 
-R_MIN = 0.6
-
 class FormationClass(object):
     """Basic formation type
 
     """
-    def __init__(self):
+    def __init__(self, min_dist):
         self.n_agents = 0 #: (int) Number of CF in the formation
         self.n_agents_landed = 0 #(int) Number of CF landed, not part of current formation
+        self.min_dist = min_dist
 
         self.agents_goals = {} #: (dict of Position) Target Pose of all the CF
         self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
@@ -138,7 +137,7 @@ class FormationClass(object):
             rospy.logerr("Unsuported number of CFs")
 
     def compute_min_scale(self):
-        """Find minimum scale to make sure distance between agents is greater than R_MIN
+        """Find minimum scale to make sure distance between agents is greater than min_dist
         """
         pass
 

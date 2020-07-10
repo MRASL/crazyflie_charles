@@ -7,12 +7,10 @@ import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv
 
-from trajectory_solver import R_MIN, COLL_RADIUS, GOAL_THRES
-
 class Agent(object):
     """Represents a single agent
     """
-    def __init__(self, start_pos=None, goal=None):
+    def __init__(self, agent_args, start_pos=None, goal=None):
         """Initialize agent class
 
         Args:
@@ -25,7 +23,9 @@ class Agent(object):
         self.set_starting_position(start_pos) #: 3x1 np.array: Starting position
         self.set_goal(goal) #: 3x1 np.array: Goal
 
-        self.collision_check_radius = COLL_RADIUS
+        self.r_min = agent_args['r_min']
+        self.collision_check_radius = self.r_min * agent_args['col_radius_ratio']
+        self.goal_thres = agent_args['goal_thres']
         self.at_goal = False
         self.agent_idx = 0 #: Index of agent in positions
         self.n_steps = 0 #: int: Number of steps in horizon
@@ -159,7 +159,7 @@ class Agent(object):
         goal = self.goal.reshape(3)
         dist = norm(goal - current_position)
 
-        if dist < GOAL_THRES:
+        if dist < self.goal_thres:
             self.at_goal = True
 
         return self.at_goal
@@ -194,9 +194,9 @@ class Agent(object):
                     dist = norm(dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos))
 
 
-                    if dist < R_MIN and not collision_detected:
+                    if dist < self.r_min and not collision_detected:
                         # For step 0, check a smaller radius
-                        if each_step == 0 and dist > R_MIN - 0.05:
+                        if each_step == 0 and dist > self.r_min - 0.05:
                             break
 
                         self.collision_step = each_step

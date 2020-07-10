@@ -43,25 +43,10 @@ from trajectory_plotting import TrajPlot
 IN_DEBUG = True
 
 # Global attributes
-MAX_TIME = 15
 
 GOAL_THRES = 0.01 # 5 cm
 R_MIN = 0.45
-STEP_INVERVAL = 0.1
-HORIZON_TIME = 2.0
 COLL_RADIUS = 2*R_MIN
-KAPPA = 3
-INTERP_STEP = 0.01
-
-ERROR_WEIGHT = 0.1
-EFFORT_WEIGHT = 0.001
-INPUT_WEIGHT = 0.001
-RELAX_WEIGHT_SQ = 10
-RELAX_WEIGHT_LIN = 0.001
-RELAX_MIN = -0.45
-RELAX_INC = 0.05
-
-AVOID_COLLISIONS = True
 
 class TrajectorySolver(object):
     """To solve trajectories of all agents
@@ -106,7 +91,7 @@ class TrajectorySolver(object):
         obstacle_positions(:obj:`list` of :obj:`tuple`): Coordinates of obstacles to avoid (x, y, z)
 
     """
-    def __init__(self, agent_list=None, verbose=True):
+    def __init__(self, agent_list=None, solver_args=None, verbose=True):
         """Init solver
 
         Args:
@@ -119,15 +104,15 @@ class TrajectorySolver(object):
             print "Initializing solver..."
 
         # Time related attributes
-        self.horizon_time = HORIZON_TIME
+        self.horizon_time = solver_args['horizon_time']
 
-        self.step_interval = STEP_INVERVAL
+        self.step_interval = solver_args['step_interval']
         self.steps_in_horizon = int(self.horizon_time/self.step_interval)
 
-        self.interp_time_step = INTERP_STEP
+        self.interp_time_step = solver_args['interp_step']
 
         self.k_t = 0
-        self.k_max = int(MAX_TIME/self.step_interval)
+        self.k_max = int(solver_args['max_time']/self.step_interval)
 
         self.at_goal = False
         self.in_collision = False
@@ -142,22 +127,23 @@ class TrajectorySolver(object):
             self.initialize_agents()
 
         # Error weights
-        self.kapa = KAPPA
-        self.error_weight = ERROR_WEIGHT
-        self.effort_weight = EFFORT_WEIGHT
-        self.input_weight = INPUT_WEIGHT
+        self.kapa = solver_args['goal_agg']
+        self.error_weight = solver_args['error_weight']
+        self.effort_weight = solver_args['effort_weight']
+        self.input_weight = solver_args['input_weight']
 
-        self.relaxation_max_bound = 0
-        self.relaxation_min_bound = RELAX_MIN
-        self.relaxation_weight_p = RELAX_WEIGHT_SQ
-        self.relaxation_weight_q = RELAX_WEIGHT_LIN
+        self.relaxation_max_bound = solver_args['relax_max']
+        self.relaxation_min_bound = solver_args['relax_min']
+        self.relaxation_inc = solver_args['relax_inc']
+        self.relaxation_weight_p = solver_args['relax_weight_sq']
+        self.relaxation_weight_q = solver_args['relax_weight_lin']
 
         # Constraints
-        self.r_min = 0.35
-        self.a_max = 1.0
-        self.a_min = -1.0
-        p_min = -10.0
-        p_max = 10.0
+        self.r_min = solver_args['r_min']
+        self.a_max = solver_args['max_acc']
+        self.a_min = solver_args['min_acc']
+        p_min = solver_args['min_pos']
+        p_max = solver_args['max_pos']
         self.p_min = [p_min, p_min, 0.0]
         self.p_max = [p_max, p_max, p_max]
 
@@ -557,7 +543,7 @@ class TrajectorySolver(object):
         #         find_solution = False
         #     except ValueError:
         #         if cur_relaxation > 2*self.relaxation_min_bound and avoid_collision:
-        #             cur_relaxation -= RELAX_INC
+        #             cur_relaxation -= self.relaxation_inc
         #             print "No solution, relaxing constraints: %.2f" % cur_relaxation
         #             n_collision = len(agent.close_agents.keys())
 
@@ -742,7 +728,7 @@ class TrajectorySolver(object):
                            agent_position_coll - other_position_coll)
 
             #: 1x1 array, rho_ij = r_min*ksi_ik + ksi_ij**2 + v_ij' * p_i
-            rho_constraint = R_MIN*dist - dist**2 + dot(v_matrix.T, agent_position_coll)
+            rho_constraint = self.r_min*dist - dist**2 + dot(v_matrix.T, agent_position_coll)
 
             #: 3k x 1 array
             mu_matrix = np.zeros((3*(agent.collision_step), 1))
@@ -846,8 +832,8 @@ class TrajectorySolver(object):
                            agent_position_coll - other_position_coll)
 
             #: 1x1 array
-            rho_constraint = (R_MIN - dist)*dist + dot(v_matrix.T, agent_position_coll)
-            # rho_constraint = (R_MIN**2 - dist**2)/2 + dot(v_matrix.T, agent_position_coll)
+            rho_constraint = (self.r_min - dist)*dist + dot(v_matrix.T, agent_position_coll)
+            # rho_constraint = (self.r_min**2 - dist**2)/2 + dot(v_matrix.T, agent_position_coll)
 
             #: 3k x 1 array
             mu_matrix = np.zeros((3*(agent.collision_step - 1), 1))

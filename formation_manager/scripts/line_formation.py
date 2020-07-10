@@ -6,7 +6,7 @@
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, compute_info_from_center, R_MIN
+from general_formation import FormationClass, compute_info_from_center
 
 
 class LineFormation(FormationClass):
@@ -32,8 +32,8 @@ class LineFormation(FormationClass):
         0
 
     """
-    def __init__(self,):
-        super(LineFormation, self).__init__()
+    def __init__(self, min_dist):
+        super(LineFormation, self).__init__(min_dist)
 
         self.agents_dist = 0
 
@@ -57,7 +57,7 @@ class LineFormation(FormationClass):
     # Computing
     def compute_min_scale(self):
         if self.n_agents > 1:
-            self.min_scale = R_MIN*(self.n_agents - 1)
+            self.min_scale = self.min_dis*(self.n_agents - 1)
         else:
             self.min_scale = 0.0
 

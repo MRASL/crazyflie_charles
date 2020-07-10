@@ -79,7 +79,7 @@ from agent import Agent
 class TrajectoryPlanner(object):
     """To plan trajectories of CFs
     """
-    def __init__(self, cf_list):
+    def __init__(self, cf_list, solver_args):
         """
         Args:
             cf_list (list of str): List of all CF in the swarm
@@ -87,15 +87,20 @@ class TrajectoryPlanner(object):
         self.agents_dict = {}
         """dict of str: dict of str: Keys are the id of the CF.
         Items are a dict containing: ``Agent``, trajectory_publisher, start_yaw"""
+
+        agents_args = {'r_min': solver_args['r_min'],
+                       'col_radius_ratio': solver_args['col_radius_ratio'],
+                       'goal_thres': solver_args['goal_thres']}
+
         for each_cf in cf_list:
             self.agents_dict[each_cf] = {}
-            self.agents_dict[each_cf]['agent'] = Agent()
+            self.agents_dict[each_cf]['agent'] = Agent(agents_args)
             self.agents_dict[each_cf]['trajectory_pub'] =\
                 rospy.Publisher('/' + each_cf + '/trajectory_goal', Position, queue_size=1)
             self.agents_dict[each_cf]['start_yaw'] = 0
 
         agent_list = [agent_dict['agent'] for (_, agent_dict) in self.agents_dict.items()]
-        self.solver = TrajectorySolver(agent_list, verbose=False)
+        self.solver = TrajectorySolver(agent_list, solver_args, verbose=False)
 
         #: bool: True if a trajectories are to be planned
         self.to_plan_trajectories = False
@@ -235,11 +240,38 @@ if __name__ == '__main__':
     # Launch node
     rospy.init_node('trajectory_planner', anonymous=False)
 
-    # # Get params
+    # Get params
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")
 
+    SOLVER_ARGS = {}
+    SOLVER_ARGS['max_acc'] = rospy.get_param("~max_acc")
+    SOLVER_ARGS['min_acc'] = rospy.get_param("~min_acc")
+    SOLVER_ARGS['max_pos'] = rospy.get_param("~max_pos")
+    SOLVER_ARGS['min_pos'] = rospy.get_param("~min_pos")
+
+    SOLVER_ARGS['max_time'] = rospy.get_param("~max_time")
+    SOLVER_ARGS['goal_thres'] = rospy.get_param("~goal_thres")
+    SOLVER_ARGS['r_min'] = rospy.get_param("~r_min")
+    SOLVER_ARGS['step_interval'] = rospy.get_param("~step_interval")
+    SOLVER_ARGS['interp_step'] = rospy.get_param("~interp_step")
+    SOLVER_ARGS['horizon_time'] = rospy.get_param("~horizon_time")
+    SOLVER_ARGS['col_radius_ratio'] = rospy.get_param("~col_radius_ratio")
+
+    SOLVER_ARGS['goal_agg'] = rospy.get_param("~goal_agg")
+    SOLVER_ARGS['error_weight'] = rospy.get_param("~error_weight")
+    SOLVER_ARGS['effort_weight'] = rospy.get_param("~effort_weight")
+    SOLVER_ARGS['input_weight'] = rospy.get_param("~input_weight")
+    SOLVER_ARGS['relax_weight_sq'] = rospy.get_param("~relax_weight_sq")
+    SOLVER_ARGS['relax_weight_lin'] = rospy.get_param("~relax_weight_lin")
+
+    SOLVER_ARGS['relax_max'] = rospy.get_param("~relax_max")
+    SOLVER_ARGS['relax_min'] = rospy.get_param("~relax_min")
+    SOLVER_ARGS['relax_inc'] = rospy.get_param("~relax_inc")
+
+    print SOLVER_ARGS
+
     # Initialize planner
-    PLANNER = TrajectoryPlanner(CF_LIST)
+    PLANNER = TrajectoryPlanner(CF_LIST, SOLVER_ARGS)
 
     while not rospy.is_shutdown():
         PLANNER.run_planner()

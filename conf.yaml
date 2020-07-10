@@ -1,0 +1,51 @@
+crazyflie:
+  take_off_height: 0.5
+  gnd_height: 0.0
+  min_dist: 0.40  # Absolute min distance between CFs
+  min_goal_dist: 0.40 # Absolute min distance between CFs goals
+
+formation:
+  formation_min_dist: 0.6 # Min distance between agents in formation
+  formation_start_pos: [1.0, 1.0, 0.5, 0.0] # [x, y, z, yaw]
+
+trajectory_solver:
+  max_acc: 1.0
+  min_acc: -1.0
+  max_pos: 10.0
+  min_pos: -10.0
+
+  max_time: 15.0 # Max time to find trajectory [sec]
+  goal_thres: 0.01 # Distance when goal is reached [m]
+  r_min: 0.45 # Min radius between agents during trajectories [m]
+  step_interval: 0.1 # Time between each time step [sec]
+  interp_step: 0.01 # Time betwen time step for interpolation [sec]
+  horizon_time: 2.0 # Predict trajectories for this time [sec]
+  col_radius_ratio: 2.0 # Radius of agents to avoid
+
+  goal_agg: 3 # Kappa, to be more aggressive towards goal
+  error_weight: 0.1
+  effort_weight: 0.001
+  input_weight: 0.001
+  relax_weight_sq: 10
+  relax_weight_lin: 0.001
+  relax_max: 0.00
+  relax_min: -0.45
+  relax_inc: 0.05
+
+# Starting positions in simulation
+starting_positions:
+  cf1: [0.0, 0.0, 0.0]
+  cf2: [0.0, 0.5, 0.0]
+  cf3: [0.0, 1.0, 0.0]
+  cf4: [0.5, 0.0, 0.0]
+  cf5: [0.5, 0.5, 0.0]
+  cf6: [0.5, 1.0, 0.0]
+  cf7: [1.0, 0.0, 0.0]
+  cf8: [1.0, 0.5, 0.0]
+  cf9: [1.0, 1.0, 0.0]
+  cf10: [0.0, 1.5, 0.0]
+  cf11: [0.0, 2.0, 0.0]
+  cf12: [0.5, 1.5, 0.0]
+  cf13: [0.5, 2.0, 0.0]
+  cf14: [1.0, 1.5, 0.0]
+  cf15: [1.0, 2.0, 0.0]

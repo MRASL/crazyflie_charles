@@ -9,6 +9,7 @@ from math import sqrt, floor
 import numpy as np
 from numpy.linalg import norm
 import pandas as pd
+import yaml
 
 from crazyflie_driver.msg import Position
 from agent import Agent
@@ -26,16 +27,30 @@ from v_formation import VFormation
 START_DIST = 0.5
 SCALE = 1.0
 
+# Read arguments from yaml file
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+
+with open(FILE_PATH) as f:
+    YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)
+
+SOLVER_ARGS = YAML_CONF['trajectory_solver']
+
+AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
+              'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
+              'goal_thres': SOLVER_ARGS['goal_thres']}
+
 def formation_demo(n_agents, formation_type):
     """Formation demo
     """
     formation = get_formation(formation_type)
+    formation_start_pos = YAML_CONF['formation']['formation_start_pos']
 
     formation_goal = Position()
-    formation_goal.x = 2.5
-    formation_goal.y = 2.5
-    formation_goal.z = 0.0
-
+    formation_goal.x = formation_start_pos[0]
+    formation_goal.y = formation_start_pos[1]
+    formation_goal.z = formation_start_pos[2]
+    formation_goal.yaw = formation_start_pos[3]
 
     formation.set_n_agents(n_agents)
     formation.set_scale(SCALE)
@@ -50,7 +65,7 @@ def formation_demo(n_agents, formation_type):
     match_positions = link_agents_v2(start_positions, goals)
 
     for each_match in match_positions:
-        agent = Agent(start_pos=each_match[0], goal=each_match[1])
+        agent = Agent(AGENT_ARGS, start_pos=each_match[0], goal=each_match[1])
         agent_list.append(agent)
 
     return agent_list
@@ -64,20 +79,22 @@ def get_formation(formation_type):
     Returns:
         Formation: Formation
     """
+    formation_dist = YAML_CONF['formation']['formation_min_dist']
+
     if formation_type == "line":
-        formation = LineFormation()
+        formation = LineFormation(formation_dist)
 
     elif formation_type == "square":
-        formation = SquareFormation()
+        formation = SquareFormation(formation_dist)
 
     elif formation_type == "v":
-        formation = VFormation()
+        formation = VFormation(formation_dist)
 
     elif formation_type == "pyramid":
-        formation = PyramidFormation()
+        formation = PyramidFormation(formation_dist)
 
     elif formation_type == "circle":
-        formation = CircleFormation()
+        formation = CircleFormation(formation_dist)
 
     else:
         print "UNKNOWN FORMATION"

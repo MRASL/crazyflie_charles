@@ -48,24 +48,14 @@ from circle_formation import CircleFormation
 from pyramid_formation import PyramidFormation
 from v_formation import VFormation
 
-FORMATION_INITIAL_GOAL = Position()
-FORMATION_INITIAL_GOAL.x = 2.5
-FORMATION_INITIAL_GOAL.y = 2.5
-FORMATION_INITIAL_GOAL.z = 0.5
-FORMATION_INITIAL_GOAL.yaw = 0.0
-
-# FORMATION_INITIAL_GOAL.x = 2.30
-# FORMATION_INITIAL_GOAL.y = 2.16
-# FORMATION_INITIAL_GOAL.z = 1.0
-# FORMATION_INITIAL_GOAL.yaw = 0.0
-
 class FormationManager(object):
     """To manage to position of all CF in the formation.
 
     Associates formation position /w a CF
 
     """
-    def __init__(self, cf_list):
+    def __init__(self, cf_list, min_dist, start_goal):
+        self.min_dist = min_dist
         self.cf_list = cf_list
         self.n_cf = len(cf_list) #: (int) Number of CF in the swarm
         self.pose_cnt = 0 #: (int) To know when compute pose
@@ -75,16 +65,20 @@ class FormationManager(object):
 
         self.rate = rospy.Rate(100)
 
-        self.initial_formation_goal = FORMATION_INITIAL_GOAL #: Position: formation start position
+        self.initial_formation_goal = Position() #: Position: formation start position
+        self.initial_formation_goal.x = start_goal[0]
+        self.initial_formation_goal.y = start_goal[1]
+        self.initial_formation_goal.z = start_goal[2]
+        self.initial_formation_goal.yaw = start_goal[3]
 
         self.scale = 1.0
 
         #: All possible formations
-        self.formations = {"square": SquareFormation(),
-                           "v": VFormation(),
-                           "pyramid": PyramidFormation(),
-                           "circle": CircleFormation(),
-                           "line": LineFormation(),}
+        self.formations = {"square": SquareFormation(self.min_dist),
+                           "v": VFormation(self.min_dist),
+                           "pyramid": PyramidFormation(self.min_dist),
+                           "circle": CircleFormation(self.min_dist),
+                           "line": LineFormation(self.min_dist),}
         self.formation = None #: (str) Current formation
 
         #: (list of list of float): Starting pos of each agent in formation, independant of CF id
@@ -447,9 +441,12 @@ if __name__ == '__main__':
 
     # Get params
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")
+    MIN_DIST = rospy.get_param("~formation_min_dist", "0.5")
+    START_GOAL = rospy.get_param("~formation_start_pos", "['cf1']")
+
 
     # Initialize swarm
-    FORMATION_MANAGER = FormationManager(CF_LIST)
+    FORMATION_MANAGER = FormationManager(CF_LIST, MIN_DIST, START_GOAL)
 
     FORMATION_MANAGER.run_formation()
 
