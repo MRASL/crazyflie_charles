@@ -8,7 +8,7 @@ import rospy
 
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, compute_info_from_center, R_MIN
+from general_formation import FormationClass, compute_info_from_center
 
 
 class PyramidFormation(FormationClass):
@@ -51,8 +51,8 @@ class PyramidFormation(FormationClass):
         5               8
 
     """
-    def __init__(self):
-        super(PyramidFormation, self).__init__()
+    def __init__(self, min_dist):
+        super(PyramidFormation, self).__init__(min_dist)
 
         self.min_height = self.scale + 0.5
 
@@ -83,8 +83,8 @@ class PyramidFormation(FormationClass):
 
     # Computing
     def compute_min_scale(self):
-        min_scale_tier_dist = R_MIN*self.n_tier if self.n_tier > 0 else 0
-        min_scale_ag_dist = R_MIN/(2*sin(self.theta))*self.n_tier
+        min_scale_tier_dist = self.min_dist*self.n_tier if self.n_tier > 0 else 0
+        min_scale_ag_dist = self.min_dist/(2*sin(self.theta))*self.n_tier
 
         self.min_scale = min(min_scale_tier_dist, min_scale_ag_dist)
 

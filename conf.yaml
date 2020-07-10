@@ -1,0 +1,27 @@
+crazyflie:
+  take_off_height: 0.5
+  gnd_height: 0.0
+  min_dist: 0.40  # Absolute min distance between CFs
+  min_goal_dist: 0.40 # Absolute min distance between CFs goals
+
+formation:
+  formation_min_dist: 2.0 # Min distance between agents in formation
+  formation_start_pos: [0.0, 0.0, 0.0, 0.0] # [x, y, z, yaw]
+
+# Starting positions in simulation
+starting_positions:
+  cf1: [0.0, 0.0, 0.0]
+  cf2: [0.0, 0.5, 0.0]
+  cf3: [0.0, 1.0, 0.0]
+  cf4: [0.5, 0.0, 0.0]
+  cf5: [0.5, 0.5, 0.0]
+  cf6: [0.5, 1.0, 0.0]
+  cf7: [1.0, 0.0, 0.0]
+  cf8: [1.0, 0.5, 0.0]
+  cf9: [1.0, 1.0, 0.0]
+  cf10: [0.0, 1.5, 0.0]
+  cf11: [0.0, 2.0, 0.0]
+  cf12: [0.5, 1.5, 0.0]
+  cf13: [0.5, 2.0, 0.0]
+  cf14: [1.0, 1.5, 0.0]
+  cf15: [1.0, 2.0, 0.0]

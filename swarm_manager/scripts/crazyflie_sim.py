@@ -12,42 +12,10 @@ from geometry_msgs.msg import Twist, PoseStamped
 from std_srvs.srv import Empty as Empty_srv
 from std_msgs.msg import Empty as Empty_msg
 
-STARTING_POSITIONS = {'/cf1': [0.0, 0.0, 0.0],
-                      '/cf2': [0.0, 0.5, 0.0],
-                      '/cf3': [0.0, 1.0, 0.0],
-                      '/cf4': [0.5, 0.0, 0.0],
-                      '/cf5': [0.5, 0.5, 0.0],
-                      '/cf6': [0.5, 1.0, 0.0],
-                      '/cf7': [1.0, 0.0, 0.0],
-                      '/cf8': [1.0, 0.5, 0.0],
-                      '/cf9': [1.0, 1.0, 0.0],
-                      '/cf10': [0.0, 1.5, 0.0],
-                      '/cf11': [0.0, 2.0, 0.0],
-                      '/cf12': [0.5, 1.5, 0.0],
-                      '/cf13': [0.5, 2.0, 0.0],
-                      '/cf14': [1.0, 1.5, 0.0],
-                      '/cf15': [1.0, 2.0, 0.0],}
-
-# STARTING_POSITIONS = {'/cf1': [2.3, 2.96, 0.2],
-#                       '/cf2': [2.3, 1.36, 0.2],
-#                       '/cf3': [0.0, 1.0, 0.0],
-#                       '/cf4': [0.5, 0.0, 0.0],
-#                       '/cf5': [0.5, 0.5, 0.0],
-#                       '/cf6': [0.5, 1.0, 0.0],
-#                       '/cf7': [1.0, 0.0, 0.0],
-#                       '/cf8': [1.0, 0.5, 0.0],
-#                       '/cf9': [1.0, 1.0, 0.0],
-#                       '/cf10': [0.0, 1.5, 0.0],
-#                       '/cf11': [0.0, 2.0, 0.0],
-#                       '/cf12': [0.5, 1.5, 0.0],
-#                       '/cf13': [0.5, 2.0, 0.0],
-#                       '/cf14': [1.0, 1.5, 0.0],
-#                       '/cf15': [1.0, 2.0, 0.0],}
-
 class CrazyflieSim(object):
     """To simulate position of CF based on received cmd.
     """
-    def __init__(self, cf_id):
+    def __init__(self, cf_id, starting_pos):
         self.cf_id = '/' + cf_id
 
         self.world_frame = rospy.get_param("~worldFrame", "/world")
@@ -61,17 +29,9 @@ class CrazyflieSim(object):
         self.position.header.frame_id = self.world_frame
         self.position.pose.orientation.w = 1
 
-        if self.cf_id in STARTING_POSITIONS.keys():
-            starting_pos = STARTING_POSITIONS[self.cf_id]
-            self.position.pose.position.x = starting_pos[0]
-            self.position.pose.position.y = starting_pos[1]
-            self.position.pose.position.z = starting_pos[2]
-
-        else:
-            rospy.logwarn("%s sim: Id not in starting position" % self.cf_id)
-            self.position.pose.position.x = 0
-            self.position.pose.position.y = 0
-            self.position.pose.position.z = 0
+        self.position.pose.position.x = starting_pos[0]
+        self.position.pose.position.y = starting_pos[1]
+        self.position.pose.position.z = starting_pos[2]
 
         # Declare subscriptions and services
         rospy.Service(self.cf_id + '/emergency', Empty_srv, self.emergency)
@@ -123,9 +83,10 @@ if __name__ == '__main__':
     # Launch node
     rospy.init_node('cf_sim', anonymous=False)
     CF_ID = rospy.get_param("~cf_name", "cf_default")
+    START_POSITION = rospy.get_param("~starting_position")
 
     # Get params
-    CF_SIM = CrazyflieSim(CF_ID)
+    CF_SIM = CrazyflieSim(CF_ID, START_POSITION)
 
     while not rospy.is_shutdown():
         CF_SIM.send_pose()

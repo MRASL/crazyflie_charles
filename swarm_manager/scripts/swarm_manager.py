@@ -600,7 +600,7 @@ class Swarm(object):
 
                 cf_vals["goal_msg"].x = cf_pose.position.x
                 cf_vals["goal_msg"].y = cf_pose.position.y
-                cf_vals["goal_msg"].z = cf_pose.position.z + 0.5
+                cf_vals["goal_msg"].z = cf_pose.position.z + TAKE_OFF_HEIGHT
 
             # If CF is landed and in extra
             elif cf_vals["state"] in ["stop", "landed", "land"] and cf_id in self.extra_cf_list:
@@ -863,6 +863,8 @@ if __name__ == '__main__':
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")
     TO_SIM = rospy.get_param("~to_sim", "False")
 
+    TAKE_OFF_HEIGHT = rospy.get_param("~take_off_height")
+    GND_HEIGHT = rospy.get_param("~gnd_height")
     MIN_CF_DIST = rospy.get_param("~min_dist")
     MIN_GOAL_DIST = rospy.get_param("~min_goal_dist")
 

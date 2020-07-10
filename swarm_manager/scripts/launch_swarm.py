@@ -57,8 +57,8 @@ def get_args(group_name, args_dict):
         list of str: Converted args
     """
     args_list = []
-    args = args_dict[group_name]
-    for arg_name, arg_val in args.items():
+    all_args = args_dict[group_name]
+    for arg_name, arg_val in all_args.items():
         args_list.append(arg_name + ':=' + str(arg_val))
 
     return args_list
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     to_sim = args.sim
 
     # Read arguments from yaml file
-    parentdir = os.path.dirname(os.path.abspath(__file__))
+    parentdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     file_path = os.path.join(parentdir, 'conf.yaml')
 
     with open(file_path) as f:
@@ -96,8 +96,9 @@ if __name__ == '__main__':
     cli_server = ['swarm_manager', 'init_server.launch', 'cf_list:='+str(cf_list),
                   'to_sim:=%s' % to_sim]
 
-    server_args = get_args('swarm_manager', yaml_conf)
-    cli_server = cli_server + server_args
+    server_args = get_args('crazyflie', yaml_conf)
+    formation_args = get_args('formation', yaml_conf)
+    cli_server = cli_server + server_args + formation_args
 
     launch_file(cli_server)
 
@@ -106,13 +107,25 @@ if __name__ == '__main__':
     base_radio = 'radio://0/80/2M/'
     cf_args = get_args('crazyflie', yaml_conf)
 
+    starting_positions = yaml_conf['starting_positions']
+
     # Add n CFs
     for each_cf in cf_list:
         # TODO: Find uris of active CFs
         uri = base_radio + hex(base_address).upper()
+        try:
+            starting_pos = starting_positions[each_cf]
+            starting_pos = 'starting_position:=%s' % starting_pos
+        except KeyError:
+            starting_pos = None
+
         cli_add_cf = ['swarm_manager', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri,
                       'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
         cli_add_cf = cli_add_cf + cf_args
+
+        if starting_pos is not None:
+            cli_add_cf.append(starting_pos)
+
         launch_file(cli_add_cf)
         base_address = base_address + 1
 

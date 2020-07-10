@@ -5,8 +5,13 @@
   <arg name="cf_list" default="['cf1']" />
   <arg name="to_sim" default="False" />
 
+  <arg name="take_off_height" default="0.5" />
+  <arg name="gnd_height" default="0.0" />
   <arg name="min_dist" default="0.50" />
   <arg name="min_goal_dist" default="0.50" />
+
+  <arg name="formation_min_dist" default="0.50" />
+  <arg name="formation_start_pos" default="[0.0, 0.0, 0.0]" />
 
   <!-- Launch server -->
   <group unless="$(arg to_sim)">
@@ -41,6 +46,8 @@
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
     <param name="to_sim" value="$(arg to_sim)"/>
 
+    <param name="take_off_height" value="$(arg to_sim)"/>
+    <param name="gnd_height" value="$(arg gnd_height)"/>
     <param name="min_dist" value="$(arg min_dist)"/>
     <param name="min_goal_dist" value="$(arg min_goal_dist)"/>
 
@@ -49,7 +56,8 @@
   <!-- Launch formation manager-->
   <node name="formation_manager" pkg="formation_manager" type="formation_manager.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
-    <param name="to_sim" value="$(arg to_sim)"/>
+    <rosparam param="formation_start_pos" subst_value="True">$(arg formation_start_pos) </rosparam>
+    <param name="formation_min_dist" value="$(arg formation_min_dist)"/>
   </node>
 
   <!-- Launch trajectory planner -->

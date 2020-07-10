@@ -7,7 +7,7 @@ from math import sqrt, floor
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, compute_info_from_center, R_MIN
+from general_formation import FormationClass, compute_info_from_center
 
 class SquareFormation(FormationClass):
     """Square formation
@@ -36,8 +36,8 @@ class SquareFormation(FormationClass):
         0   3   6
 
     """
-    def __init__(self):
-        super(SquareFormation, self).__init__()
+    def __init__(self, min_dist):
+        super(SquareFormation, self).__init__(min_dist)
 
         # Attrs specific to square
         self.agents_per_side = 0 #: (float) Number of CF per side
@@ -69,7 +69,7 @@ class SquareFormation(FormationClass):
     # Computing
     def compute_min_scale(self):
         if self.n_agents > 1:
-            self.min_scale = R_MIN*(self.agents_per_side - 1)
+            self.min_scale = self.min_dist*(self.agents_per_side - 1)
         else:
             self.min_scale = 0.0
 

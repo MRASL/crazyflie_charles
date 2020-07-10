@@ -7,7 +7,7 @@ from math import sin, cos, pi
 import rospy
 from crazyflie_driver.msg import Position
 
-from general_formation import FormationClass, compute_info_from_center, R_MIN
+from general_formation import FormationClass, compute_info_from_center
 
 class CircleFormation(FormationClass):
     """Circle formation
@@ -30,8 +30,8 @@ class CircleFormation(FormationClass):
             4
 
     """
-    def __init__(self):
-        super(CircleFormation, self).__init__()
+    def __init__(self, min_dist):
+        super(CircleFormation, self).__init__(min_dist)
 
         self.angle_between_agents = 0 #: Angle between each agent (rad)
         self.compute_min_scale()
@@ -57,10 +57,10 @@ class CircleFormation(FormationClass):
         self.min_scale = 0.0
         if self.angle_between_agents > 0:
             # Find scale when agents on circle are at 0.35m
-            self.min_scale = R_MIN/(2*sin(self.angle_between_agents/2))
+            self.min_scale = self.min_dist/(2*sin(self.angle_between_agents/2))
 
             # Scale is smallest radius if theta is to big
-            self.min_scale = R_MIN if self.min_scale < R_MIN else self.min_scale
+            self.min_scale = self.min_dist if self.min_scale < self.min_dist else self.min_scale
 
     def compute_formation_positions(self):
         for i in range(self.n_agents):
