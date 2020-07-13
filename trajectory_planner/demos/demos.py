@@ -10,7 +10,7 @@ import sys
 import time
 import random as rand
 import numpy as np
-from numpy import array, mean
+from numpy import array, mean, sum
 from numpy.linalg import norm
 import yaml
 
@@ -88,7 +88,7 @@ def random_pos(n_agents, density, seed=None):
         seed = rand.randrange(sys.maxsize)
 
     rand.seed(seed)
-    print "Seed used:", seed
+    # print "Seed used:", seed
 
     for _ in range(n_agents):
         new_agent = Agent(AGENT_ARGS)
@@ -194,18 +194,22 @@ def benchmark_algo():
         - square formation, 9 agents
         - v formation, 9 agents
     """
-    test_to_run = [(corners_4, (), {}),
-                   (demo_wall, (), {}),
-                   (seven_agents, (), {}),
-                   (random_pos, (9, 1), {'seed':6441753598703859782L}),
-                   (random_pos, (15, 1), {'seed':7125329410299779625L}),
-                   (random_pos, (25, 1), {'seed':8430841635042043371L}),
-                   (random_pos, (50, 1), {'seed':3963364070630474782L}),
-                   (formation_demo, (9, "square"), {}),
-                   (formation_demo, (9, "v"), {}),]
+    test_to_run = [(corners_4, (), {}, "corners_4"),
+                   (demo_wall, (), {}, "demo_wall"),
+                   (seven_agents, (), {}, "seven_agents"),
+                   (random_pos, (9, 1), {'seed':6441753598703859782L}, "random_pos_9"),
+                   (random_pos, (15, 1), {'seed':7125329410299779625L}, "random_pos_15"),
+                   (random_pos, (25, 1), {'seed':8430841635042043371L}, "random_pos_25"),
+                   (random_pos, (50, 1), {'seed':3963364070630474782L}, "random_pos_50"),
+                   (formation_demo, (9, "square"), {}, "formation_square"),
+                   (formation_demo, (9, "v"), {}, "formation_v"),]
+    tests_data = {}
+
+    start_time = time.time()
 
     for each_test in test_to_run:
-        print "Running test: %s" % str(each_test[0].__name__)
+        test_name = each_test[3]
+        print "Running test: %s" % test_name
         agents = []
         obstacles = []
         arena_max = 5
@@ -225,19 +229,29 @@ def benchmark_algo():
         else:
             agents = res
 
-        start_time = time.time()
-        solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=True)
+        test_start_time = time.time()
+        solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=False)
         solver.set_obstacles(obstacles)
 
         solver.wait_for_input(False)
         solver.set_slow_rate(1.0)
         solver.set_arena_max(arena_max)
 
-        solver.solve_trajectories()
+        success, travel_time = solver.solve_trajectories()
 
-        print "Compute time:", (time.time() - start_time)*1000, "ms"
+        compute_time = (time.time() - test_start_time)
+        print "\tSucces: %s" % success
+        print "\tTravel Time: %.2f sec" % travel_time
+        print "\tCompute time: %.2f sec" % compute_time
         print "\n"
-        # solver.plot_trajectories()
+
+        tests_data[test_name] = {"success": success,
+                                 "compute_time": compute_time,
+                                 "travel_time": travel_time}
+
+    success_list = []
+    compute_time_list = []
+    travel_time_list = []
 
 
 if __name__ == '__main__':
@@ -260,3 +274,5 @@ if __name__ == '__main__':
 
     # update_test()
     # algo_performance(4, 1, 30)  #: n_agents, density, n_tests
+Function to benchmark algorithm
+Fixes #80

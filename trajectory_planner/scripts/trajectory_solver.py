@@ -448,6 +448,7 @@ class TrajectorySolver(object):
 
         Returns:
             :obj:`bool`: If the algorithm was succesfull
+            :obj:`float`: Total trajectory time
         """
         if self.verbose:
             print "Solving trajectories..."
@@ -501,7 +502,7 @@ class TrajectorySolver(object):
         #     print "Max Time Reached"
         #     self.at_goal = True
 
-        return self.at_goal
+        return self.at_goal, (self.k_t*self.step_interval)
 
     def solve_accel(self, agent, initial_state):
         """Optimize acceleration input for the horizon
