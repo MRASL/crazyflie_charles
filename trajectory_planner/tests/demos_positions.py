@@ -1,4 +1,6 @@
-"""General tests
+#!/usr/bin/env python
+
+"""General tests /w set start and goal
 """
 import os
 import numpy as np
