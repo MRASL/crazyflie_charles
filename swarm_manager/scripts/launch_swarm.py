@@ -71,10 +71,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start crazyflie swarm')
     parser.add_argument('-n', type=int, help='Number of crazyflie in the swarm', default=1)
     parser.add_argument('--sim', '-s', action='store_true', help='Flag to launch in simulation')
+    parser.add_argument('--first-id', '-f', type=int, help='ID of first CF in swarm', default=0)
 
     args = parser.parse_args()
     n_cf = args.n
     to_sim = args.sim
+    first_uri = args.first_id
 
     # Read arguments from yaml file
     parentdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -104,7 +106,7 @@ if __name__ == '__main__':
     launch_file(cli_server)
 
     # Launch CFs
-    base_address = 0xE7E7E7E700
+    base_address = 0xE7E7E7E700 + first_uri
     base_radio = 'radio://0/80/2M/'
     cf_args = get_args('crazyflie', yaml_conf)
 

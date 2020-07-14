@@ -104,7 +104,7 @@ class Swarm(object):
 
         self._to_sim = to_sim   #: bool: True if in simulation
         self._to_teleop = False #: bool: If in teleop or not
-        self.rate = rospy.Rate(100) #: Rate: Rate to publish messages
+        self.rate = rospy.Rate(10) #: Rate: Rate to publish messages
         self.cf_list = cf_list #: List of str: List of all cf names in the swarm
 
         self.joy_swarm_vel = Twist() #: Twist: Velocity received from joystick
@@ -163,7 +163,7 @@ class Swarm(object):
 
         # Find all possible formations and initialize swarm to 'line'
         self.formation_list = self.get_formations_list().formations.split(',')
-        self.formation = "circle"
+        self.formation = "line"
         self.extra_cf_list = [] #: list of str: ID of extra CF
         self.landed_cf_ids = [] #: list of str: Swarm Id of landed CFs
 
@@ -288,6 +288,9 @@ class Swarm(object):
             cf_id (int): Id of the CF
         """
         self.crazyflies[cf_id]["pose"] = pose_stamped
+
+        # print "\n%s pose:" % cf_id
+        # print pose_stamped.pose.position
 
     def cf_traj_goal_handler(self, traj_goal, cf_id):
         """Update trajectory goal of CF
@@ -848,7 +851,8 @@ class Swarm(object):
         state_function = self.state_machine.run_state()
         state_function()
 
-        self.check_positions()
+        if len(self.cf_list) > 1:
+            self.check_positions()
 
         # Publish goal of each CF
         self.pub_cf_goals()

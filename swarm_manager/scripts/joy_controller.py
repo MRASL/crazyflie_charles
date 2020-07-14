@@ -87,12 +87,13 @@ class Axes(object):
 class Controller(object):
     """Interface with the joystick
     """
-    def __init__(self, joy_topic, to_sim):
+    def __init__(self, joy_topic, to_sim, teleop):
         """Init
 
         Args:
             joy_topic (str): Topic with joystick values
             to_sim (bool): True if simulation is activated
+            teleop (bool): True if CF is to be controlled directly /w controller
         """
         # Attributes
 
@@ -356,6 +357,7 @@ if __name__ == '__main__':
 
     JOY_TOPIC = rospy.get_param("~joy_topic", "joy")
     TO_SIM = rospy.get_param("~to_sim", "False")
-    CONTROLLER = Controller(JOY_TOPIC, TO_SIM)
+    TELEOP = rospy.get_param("~teleop", "False")
+    CONTROLLER = Controller(JOY_TOPIC, TO_SIM, TELEOP)
 
     CONTROLLER.execute()
