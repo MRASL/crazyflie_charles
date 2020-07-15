@@ -136,7 +136,7 @@ class TrajPlot(object):
             x_start = each_agent.states[0, 0]
             y_start = each_agent.states[1, 0]
 
-            self.axes.scatter(x_start, y_start, s=100, c=color, marker='X')
+            self.axes.scatter(x_start, y_start, s=100, c=color, marker='*')
 
             color_idx += 1
 

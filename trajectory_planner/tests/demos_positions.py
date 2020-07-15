@@ -1,11 +1,23 @@
-"""General tests
+#!/usr/bin/env python
+
+"""General tests /w set start and goal
 """
 import os
 import numpy as np
 import yaml
 
+# pylint: disable=invalid-name
+# pylint: disable=import-error
+# pylint: disable=wrong-import-position
+parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+traj_path = os.path.join(parentdir, 'scripts')
+os.sys.path.insert(0, traj_path)
+
 from trajectory_solver import TrajectorySolver
 from agent import Agent
+# pylint: enable=invalid-name
+# pylint: enable=import-error
+# pylint: enable=wrong-import-position
 
 # Read arguments from yaml file
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,7 +45,7 @@ def demo_wall():
     """Wall"""
     a_1 = Agent(AGENT_ARGS, start_pos=[0.0, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
 
-    obs_coords = compute_obstacle([[(2.0, -1.0, 0.), (2.0, 3.5, 0.0)]], 15)
+    obs_coords = compute_obstacle([[(2.0, -1.0, 0.), (2.0, 2.5, 0.0)]], 15)
 
     return [a_1], obs_coords
 
@@ -96,12 +108,11 @@ def corners_6():
     a_2 = Agent(AGENT_ARGS, start_pos=[4.0, 0.0, 0.0], goal=[0.0, 4.0, 0.0])
     a_3 = Agent(AGENT_ARGS, start_pos=[0.0, 0.0, 0.0], goal=[4.0, 4.0, 0.0])
     a_4 = Agent(AGENT_ARGS, start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
-
     a_5 = Agent(AGENT_ARGS, start_pos=[2.0, 0.0, 0.0], goal=[2.0, 4.0, 0.0])
-    # a_6 = Agent(AGENT_ARGS, start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
+    a_6 = Agent(AGENT_ARGS, start_pos=[2.0, 4.0, 0.0], goal=[2.0, 0.0, 0.0])
 
 
-    return [a_1, a_2, a_3, a_4, a_5]
+    return [a_1, a_2, a_3, a_4, a_5, a_6]
 
 def seven_agents():
     """Seven agents
@@ -116,22 +127,6 @@ def seven_agents():
     a_7 = Agent(AGENT_ARGS, start_pos=[1.7, 0.5, 0.0], goal=[0.8, 3.8, 0.0])
 
     return [a_1, a_2, a_3, a_4, a_5, a_6, a_7]
-
-def nine_agents():
-    """Nine agents
-    """
-    a_1 = Agent(AGENT_ARGS, start_pos=[0.0, 0.0, 0.0], goal=[1.5, 3.0, 0.0])
-    a_2 = Agent(AGENT_ARGS, start_pos=[2.0, 0.0, 0.0], goal=[0.0, 4.0, 0.0])
-    a_3 = Agent(AGENT_ARGS, start_pos=[1.0, 2.5, 0.0], goal=[4.0, 0.0, 0.0])
-    a_4 = Agent(AGENT_ARGS, start_pos=[4.0, 4.0, 0.0], goal=[0.0, 0.0, 0.0])
-    a_5 = Agent(AGENT_ARGS, start_pos=[2.5, 2.5, 0.0], goal=[4.0, 2.5, 0.0])
-    a_6 = Agent(AGENT_ARGS, start_pos=[3.2, 3.2, 0.0], goal=[0.5, 0.0, 0.0])
-
-    a_7 = Agent(AGENT_ARGS, start_pos=[1.7, 0.5, 0.0], goal=[0.8, 3.8, 0.0])
-    a_8 = Agent(AGENT_ARGS, start_pos=[0.1, 1.8, 0.0], goal=[4.0, 1.0, 0.0])
-    # a_9 = Agent(AGENT_ARGS, start_pos=[1.7, 0.5, 0.0], goal=[0.8, 3.8, 0.0])
-
-    return [a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8]
 
 def update_test():
     """To test when agents position are changed after solver initialization
