@@ -163,7 +163,7 @@ class Swarm(object):
 
         # Find all possible formations and initialize swarm to 'line'
         self.formation_list = self.get_formations_list().formations.split(',')
-        self.formation = "line"
+        self.formation = "circle"
         self.extra_cf_list = [] #: list of str: ID of extra CF
         self.landed_cf_ids = [] #: list of str: Swarm Id of landed CFs
 

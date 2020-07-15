@@ -220,11 +220,12 @@ class TrajectoryPlanner(object):
         if self.to_plan_trajectories and not self.trajectory_found:
             self.to_plan_trajectories = False
             rospy.loginfo("Planner: Planning trajectories...")
-            planner_successfull = self.solver.solve_trajectories()
+            planner_successfull, _ = self.solver.solve_trajectories()
 
             if planner_successfull:
                 self.trajectory_found = True
                 rospy.loginfo("Planner: Trajectory found")
+                # self.solver.plot_trajectories()
             else:
                 self.trajectory_found = False
                 rospy.logerr("Planner: No trajectory found")
