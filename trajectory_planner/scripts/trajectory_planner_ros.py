@@ -268,7 +268,7 @@ if __name__ == '__main__':
     SOLVER_ARGS['relax_min'] = rospy.get_param("~relax_min")
     SOLVER_ARGS['relax_inc'] = rospy.get_param("~relax_inc")
 
-    print SOLVER_ARGS
+    # print SOLVER_ARGS
 
     # Initialize planner
     PLANNER = TrajectoryPlanner(CF_LIST, SOLVER_ARGS)

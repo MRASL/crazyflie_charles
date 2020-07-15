@@ -23,15 +23,15 @@
         <arg name="roll_trim" default="0" />
         <arg name="pitch_trim" default="0" />
 
-        <arg name="enable_logging" default="True" />
-        <arg name="use_ros_time" default="True" />
-        <arg name="enable_logging_imu" default="True" />
-        <arg name="enable_logging_temperature" default="True" />
-        <arg name="enable_logging_magnetic_field" default="True" />
-        <arg name="enable_logging_pressure" default="True" />
-        <arg name="enable_logging_battery" default="True" />
-        <arg name="enable_logging_pose" default="True" />
-        <arg name="enable_logging_packets" default="True" />
+        <arg name="enable_logging" value="True" />
+        <arg name="use_ros_time" value="True" />
+        <arg name="enable_logging_imu" value="True" />
+        <arg name="enable_logging_temperature" value="True" />
+        <arg name="enable_logging_magnetic_field" value="True" />
+        <arg name="enable_logging_pressure" value="True" />
+        <arg name="enable_logging_battery" value="True" />
+        <arg name="enable_logging_pose" value="True" />
+        <arg name="enable_logging_packets" value="True" />
       </include>
     </group>
 

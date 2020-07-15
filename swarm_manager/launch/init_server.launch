@@ -71,7 +71,7 @@
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
     <param name="to_sim" value="$(arg to_sim)"/>
 
-    <param name="take_off_height" value="$(arg to_sim)"/>
+    <param name="take_off_height" value="$(arg take_off_height)"/>
     <param name="gnd_height" value="$(arg gnd_height)"/>
     <param name="min_dist" value="$(arg min_dist)"/>
     <param name="min_goal_dist" value="$(arg min_goal_dist)"/>
