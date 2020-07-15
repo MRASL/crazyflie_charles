@@ -21,10 +21,10 @@ class Crazyflie:
         rospy.loginfo("found update_params service")
 
         self.update_params = rospy.ServiceProxy(prefix + '/update_params', UpdateParams)
-
+        self.setParam("commander/enHighLevel", 1)
+        self.setParam("stabilizer/estimator", 2) # Use EKF
+        self.setParam("stabilizer/controller", 1) # 1: High lvl, 2: Mellinger
         self.setParam("kalman/resetEstimation", 1)
-        rospy.loginfo("Kalman filter reset done")
-
 
         self.hover_pub = rospy.Publisher(prefix + "/cmd_hover", Hover, queue_size=1)
         self.hover_msg = Hover()

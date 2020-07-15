@@ -260,7 +260,7 @@ class Crazyflie(object):
         z_start = self.pose.position.z
         yaw_start = yaw_from_quat(self.pose.orientation)
 
-        duration = 2.0 # in sec
+        duration = 3.0 # in sec
         n_steps = int(10*duration) # Where 10 is the frequency
 
         z_inc = z_dist/n_steps

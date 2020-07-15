@@ -171,7 +171,7 @@ def init_room_msg():
 
     obstacle_list.append(init_obstacle(0, BED_POS, BED_SCALE))
     obstacle_list.append(init_obstacle(1, WALL_BOT_POS, WALL_BOT_SCALE))
-    obstacle_list.append(init_obstacle(2, WALL_LEFT_POS, WALL_LEFT_SCALE))
+    # obstacle_list.append(init_obstacle(2, WALL_LEFT_POS, WALL_LEFT_SCALE))
     obstacle_list.append(init_obstacle(3, WALL_RIGHT_POS, WALL_RIGHT_SCALE))
     obstacle_list.append(init_obstacle(4, WALL_R_1_POS, WALL_R_1_SCALE))
     obstacle_list.append(init_obstacle(5, WALL_R_2_POS, WALL_R_2_SCALE))

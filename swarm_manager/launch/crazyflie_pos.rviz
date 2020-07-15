@@ -4,8 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /RobotModel1
-        - /TF1
+        - /Grid1
         - /TF1/Frames1
         - /TF1/Tree1
       Splitter Ratio: 0.6172410249710083
@@ -47,11 +46,11 @@ Visualization Manager:
       Name: Grid
       Normal Cell Count: 0
       Offset:
-        X: 1.5
-        Y: 1.5
+        X: 2
+        Y: 2
         Z: 0
       Plane: XY
-      Plane Cell Count: 3
+      Plane Cell Count: 4
       Reference Frame: <Fixed Frame>
       Value: true
     - Alpha: 1
@@ -101,6 +100,7 @@ Visualization Manager:
       Namespaces:
         cf1: true
         cf2: true
+        obstacles: true
         swarm: true
       Queue Size: 100
       Value: true
@@ -132,25 +132,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 7.252091407775879
+      Distance: 8.122342109680176
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.726025938987732
-        Y: 2.166294813156128
-        Z: -1.9498800039291382
+        X: 1.9468556642532349
+        Y: 2.0020601749420166
+        Z: -1.8530516624450684
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9347968101501465
+      Pitch: 1.1397969722747803
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.720426082611084
+      Yaw: 4.715427875518799
     Saved: ~
 Window Geometry:
   Displays:

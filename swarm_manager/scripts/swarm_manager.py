@@ -564,7 +564,10 @@ class Swarm(object):
             if land_swarm:
                 self.next_state = "land_swarm"
             else:
+                # TODO: Trade spots
+                # self.next_state = "hover"
                 self.next_state = "in_formation"
+
             self.start_trajectory_pub() # Starting trajectory publisher
             self.state_machine.set_state("follow_traj")
 
@@ -591,7 +594,7 @@ class Swarm(object):
 
                 cf_vals["goal_msg"].x = cf_initial_pose.position.x
                 cf_vals["goal_msg"].y = cf_initial_pose.position.y
-                cf_vals["goal_msg"].z = cf_initial_pose.position.z + 0.5
+                cf_vals["goal_msg"].z = cf_initial_pose.position.z + TAKE_OFF_HEIGHT
 
             # If CF is landed and not in extra
             elif cf_vals["state"] in ["stop", "landed", "land"] and cf_id not in self.extra_cf_list:
@@ -633,7 +636,7 @@ class Swarm(object):
             if cf_id in self.landed_cf_ids and cf_id not in self.extra_cf_list:
                 start_positions[cf_id] = [cf_pose.position.x,
                                           cf_pose.position.y,
-                                          cf_pose.position.z + 0.5,
+                                          cf_pose.position.z + TAKE_OFF_HEIGHT,
                                           yaw_from_quat(cf_pose.orientation)]
 
             else:
@@ -661,31 +664,31 @@ class Swarm(object):
                 cf_initial_pose = cf_vals["initial_pose"]
                 goals[cf_id] = [cf_initial_pose.position.x,
                                 cf_initial_pose.position.y,
-                                cf_initial_pose.position.z + GND_HEIGHT,
+                                cf_initial_pose.position.z + TAKE_OFF_HEIGHT,
                                 yaw_from_quat(cf_initial_pose.orientation)]
 
             # Goal of CF in formation
             elif cf_id not in self.extra_cf_list: # If CF in formation
-                # formation_goal = cf_vals["formation_goal_msg"]
-                # goals[cf_id] = [formation_goal.x,
-                #                 formation_goal.y,
-                #                 formation_goal.z,
-                #                 formation_goal.yaw]
+                formation_goal = cf_vals["formation_goal_msg"]
+                goals[cf_id] = [formation_goal.x,
+                                formation_goal.y,
+                                formation_goal.z,
+                                formation_goal.yaw]
 
                 # Change CF positions
-                #TODO REMOVE
-                if cf_id == 'cf1':
-                    cf_goal = self.crazyflies['cf2']['pose'].pose
-                    goals[cf_id] = [cf_goal.position.x,
-                                    cf_goal.position.y,
-                                    cf_goal.position.z,
-                                    yaw_from_quat(cf_goal.orientation)]
-                else:
-                    cf_goal = self.crazyflies['cf1']['pose'].pose
-                    goals[cf_id] = [cf_goal.position.x,
-                                    cf_goal.position.y,
-                                    cf_goal.position.z,
-                                    yaw_from_quat(cf_goal.orientation)]
+                #TODO Trade spots
+                # if cf_id == 'cf1':
+                #     cf_goal = self.crazyflies['cf2']['initial_pose']
+                #     goals[cf_id] = [cf_goal.position.x,
+                #                     cf_goal.position.y,
+                #                     cf_goal.position.z + TAKE_OFF_HEIGHT,
+                #                     yaw_from_quat(cf_goal.orientation)]
+                # else:
+                #     cf_goal = self.crazyflies['cf1']['initial_pose']
+                #     goals[cf_id] = [cf_goal.position.x,
+                #                     cf_goal.position.y,
+                #                     cf_goal.position.z + TAKE_OFF_HEIGHT,
+                #                     yaw_from_quat(cf_goal.orientation)]
 
             # If CF in extra and not landed, go to initial position
             elif cf_id not in self.landed_cf_ids:

@@ -699,7 +699,12 @@ class TrajectorySolver(object):
             other_line = other_dy/other_dx if other_dx != 0 else 0
 
             if abs(goal_line - other_line) < 0.01:
-                agent_goal[1, 0] += 0.5 if agent_dx > 0 else -0.5
+                # If agents are not vertically aligned
+                if agent_dx != 0 and other_dx != 0:
+                    agent_goal[1, 0] += 0.5 if agent_dx > 0 else -0.5
+
+                else:
+                    agent_goal[0, 0] += 0.5 if agent_dy > 0 else -0.5
 
         # Get no collision problem
         p_no_coll, q_no_coll, g_no_coll, h_no_coll = self.solve_accel_no_coll(initial_state,
