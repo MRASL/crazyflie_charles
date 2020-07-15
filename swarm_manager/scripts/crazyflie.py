@@ -91,6 +91,9 @@ class Crazyflie(object):
             self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
             # Set parameters # TODO: Move to swarmManager
+            self.set_param("commander/enHighLevel", 1)
+            self.set_param("stabilizer/estimator", 2) # Use EKF
+            self.set_param("stabilizer/controller", 1) # 1: Higyh lvl, 2: Mellinger
             self.set_param("kalman/resetEstimation", 1)
 
         # Declare services
@@ -251,20 +254,18 @@ class Crazyflie(object):
 
     # Methods depending on state
     def _take_off(self):
-        z_dist = TAKE_OFF_HEIGHT - self.pose.position.z
+        z_dist = TAKE_OFF_HEIGHT
         x_start = self.pose.position.x
         y_start = self.pose.position.y
         z_start = self.pose.position.z
         yaw_start = yaw_from_quat(self.pose.orientation)
 
+        duration = 2.0 # in sec
+        n_steps = int(10*duration) # Where 10 is the frequency
 
-        # rospy.loginfo("Going to \n{}".format(self.goal))
+        z_inc = z_dist/n_steps
 
-        time_range = 1*10
-        z_inc = z_dist/time_range
-
-
-        for i in range(time_range):
+        for i in range(n_steps):
             if rospy.is_shutdown() or not self._state_machine.in_state("take_off"):
                 break
 

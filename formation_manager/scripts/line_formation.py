@@ -57,7 +57,7 @@ class LineFormation(FormationClass):
     # Computing
     def compute_min_scale(self):
         if self.n_agents > 1:
-            self.min_scale = self.min_dis*(self.n_agents - 1)
+            self.min_scale = self.min_dist*(self.n_agents - 1)
         else:
             self.min_scale = 0.0
 

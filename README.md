@@ -19,7 +19,7 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
 - [Bitcraze](https://github.com/bitcraze)
 - [Crazyflie-tools](https://github.com/blandry/crazyflie-tools)
   - Used to avoid obstacles (see Landry B. thesis)
-- [CrazySwarm](https://github.com/USC-ACTLab/crazyswarm) 
+- [CrazySwarm](https://github.com/USC-ACTLab/crazyswarm)
   - 49 CF controlled with Vicon
 - [Tunnel Mod](https://github.com/resibots/crazyflie-firmware/)
   - Peer2Peer communicatio between CF
@@ -30,7 +30,7 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
   - [Controler types](https://www.bitcraze.io/2020/02/out-of-control/)
   - [Drone Dynamics](https://www.bitcraze.io/2018/11/demystifying-drone-dynamics/)
   - [Position Control Architecture](https://www.bitcraze.io/2016/05/position-control-moved-into-the-firmware/)
-  
+
 - [Getting started](https://www.bitcraze.io/documentation/start/)
   - [First setup](https://www.bitcraze.io/documentation/tutorials/getting-started-with-crazyflie-2-x/)
   - [LPS System](https://www.bitcraze.io/documentation/tutorials/getting-started-with-loco-positioning-system/)
@@ -66,4 +66,8 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
       - formation_manager
       - formation_types
   - trajectory_planning
-    - Scripts related to trajectory planning 
+    - Scripts related to trajectory planning
+
+## Objectifs, fin du stage
+
+Ce qu'il faut avoir pour la fin du stage.
