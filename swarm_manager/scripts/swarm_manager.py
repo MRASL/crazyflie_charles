@@ -661,16 +661,31 @@ class Swarm(object):
                 cf_initial_pose = cf_vals["initial_pose"]
                 goals[cf_id] = [cf_initial_pose.position.x,
                                 cf_initial_pose.position.y,
-                                cf_initial_pose.position.z + 0.5,
-                                yaw_from_quat(cf_initial_pose.orientation),]
+                                cf_initial_pose.position.z + GND_HEIGHT,
+                                yaw_from_quat(cf_initial_pose.orientation)]
 
             # Goal of CF in formation
             elif cf_id not in self.extra_cf_list: # If CF in formation
-                formation_goal = cf_vals["formation_goal_msg"]
-                goals[cf_id] = [formation_goal.x,
-                                formation_goal.y,
-                                formation_goal.z,
-                                formation_goal.yaw]
+                # formation_goal = cf_vals["formation_goal_msg"]
+                # goals[cf_id] = [formation_goal.x,
+                #                 formation_goal.y,
+                #                 formation_goal.z,
+                #                 formation_goal.yaw]
+
+                # Change CF positions
+                #TODO REMOVE
+                if cf_id == 'cf1':
+                    cf_goal = self.crazyflies['cf2']['pose'].pose
+                    goals[cf_id] = [cf_goal.position.x,
+                                    cf_goal.position.y,
+                                    cf_goal.position.z,
+                                    yaw_from_quat(cf_goal.orientation)]
+                else:
+                    cf_goal = self.crazyflies['cf1']['pose'].pose
+                    goals[cf_id] = [cf_goal.position.x,
+                                    cf_goal.position.y,
+                                    cf_goal.position.z,
+                                    yaw_from_quat(cf_goal.orientation)]
 
             # If CF in extra and not landed, go to initial position
             elif cf_id not in self.landed_cf_ids:
