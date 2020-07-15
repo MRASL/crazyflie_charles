@@ -34,7 +34,8 @@ def demo():
     arena_max = 5
 
     # Choose demo to execute
-    # agents = demo_two_agents()
+    agents = demo_two_agents()
+    # agents = demo_two_agents_vert()
     # agents, obstacles = demo_wall()
     # agents, obstacles = through_wall()
 
@@ -46,7 +47,7 @@ def demo():
     # agents = seven_agents()
 
     # agents, arena_max = random_pos(9, 1, seed=None)
-    agents = formation_demo(9, "v")
+    # agents = formation_demo(9, "v")
 
     start_time = time.time()
     solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=True)
@@ -77,6 +78,3 @@ if __name__ == '__main__':
                   'goal_thres': SOLVER_ARGS['goal_thres']}
 
     demo()
-
-    # update_test()
-    # algo_performance(4, 1, 30)  #: n_agents, density, n_tests

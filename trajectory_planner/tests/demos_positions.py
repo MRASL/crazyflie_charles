@@ -33,11 +33,20 @@ AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
               'goal_thres': SOLVER_ARGS['goal_thres']}
 
 def demo_two_agents():
-    """Two agents trading spots
+    """Two agents trading spots, horizontal
     """
     a_1 = Agent(AGENT_ARGS, start_pos=[0.5, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
 
     a_2 = Agent(AGENT_ARGS, start_pos=[4.0, 2.0, 0.0], goal=[0.5, 2.0, 0.0])
+
+    return [a_1, a_2]
+
+def demo_two_agents_vert():
+    """Two agents trading spots, vertically
+    """
+    a_1 = Agent(AGENT_ARGS, start_pos=[2.5, 1.0, 0.0], goal=[2.5, 4.0, 0.0])
+
+    a_2 = Agent(AGENT_ARGS, start_pos=[2.5, 4.0, 0.0], goal=[2.5, 1.0, 0.0])
 
     return [a_1, a_2]
 
