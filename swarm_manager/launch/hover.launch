@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <launch>
-  <arg name="uri" default="radio://0/80/2M/E7E7E7E704" />
+  <arg name="uri" default="radio://0/80/2M/E7E7E7E701" />
 
   <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
   </include>
@@ -24,7 +24,7 @@
 
   </group>
 
-  <node name="hover_controller" pkg="swarm_manager" type="Hover.py" output="screen">
+  <node name="hover_controller" pkg="swarm_manager" type="hover.py" output="screen">
   </node>
 
 </launch>
