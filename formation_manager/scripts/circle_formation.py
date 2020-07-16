@@ -62,8 +62,6 @@ class CircleFormation(FormationClass):
             # Scale set to smallest radius if theta is to big
             self.min_scale = self.min_dist if self.min_scale < self.min_dist else self.min_scale
 
-        print "MIN SCALE: %.2f" % self.min_scale
-
     def compute_formation_positions(self):
         for i in range(self.n_agents):
             if rospy.is_shutdown():
