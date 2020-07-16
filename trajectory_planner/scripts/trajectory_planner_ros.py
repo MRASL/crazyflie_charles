@@ -66,6 +66,7 @@ TrajectoryPlanner Class
 .. _std_srvs/SetBool: http://docs.ros.org/api/std_srvs/html/srv/SetBool.html
 """
 
+
 import ast
 import rospy
 

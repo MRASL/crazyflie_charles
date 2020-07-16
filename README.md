@@ -71,3 +71,21 @@ Le but de ce projet est de pouvoir contrôler la formation d'un essaim de drône
 ## Objectifs, fin du stage
 
 Ce qu'il faut avoir pour la fin du stage.
+
+- Features
+  - Toute la sim (formation, traj) en exp
+  - Enregister les trajectoires
+- Documentation
+  - First steps
+    - Guide d'installation
+      - ROS
+      - Librairies
+    - Setup du matériel
+    - Test de Hover, sim + exp
+  - Architecture ROS des trois packages
+  - Fonctionnement de chaque package
+- API
+  - Interface avec la librairie
+  - Fonctions simples pour contrôller formations et traj
+- Dev futur
+  - Améliorations possibles

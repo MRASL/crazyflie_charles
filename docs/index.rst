@@ -24,25 +24,26 @@ installation, dependencies, ressources
    first_steps/installation
    first_steps/ressources
 
-Architecture
-------------
+Ros Architecture
+----------------
 To control the swarm, three different ros packages are used:
 
-* :doc:`/architecture/swarm_manager`: Main package. Link between the other packages and `crazyflie ros stack`_.
-* :doc:`/architecture/formation_manager`: Handles movement of swarm in a specific formation
-* :doc:`/architecture/trajectory_planner`: Moves agents between positions. Used to change formation
+* :doc:`/ros_architecture/swarm_manager`: Main package. Link between the other packages and `crazyflie ros stack`_.
+* :doc:`/ros_architecture/formation_manager`: Handles movement of swarm in a specific formation
+* :doc:`/ros_architecture/trajectory_planner`: Moves agents between positions. Used to change formation
 
-The general architecture can be found here :doc:`/architecture/general_architecture`.
+The general architecture can be found here :doc:`/ros_architecture/general_architecture`.
 
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Architecture
+   :caption: Ros Architecture
 
-   architecture/general_architecture
-   architecture/swarm_manager
-   architecture/formation_manager
-   architecture/trajectory_planner
+   ros_architecture/general_architecture
+   ros_architecture/swarm_manager
+   ros_architecture/formation_manager
+   ros_architecture/trajectory_planner
+   ros_architecture/topics
 
 User Guide
 ----------

@@ -6,76 +6,114 @@ To manage the flight of the swarm.
 Controls the position of each CF in the swarm by publishing to /cfx/goal.
 
 Goal of each CF computed by different nodes.
-TODO: Elaborate
 
-Notes:
-    Swarm: Swarm of all CFs
-    Formation: Formation in which the swarm is
+.. todo:: Elaborate
 
-Services:
-    - Related to a crazyflie
-        - update_params: Update a param of all CF
-        - emergency: Call emergency srv
-        - toggle_teleop: Toggle between manual and auto #TODO toggle_teleop?
-        - land: Land all CF
-        - take_off: Take off all CF
-        - stop: Stop all CFs
-    - Related to formation
-        - next_swarm_formation: Set formation to next one
-        - prev_swarm_formation: Set formation to previous one
+.. note::
+    Swarm: Groupe of all the crazyflies
 
-Subscribed services:
-    - From /formation_manager
-        - set_formation
-        - get_formations_list
-    - From /cfx_controller
-        - emergency
-        - take_off
-        - land
-        - hover
-        - stop
-        - toggle_teleop
+    Formation: Layout of the swarm
 
-Subscription:
-    - /joy_swarm_vel
-    - /cfx/pose
-    - /cfx/formation_goal
 
-Publishing:
-    - /cfx/goal: Goal of CF
-    - /formation_goal_vel: Velocity of formation center
+Usage
+-----
 
-Etapes generales:
-    1 - Initialisation
-        - [x] Setup des CF
-        - [x] Setup de la formation
-            - Goal initial
-            - Goal de chaque CF
-        - [ ] Setup traj. planner
-    2 - Landed
-        - [x] Position initiale de chaque CF
-    3 - Take off
-        - [x] Decolle de x m au dessus de pos initiale
-    4 - Go to formation
-        - [ ] Associe chaque CF a une pos
-        - [ ] Plan trajectoire de chaque CF
-        - [ ] Suit la trajectoire
-    5 - En formation
-        - [x] Suit commandes du joystick
-    7 - Change formation
-        - [x] Compute nouveaux goals
-        - [ ] Compute trajectoires de chaque CF
-        - [ ] Va au nouveau but
-    8 - Chage scale
-        - [x] Compute nouveaux goals
-        - [ ] Compute trajectoires de chaque CF
-        - [ ] Va au nouveau but
-    9 - Land
-        - [ ] Compute traj jusqu'a x m de la position initiale
-        - [ ] Chaque CF va au dessus de sa position initiale
-        - [x] Land
+
+ROS Features
+------------
+Subscribed Topics
+^^^^^^^^^^^^^^^^^
+:ref:`formation-goal` (crazyflie_driver/Position)
+    Position of the CF in formation
+
+:ref:`trajectory-goal` (crazyflie_driver/Position)
+    Position of the CF on the trajectory, at each time step
+
+:ref:`state` (std_msgs/String)
+    Current state of CF
+
+:ref:`pose` (geometry_msgs/PoseStamped)
+    Current pose of CF
+
+:ref:`joy-swarm-vel` (geometry_msgs/Twist)
+    Input from joystick
+
+
+Published Topics
+^^^^^^^^^^^^^^^^
+:ref:`goal` (crazyflie_driver/Position)
+    Target position of CF
+
+:ref:`formation-goal-vel` (geometry_msgs/Twist)
+    Formation center goal variation
+
+Services
+^^^^^^^^
+ /take_off_swarm(`std_srvs/Empty`_)
+    Take off all CFs
+
+ /stop_swarm(`std_srvs/Empty`_)
+    Stop all CFs
+
+ /swarm_emergency(`std_srvs/Empty`_)
+    Emgergency stop of all CFs
+
+ /land_swarm(`std_srvs/Empty`_)
+    Land all CF to their starting position
+
+ /update_swarm_params(`std_srvs/Empty`_)
+    Update parameter of all swarm
+
+ /inc_swarm_scale(`std_srvs/Empty`_)
+    Increase scale of formation
+
+ /dec_swarm_scale(`std_srvs/Empty`_)
+    Decrease scale of formation
+
+ /next_swarm_formation(`std_srvs/Empty`_)
+    Go to next formation
+
+ /prev_swarm_formation(`std_srvs/Empty`_)
+    Go to previous formation
+
+ /traj_found(`std_srvs/SetBool`_)
+    To call once the trajectory planner is done
+
+ /traj_done(`std_srvs/Empty`_)
+    To call once the trajectory is done
+
+Services Called
+^^^^^^^^^^^^^^^
+/set_formation(formation_manager/SetFormation)
+
+/get_formations_list(formation_manager/GetFormationList)
+
+/formation_inc_scale(`std_srvs/Empty`_)
+
+/formation_dec_scale(`std_srvs/Empty`_)
+
+/set_planner_positions(trajectory_planner/SetPositions)
+
+/plan_trajectories(`std_srvs/Empty`_)
+
+/pub_trajectories(`std_srvs/Empty`_)
+
+Parameters
+^^^^^^^^^^
+~cf_list(str, default: ['cf1'])
+~to_sim(bool, default: False)
+~take_off_height(float)
+~gnd_height(float)
+~min_dist(float)
+~min_goal_dist(float)
+
+
+TrajectoryPlanner Class
+-----------------------
+
+.. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
+.. _std_srvs/SetBool: http://docs.ros.org/api/std_srvs/html/srv/SetBool.html
 """
-
 import rospy
 import numpy as np
 from numpy import dot

@@ -29,16 +29,6 @@ class Crazyflie(object):
 
     Args:
         object ([type]): [description]
-
-    Services:
-        *to add
-
-    Subscription:
-        *to add
-
-    Publishers:
-        *to add
-
     """
     def __init__(self, cf_id, to_sim):
         """
@@ -53,14 +43,6 @@ class Crazyflie(object):
 
             _states (list of str): All possible states of the CF
             _state (str): Current state of the CF
-
-        Publishers:
-
-        Messages:
-
-        Services:
-
-
         """
         # Attributes
         self.cf_id = '/' + cf_id
