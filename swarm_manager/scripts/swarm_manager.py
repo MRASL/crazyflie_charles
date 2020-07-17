@@ -332,6 +332,8 @@ class Swarm(object):
         """
         for _, each_cf in self.crazyflies.items():
             goal_msg = each_cf["goal_msg"]
+            goal_msg.header.seq += 1
+            goal_msg.header.stamp = rospy.Time.now()
             each_cf["goal_pub"].publish(goal_msg)
 
     # Services methods

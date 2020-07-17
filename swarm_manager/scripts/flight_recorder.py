@@ -9,6 +9,7 @@ from os.path import isfile, join
 import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
+from crazyflie_driver.msg import Position
 
 class Recorder(object):
     """To record flight data of all CFs
@@ -48,8 +49,9 @@ class Recorder(object):
         Args:
             cf_id (str): Name of the CF
         """
-        self.crazyflies[cf_id] = []
+        self.crazyflies[cf_id] = {'pose': [], 'goal': []}
         rospy.Subscriber("/%s/pose" % cf_id, PoseStamped, self._cf_pose_handler, cf_id)
+        rospy.Subscriber("/%s/goal" % cf_id, Position, self._cf_goal_handler, cf_id)
 
     def _cf_pose_handler(self, pose_stamped, cf_id):
         """Update current position of a cf
@@ -58,7 +60,16 @@ class Recorder(object):
             pose_stamped (PoseStamped): New pose of CF
             cf_id (int): Id of the CF
         """
-        self.crazyflies[cf_id].append(pose_stamped)
+        self.crazyflies[cf_id]['pose'].append(pose_stamped)
+
+    def _cf_goal_handler(self, goal, cf_id):
+        """Update current goal of a cf
+
+        Args:
+            goal (Position): New goal of CF
+            cf_id (int): Id of the CF
+        """
+        self.crazyflies[cf_id]['goal'].append(goal)
 
     def _save_data(self):
         file_path = join(self.data_path, self.data_base_name + self.data_id)
