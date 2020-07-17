@@ -8,14 +8,14 @@ Python script to analyse flight data
 
 Options:
     - [ ] Specify data name
-    - [ ] Plot position : exp pose and goal
+    - [x] Plot position : exp pose and goal
         - [x] Plot position
         - [x] Specify axis
         - [x] Draw a line
         - [x] Draw goal
         - [x] Possibility to accelerate/slow
         - [x] 3D plot
-        - [ ] Seperate 3D and 2D class
+        - [x] Seperate 3D and 2D class
     - [ ] List CF names
     - [ ] UI
         - Call desired function in terminal
@@ -25,15 +25,16 @@ Options:
 
 import os
 from os.path import isfile, join
+import sys
 import argparse
 import numpy as np
 
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
-import mpl_toolkits.mplot3d.axes3d as p3
 from matplotlib.patches import Circle
+import mpl_toolkits.mplot3d.axes3d as p3
 
-# plt.style.use('seaborn-pastel')
+from user_command import UserInterface
 
 class DataAnalyser(object):
     """
@@ -47,6 +48,16 @@ class DataAnalyser(object):
         self.crazyflies = None
 
         self._load_data()
+
+        self.ui_cmd = UserInterface()
+
+        self.ui_cmd.add_cmd('plot_data', self.plot_data, "To plot a CF trajectory")
+        self.ui_cmd.add_arg('plot_data', 'cf_id', "Id of crazyflie to plot data",
+                            arg_type=str, optional=False)
+        self.ui_cmd.add_arg('plot_data', 'plot2d', "To plot in 2d",
+                            arg_type=bool, optional=True)
+        self.ui_cmd.add_arg('plot_data', 'axes', "Specify axes of 2d plot. i.e: 'xz'",
+                            arg_type=str, optional=False)
 
     def _load_data(self):
         """Load flight data.
@@ -92,6 +103,20 @@ class DataAnalyser(object):
 
         return latest_data
 
+    # User commands
+    def prompt_user(self):
+        """Wait for user command
+        """
+
+        user_cmd = raw_input("Enter Command: ")
+
+        func, args, kwargs = self.ui_cmd.get_command(user_cmd)
+
+        func(*args, **kwargs)
+
+        if user_cmd == 'exit':
+            sys.exit(0)
+
     def plot_data(self, cf_id, axes='xy'):
         """Plot flight of specified crazyflie.
 
@@ -108,6 +133,7 @@ class DataAnalyser(object):
 
         plotter.plot_traj()
 
+
 class DataPlotter3d(object):
     """To plot flight data
     """
@@ -117,8 +143,6 @@ class DataPlotter3d(object):
 
         self.data_freq = 10.0 # Hz
 
-        #: int: Number of frame, corresponds to number of column
-        self.n_frame = np.min([len(self.flight_data['pose']), len(self.flight_data['goal'])])
         self.anim_rate = anim_rate  #: int: To accelerate animation
 
         self.fig = plt.figure()
@@ -162,17 +186,17 @@ class DataPlotter3d(object):
         """Creates all objects to animate.
         """
         # CF pose
-        line, = self.axes.plot([], [], [], lw=2, color='b', marker='o')
+        line = self.axes.plot([], [], [], lw=2, color='b', marker='o')[0]
         self.animated_objects.append(line)
 
-        line, = self.axes.plot([], [], [], lw=2, color='b')
+        line = self.axes.plot([], [], [], lw=2, color='b')[0]
         self.animated_objects.append(line)
 
         # CF goal
-        line, = self.axes.plot([], [], [], lw=1, alpha=0.8, color='r', marker='o')
+        line = self.axes.plot([], [], [], lw=1, alpha=0.8, color='r', marker='o')[0]
         self.animated_objects.append(line)
 
-        line, = self.axes.plot([], [], [], lw=1, color='r')
+        line = self.axes.plot([], [], [], lw=1, color='r')[0]
         self.animated_objects.append(line)
 
         # Add time_text
@@ -204,7 +228,7 @@ class DataPlotter3d(object):
 
         return self.animated_objects
 
-    def animate(self, frame):
+    def _animate(self, frame):
         """Animate
 
         Args:
@@ -256,8 +280,10 @@ class DataPlotter3d(object):
         """
         self._init_animation()
 
-        _ = FuncAnimation(self.fig, self.animate, init_func=self._init_animation,
-                          frames=self.n_frame, interval=(1000/(self.data_freq*self.anim_rate)),
+        n_frame = np.min([len(self.flight_data['pose']), len(self.flight_data['goal'])])
+
+        _ = FuncAnimation(self.fig, self._animate, init_func=self._init_animation,
+                          frames=n_frame, interval=(1000/(self.data_freq*self.anim_rate)),
                           blit=False)
 
         plt.show()
@@ -413,11 +439,12 @@ if __name__ == '__main__':
     parser.add_argument('--data-name', '-d', type=str, help='Name of data', default='')
     parser.add_argument('--plot', '-p', action='store_true', help='To plot data', default=False)
 
-    args = parser.parse_args()
-    d_name = args.data_name
-    plot = args.plot
+    parsed_args = parser.parse_args()
+    d_name = parsed_args.data_name
+    plot = parsed_args.plot
 
     analyser = DataAnalyser(d_name, plot)
-    analyser.plot_data('cf1', axes='xz')
-
     # pylint: enable=invalid-name
+
+    while True:
+        analyser.prompt_user()
