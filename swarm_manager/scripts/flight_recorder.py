@@ -4,6 +4,9 @@
 To record and analyse flight data of all CFs
 """
 
+import os
+from os.path import isfile, join
+import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
 
@@ -12,12 +15,32 @@ class Recorder(object):
     """
     def __init__(self, cf_list):
         self.cf_list = cf_list
+        self.data_id = '0'
+        self.data_path = None
+        self.data_base_name = 'flight_data_'
+
+        self._find_id()
 
         self.crazyflies = {} #: dict: Keys are name of the CF
 
         # Initialize each Crazyflie
         for each_cf in cf_list:
             self._init_cf(each_cf)
+
+    def _find_id(self):
+        # List all data files
+        parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.data_path = os.path.join(parentdir, 'flight_data')
+        data_list = [f for f in os.listdir(self.data_path) if isfile(join(self.data_path, f))]
+
+        # Find all unnamed data
+        if data_list:
+            data_list = [f for f in data_list if f.startswith(self.data_base_name)]
+
+            if data_list:
+                data_list = [f.replace(self.data_base_name, '') for f in data_list]
+                data_list = [int(f.replace('.npy', '')) for f in data_list]
+                self.data_id = str(np.max(data_list) + 1)
 
     def _init_cf(self, cf_id):
         """Initialize each CF
@@ -37,11 +60,16 @@ class Recorder(object):
         """
         self.crazyflies[cf_id].append(pose_stamped)
 
+    def _save_data(self):
+        file_path = join(self.data_path, self.data_base_name + self.data_id)
+        np.save(file_path, self.crazyflies)
+
     def on_shutdown(self):
         """To save data upon exit
         """
+        self._save_data()
         print "SHUTDOWN"
-        print self.crazyflies
+        # print self.crazyflies
 
 
 if __name__ == '__main__':
@@ -50,10 +78,6 @@ if __name__ == '__main__':
 
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")
 
-    # Initialize swarm
     REC = Recorder(CF_LIST)
-
     rospy.on_shutdown(REC.on_shutdown)
-
-    while not rospy.is_shutdown():
-        pass
+    rospy.spin()
