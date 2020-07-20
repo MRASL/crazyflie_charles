@@ -273,14 +273,6 @@ class Swarm(object):
         self.update_swarm_param("stabilizer/controller", 1) # 1: High lvl, 2: Mellinger
         self.update_swarm_param("kalman/resetEstimation", 1)
 
-    # Setter & getters
-    def in_teleop(self):
-        """
-        Returns:
-            bool: In teleop
-        """
-        return self._to_teleop
-
     # Publisher and subscription
     def joy_swarm_vel_handler(self, joy_swarm_vel):
         """Update swarm goal velocity
@@ -298,9 +290,6 @@ class Swarm(object):
             cf_id (int): Id of the CF
         """
         self.crazyflies[cf_id]["pose"] = pose_stamped
-
-        # print "\n%s pose:" % cf_id
-        # print pose_stamped.pose.position
 
     def cf_traj_goal_handler(self, traj_goal, cf_id):
         """Update trajectory goal of CF
