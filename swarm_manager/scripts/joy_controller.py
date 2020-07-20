@@ -7,7 +7,7 @@ Services:
     - None
 
 Subscribed services:
-    - From swarm_manager
+    - From swarm_controller
         - update_params
         - emergency
         - toggle_teleop
@@ -154,10 +154,6 @@ class Controller(object):
         """
         # Find services
         rospy.loginfo("Joy: waiting for services...")
-
-        if not self._to_sim:
-            rospy.wait_for_service('/update_swarm_params')
-            self._update_params = rospy.ServiceProxy('/update_swarm_params', UpdateParams)
 
         rospy.wait_for_service('/swarm_emergency')
         self._emergency = rospy.ServiceProxy('/swarm_emergency', Empty)

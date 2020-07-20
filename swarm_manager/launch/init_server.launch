@@ -73,7 +73,7 @@
   </node>
 
   <!-- Launch swarm manager-->
-  <node name="swarm_manager" pkg="swarm_manager" type="swarm_manager.py" output="screen">
+  <node name="swarm_controller" pkg="swarm_manager" type="swarm_controller.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
     <param name="to_sim" value="$(arg to_sim)"/>
 

@@ -78,10 +78,10 @@ class Recorder(object):
     def on_shutdown(self):
         """To save data upon exit
         """
-        self._save_data()
-        print "SHUTDOWN"
-        # print self.crazyflies
+        user_cmd = raw_input("\nSave data? (y/n): ")
 
+        if user_cmd == 'y':
+            self._save_data()
 
 if __name__ == '__main__':
     # Launch node

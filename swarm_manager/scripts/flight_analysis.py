@@ -6,24 +6,8 @@ Python script to analyse flight data
 .. warning::
     Data are not in perfect sync. Their can be a small delay between the two ~0.1 secf
 
-Options:
-    - [x] Specify data name
-    - [x] Plot position : exp pose and goal
-        - [x] Plot position
-        - [x] Specify axis
-        - [x] Draw a line
-        - [x] Draw goal
-        - [x] Possibility to accelerate/slow
-        - [x] 3D plot
-        - [x] Seperate 3D and 2D class
-    - [x] List CF names
-    - [x] Save as
-    - [x] Data analysis
-    - [x] UI
-        - [x] Call desired function in terminal
-        - [x] Assert data types
-        - [x] Verify args and optional args
-        - [x] Print help
+.. note::
+    Type 'help' for a list of possible commands
 """
 
 import os
@@ -205,7 +189,6 @@ class DataAnalyser(object):
         plotter = ErrorPlotter(flight_data)
         plotter.plot_error()
 
-
 class ErrorPlotter(object):
     """To plot trajectory error
     """
@@ -267,7 +250,6 @@ class ErrorPlotter(object):
         plt.grid(True)
 
         plt.show()
-
 
 class DataPlotter3d(object):
     """To plot flight data
@@ -422,7 +404,6 @@ class DataPlotter3d(object):
                           blit=False)
 
         plt.show()
-
 
 class DataPlotter2d(object):
     """To plot flight data
