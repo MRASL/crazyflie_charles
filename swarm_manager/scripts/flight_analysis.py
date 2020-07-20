@@ -17,10 +17,13 @@ Options:
         - [x] 3D plot
         - [x] Seperate 3D and 2D class
     - [ ] List CF names
-    - [ ] UI
-        - Call desired function in terminal
     - [ ] Save as
-    - [ ] Data analysis
+    - [ ] Data an alysis
+    - [x] UI
+        - [x] Call desired function in terminal
+        - [x] Assert data types
+        - [x] Verify args and optional args
+        - [x] Print help
 """
 
 import os
@@ -34,7 +37,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 import mpl_toolkits.mplot3d.axes3d as p3
 
-from user_command import UserInterface
+from user_command import UserInterface, InputError
 
 class DataAnalyser(object):
     """
@@ -52,12 +55,13 @@ class DataAnalyser(object):
         self.ui_cmd = UserInterface()
 
         self.ui_cmd.add_cmd('plot_data', self.plot_data, "To plot a CF trajectory")
-        self.ui_cmd.add_arg('plot_data', 'cf_id', "Id of crazyflie to plot data",
+        self.ui_cmd.add_arg('plot_data', 'cf_id', "Id of crazyflie",
                             arg_type=str, optional=False)
         self.ui_cmd.add_arg('plot_data', 'plot2d', "To plot in 2d",
                             arg_type=bool, optional=True)
         self.ui_cmd.add_arg('plot_data', 'axes', "Specify axes of 2d plot. i.e: 'xz'",
-                            arg_type=str, optional=False)
+                            arg_type=str, optional=True)
+
 
     def _load_data(self):
         """Load flight data.
@@ -108,16 +112,22 @@ class DataAnalyser(object):
         """Wait for user command
         """
 
-        user_cmd = raw_input("Enter Command: ")
+        user_cmd = raw_input("\nEnter Command: ")
 
-        func, args, kwargs = self.ui_cmd.get_command(user_cmd)
+        try:
+            func, args, kwargs = self.ui_cmd.get_command(user_cmd)
 
-        func(*args, **kwargs)
+            if func is not None:
+                func(*args, **kwargs)
+
+        except InputError as err:
+            print "\tInput Error: %s" % err.message
+
 
         if user_cmd == 'exit':
             sys.exit(0)
 
-    def plot_data(self, cf_id, axes='xy'):
+    def plot_data(self, cf_id, axes='xy', plot2d=False):
         """Plot flight of specified crazyflie.
 
         Plot axis can be specified
@@ -125,14 +135,16 @@ class DataAnalyser(object):
         Args:
             cf_id (str): Name of crazyflie
             axis (str, optional): Axes to plot data. Defaults to 'xy'.
+            plot2d (bool, optiona;): To plot in 2d or not. Defaults to False.
         """
         flight_data = self.crazyflies[cf_id]
 
-        plotter = DataPlotter3d(flight_data)
-        # plotter = DataPlotter2d(axes, flight_data)
+        if not plot2d:
+            plotter = DataPlotter3d(flight_data)
+        else:
+            plotter = DataPlotter2d(axes, flight_data)
 
         plotter.plot_traj()
-
 
 class DataPlotter3d(object):
     """To plot flight data

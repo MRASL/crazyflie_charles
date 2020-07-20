@@ -1,5 +1,14 @@
 """Module for easier interpretation of user commands
+
+.. warning::
+    Args need to be added in order.
+    No '' around str vals.
+
+Kwargs are optional
+
 """
+
+from collections import OrderedDict
 
 class UserInterface(object):
     """ To determine function entered by user
@@ -50,28 +59,42 @@ class UserInterface(object):
         cmd_input = cmd_input.split(' ')
 
         func_name = cmd_input[0]
-        if len(cmd_input) > 1:
-            func_args = cmd_input[1::]
 
-        if func_name in self.cmd_list.keys():
-            func_cmd = self.cmd_list[func_name]
+        if func_name == "help":
+            self.print_help()
+
         else:
-            raise LookupError("Function %s is invalid" % func_name)
+            if len(cmd_input) > 1:
+                func_args = cmd_input[1::]
 
-        func = func_cmd.func
-        args, kwargs = split_args(func_args)
+            if func_name in self.cmd_list.keys():
+                func_cmd = self.cmd_list[func_name]
+            else:
+                raise InputError("Function %s is invalid" % func_name)
 
-        # TODO Check if there are missing args
-
-        # TODO Check types
+            func = func_cmd.func
+            args, kwargs = split_args(func_args)
+            args, kwargs = func_cmd.check_args(args, kwargs)
 
         return func, args, kwargs
 
     def print_help(self):
         """Print all possible commands and their arguments
         """
-        # TODO Print help
-        pass
+        print "Possible commands:"
+        print "------------------"
+        for cmd_name, cmd in self.cmd_list.items():
+            print "%s: %s" % (cmd_name, cmd.description)
+            print "\tArgs:"
+            for arg_name, arg_info in cmd.args.items():
+                print "\t\t%s: %s (%s)" % (arg_name, arg_info["description"],
+                                           arg_info["type"].__name__)
+            print "\tKwargs:"
+            for kwarg_name, kwarg_info in cmd.kwargs.items():
+                print "\t\t%s: %s (%s)" % (kwarg_name, kwarg_info["description"],
+                                           kwarg_info["type"].__name__)
+        print "------------------"
+
 
 class Command(object):
     """
@@ -80,7 +103,8 @@ class Command(object):
     def __init__(self, func, description):
         self.func = func
         self.description = description
-        self.args = {}
+        self.args = OrderedDict()
+        self.kwargs = {}
 
     def add_arg(self, arg_name, description=None, arg_type=None, optional=False):
         """Add an arg to command
@@ -91,7 +115,47 @@ class Command(object):
             arg_type (str, optional): Type of arg. Defaults to None.
             optional (bool, optional): If arg is optional in function call. Defaults to False.
         """
-        self.args[arg_name] = {'description': description, 'type': arg_type, 'optional': optional}
+        if optional:
+            self.kwargs[arg_name] = {'description': description, 'type': arg_type}
+        else:
+            self.args[arg_name] = {'description': description, 'type': arg_type}
+
+    def check_args(self, args, kwargs):
+        """Verify if all required args were passed.
+
+        Also verify type of args
+
+        Args:
+            args (list): Args list
+            kwargs (dict): Kwargs
+        """
+        # Check args and kwargs are valid
+        args_ok = len(args) == len(self.args.keys())
+        if not args_ok:
+            raise InputError("Invalid number of args")
+
+        for key in kwargs.keys():
+            if key not in self.kwargs.keys():
+                raise InputError("%s is an invalid keyword" % key)
+
+        # Check type
+        args_corr = []
+        kwargs_corr = {}
+
+        for arg, (_, arg_info) in zip(args, self.args.items()):
+            args_corr.append(arg_info['type'](arg))
+
+        for key, val in kwargs.items():
+            arg_type = self.kwargs[key]['type']
+            kwargs_corr[key] = arg_type(val)
+
+        return args_corr, kwargs_corr
+
+
+class InputError(Exception):
+    """Exception raised for errors in the input
+    """
+    pass
 
 
 def split_args(all_args):
@@ -108,12 +172,15 @@ def split_args(all_args):
     Returns:
         list: args, kwargs
     """
-    args = [a for a in all_args if ':=' not in a]
-    kwargs_list = [a for a in all_args if ':=' in a]
+    args = []
     kwargs = {}
 
-    for each_arg in kwargs_list:
-        vals = each_arg.split(':=')
-        kwargs[vals[0]] = vals[1]
+    if all_args is not None:
+        args = [a for a in all_args if ':=' not in a]
+        kwargs_list = [a for a in all_args if ':=' in a]
+
+        for each_arg in kwargs_list:
+            vals = each_arg.split(':=')
+            kwargs[vals[0]] = vals[1]
 
     return args, kwargs
