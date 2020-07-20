@@ -7,7 +7,7 @@ Python script to analyse flight data
     Data are not in perfect sync. Their can be a small delay between the two ~0.1 secf
 
 Options:
-    - [ ] Specify data name
+    - [x] Specify data name
     - [x] Plot position : exp pose and goal
         - [x] Plot position
         - [x] Specify axis
@@ -16,9 +16,9 @@ Options:
         - [x] Possibility to accelerate/slow
         - [x] 3D plot
         - [x] Seperate 3D and 2D class
-    - [ ] List CF names
-    - [ ] Save as
-    - [ ] Data an alysis
+    - [x] List CF names
+    - [x] Save as
+    - [ ] Data analysis
     - [x] UI
         - [x] Call desired function in terminal
         - [x] Assert data types
@@ -50,10 +50,21 @@ class DataAnalyser(object):
         self.data_base_name = 'flight_data_'
         self.crazyflies = None
 
-        self._load_data()
+        self.load_data(self.data_name)
 
         self.ui_cmd = UserInterface()
+        self._add_commands()
 
+    def _add_commands(self):
+        # Load data
+        self.ui_cmd.add_cmd('load', self.load_data, "Load a trajectory")
+        self.ui_cmd.add_arg('load', 'data_name', "Name of data file",
+                            arg_type=str, optional=False)
+
+        # Exit
+        self.ui_cmd.add_cmd('exit', self.exit, "Exit program")
+
+        # Plot data
         self.ui_cmd.add_cmd('plot_data', self.plot_data, "To plot a CF trajectory")
         self.ui_cmd.add_arg('plot_data', 'cf_id', "Id of crazyflie",
                             arg_type=str, optional=False)
@@ -62,24 +73,13 @@ class DataAnalyser(object):
         self.ui_cmd.add_arg('plot_data', 'axes', "Specify axes of 2d plot. i.e: 'xz'",
                             arg_type=str, optional=True)
 
+        # List CFs
+        self.ui_cmd.add_cmd('list_cf', self.list_cf, "List all CFs")
 
-    def _load_data(self):
-        """Load flight data.
-
-        If data_name is empty, load latest data set
-        """
-        parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.data_path = os.path.join(parentdir, 'flight_data')
-
-        if self.data_name == "":
-            data_to_load = self._find_latest_data()
-
-        else:
-            data_to_load = self.data_name + '.npy'
-
-        data_path = join(self.data_path, data_to_load)
-
-        self.crazyflies = np.load(data_path, allow_pickle='TRUE').item()
+        # Rename file
+        self.ui_cmd.add_cmd('rename', self.rename_data, "Rename a file")
+        self.ui_cmd.add_arg('rename', 'new_name', "Name of data file",
+                            arg_type=str, optional=False)
 
     def _find_latest_data(self):
         """Find latest data name
@@ -123,9 +123,54 @@ class DataAnalyser(object):
         except InputError as err:
             print "\tInput Error: %s" % err.message
 
+    def load_data(self, data_name):
+        """Load flight data.
 
-        if user_cmd == 'exit':
-            sys.exit(0)
+        If data_name is empty, load latest data set
+        """
+        parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.data_path = os.path.join(parentdir, 'flight_data')
+
+        if data_name == "":
+            self.data_name = self._find_latest_data()
+
+        else:
+            self.data_name = data_name + '.npy'
+
+        data_path = join(self.data_path, self.data_name)
+
+        try:
+            self.crazyflies = np.load(data_path, allow_pickle='TRUE').item()
+        except IOError:
+            print "\tFile not found: %s" % self.data_name
+
+        print "\tFile loaded: %s" % self.data_name
+
+    def rename_data(self, new_name):
+        """Rename data file
+        """
+        # Save data
+        file_path = join(self.data_path, new_name)
+        np.save(file_path, self.crazyflies)
+
+        # Delete old file
+        old_file_path = join(self.data_path, self.data_name)
+        os.remove(old_file_path)
+
+        self.data_name = new_name + '.npy'
+        print "\t New data name: %s" % self.data_name
+
+    def exit(self):
+        """Exit program
+        """
+        sys.exit(0)
+
+    def list_cf(self):
+        """To list name of all CFs
+        """
+        print "Crazyflie name in data:"
+        for cf_id in sorted(self.crazyflies.keys()):
+            print "\t%s" % cf_id
 
     def plot_data(self, cf_id, axes='xy', plot2d=False):
         """Plot flight of specified crazyflie.
@@ -145,6 +190,8 @@ class DataAnalyser(object):
             plotter = DataPlotter2d(axes, flight_data)
 
         plotter.plot_traj()
+
+
 
 class DataPlotter3d(object):
     """To plot flight data

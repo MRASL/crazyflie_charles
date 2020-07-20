@@ -93,7 +93,7 @@ class UserInterface(object):
             for kwarg_name, kwarg_info in cmd.kwargs.items():
                 print "\t\t%s: %s (%s)" % (kwarg_name, kwarg_info["description"],
                                            kwarg_info["type"].__name__)
-        print "------------------"
+            print "------------------"
 
 
 class Command(object):
