@@ -88,6 +88,7 @@ from crazyflie_charles.srv import SetFormation, GetFormationList, SetPositions
 from crazyflie_driver.msg import Position
 from state_machine import StateMachine
 from crazyflie import yaw_from_quat
+from swarm_manager.srv import SetParam
 
 class Swarm(object):
     """Controls the swarm """
@@ -114,8 +115,6 @@ class Swarm(object):
             self._init_cf(each_cf)
 
         # Services
-        # TODO: #14 Update all parameters
-        rospy.Service('/update_swarm_params', Empty, self._update_swarm_params_srv)
         rospy.Service('/swarm_emergency', Empty, self._swarm_emergency_srv)
         rospy.Service('/stop_swarm', Empty, self._stop_swarm_srv)
         rospy.Service('/take_off_swarm', Empty, self._take_off_swarm_srv)
@@ -161,6 +160,9 @@ class Swarm(object):
         # Subscribe
         rospy.Subscriber("/joy_swarm_vel", Twist, self.joy_swarm_vel_handler)
 
+        # Update swarm parameters
+        self._init_params()
+
         # Find all possible formations and initialize swarm to 'line'
         self.formation_list = self.get_formations_list().formations.split(',')
         self.formation = "circle"
@@ -203,6 +205,7 @@ class Swarm(object):
                                   "land": None,                 # service
                                   "stop": None,                 # service
                                   "toggle_teleop": None,        # service
+                                  "set_param": None,            # service
                                   "pose": None,                 # attr
                                   "initial_pose": None,         # attr
                                   "state": None,                # attr
@@ -219,6 +222,7 @@ class Swarm(object):
         self._link_service(cf_id, "stop", Empty)
         self._link_service(cf_id, "toggle_teleop", Empty)
         self._link_service(cf_id, "emergency", Empty)
+        self._link_service(cf_id, "set_param", SetParam)
 
         rospy.loginfo("Swarm: found services of %s " % cf_id)
 
@@ -262,6 +266,12 @@ class Swarm(object):
         # rospy.loginfo("Swarm: found %s service of %s" % (service_name, cf_id))
         self.crazyflies[cf_id][service_name] =\
             rospy.ServiceProxy('/%s/%s' % (cf_id, service_name), service_type)
+
+    def _init_params(self):
+        self.update_swarm_param("commander/enHighLevel", 1)
+        self.update_swarm_param("stabilizer/estimator", 2) # Use EKF
+        self.update_swarm_param("stabilizer/controller", 1) # 1: High lvl, 2: Mellinger
+        self.update_swarm_param("kalman/resetEstimation", 1)
 
     # Setter & getters
     def in_teleop(self):
@@ -337,7 +347,7 @@ class Swarm(object):
             each_cf["goal_pub"].publish(goal_msg)
 
     # Services methods
-    def _call_all_cf_service(self, service_name, service_msg=None, cf_list=None):
+    def _call_all_cf_service(self, service_name, args=None, kwargs=None, cf_list=None):
         """Call a service for all the CF in the swarm
 
         Args:
@@ -345,18 +355,18 @@ class Swarm(object):
             service_msg (srv_msg, optional): Message to send. Defaults to None.
             cf_list (list of str, optional): Only call service of CF in list. Defaults to None.
         """
+        if args is None:
+            args = []
+
+        if kwargs is None:
+            kwargs = {}
+
         for cf_id, each_cf in self.crazyflies.items():
             if cf_list is None:
-                if service_msg is None:
-                    each_cf[service_name]()
-                else:
-                    each_cf[service_name](service_msg)
+                each_cf[service_name](*args, **kwargs)
 
             elif cf_id in cf_list:
-                if service_msg is None:
-                    each_cf[service_name]()
-                else:
-                    each_cf[service_name](service_msg)
+                each_cf[service_name](*args, **kwargs)
 
         return {}
 
@@ -374,17 +384,15 @@ class Swarm(object):
         return {}
 
     # Swarm states
-    def _update_swarm_params_srv(self, _):
+    def update_swarm_param(self, param, value):
         """Update parameter of all swarm
 
         Args:
-            req ([type]): [description]
-
-        Returns:
-            [type]: [description]
+            param (str): Name of parameter
+            value (int64): Parameter value
         """
-        rospy.loginfo("Swarm: Update params")
-        return {}
+        rospy.loginfo("Swarm: Set %s param to %s" % (param, str(value)))
+        self._call_all_cf_service("set_param", kwargs={'param': param, 'value': value})
 
     def _swarm_emergency_srv(self, _):
         """Call emergency service """
@@ -881,7 +889,7 @@ class Swarm(object):
 
 if __name__ == '__main__':
     # Launch node
-    rospy.init_node('swarm_manager', anonymous=False)
+    rospy.init_node('swarm_controller', anonymous=False)
 
     # Get params
     CF_LIST = rospy.get_param("~cf_list", "['cf1']")
