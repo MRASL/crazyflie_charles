@@ -18,7 +18,7 @@ Options:
         - [x] Seperate 3D and 2D class
     - [x] List CF names
     - [x] Save as
-    - [ ] Data analysis
+    - [x] Data analysis
     - [x] UI
         - [x] Call desired function in terminal
         - [x] Assert data types
@@ -65,12 +65,12 @@ class DataAnalyser(object):
         self.ui_cmd.add_cmd('exit', self.exit, "Exit program")
 
         # Plot data
-        self.ui_cmd.add_cmd('plot_data', self.plot_data, "To plot a CF trajectory")
-        self.ui_cmd.add_arg('plot_data', 'cf_id', "Id of crazyflie",
+        self.ui_cmd.add_cmd('plot_traj', self.plot_data, "To plot a CF trajectory")
+        self.ui_cmd.add_arg('plot_traj', 'cf_id', "Id of crazyflie",
                             arg_type=str, optional=False)
-        self.ui_cmd.add_arg('plot_data', 'plot2d', "To plot in 2d",
+        self.ui_cmd.add_arg('plot_traj', 'plot2d', "To plot in 2d",
                             arg_type=bool, optional=True)
-        self.ui_cmd.add_arg('plot_data', 'axes', "Specify axes of 2d plot. i.e: 'xz'",
+        self.ui_cmd.add_arg('plot_traj', 'axes', "Specify axes of 2d plot. i.e: 'xz'",
                             arg_type=str, optional=True)
 
         # List CFs
@@ -79,6 +79,11 @@ class DataAnalyser(object):
         # Rename file
         self.ui_cmd.add_cmd('rename', self.rename_data, "Rename a file")
         self.ui_cmd.add_arg('rename', 'new_name', "Name of data file",
+                            arg_type=str, optional=False)
+
+        # Plot error
+        self.ui_cmd.add_cmd('plot_error', self.plot_error, "To plot a CF trajectory")
+        self.ui_cmd.add_arg('plot_error', 'cf_id', "Id of crazyflie",
                             arg_type=str, optional=False)
 
     def _find_latest_data(self):
@@ -111,7 +116,6 @@ class DataAnalyser(object):
     def prompt_user(self):
         """Wait for user command
         """
-
         user_cmd = raw_input("\nEnter Command: ")
 
         try:
@@ -191,6 +195,78 @@ class DataAnalyser(object):
 
         plotter.plot_traj()
 
+    def plot_error(self, cf_id):
+        """Plot error during trajectory
+
+        Args:
+            cf_id (str): Id of CF
+        """
+        flight_data = self.crazyflies[cf_id]
+        plotter = ErrorPlotter(flight_data)
+        plotter.plot_error()
+
+
+class ErrorPlotter(object):
+    """To plot trajectory error
+    """
+    def __init__(self, data):
+        self.flight_data = data
+        self.errors_data = ([], {'x': [], 'y': [], 'z': []})
+        self.start_time = None
+
+        self._sync_data()
+        self._compute_error()
+
+    def _sync_data(self):
+        # Sync data so they start at the sime time
+        # Remove data in extra (received at the beginning)
+        extra_data = len(self.flight_data['pose']) - len(self.flight_data['goal'])
+
+        if extra_data > 0:
+            self.flight_data['pose'] = self.flight_data['pose'][extra_data::]
+
+        else:
+            self.flight_data['goal'] = self.flight_data['goal'][-extra_data::]
+
+    def _compute_error(self):
+        for cf_pose, cf_goal in zip(self.flight_data['pose'], self.flight_data['goal']):
+            position = np.array([cf_pose.pose.position.x,
+                                 cf_pose.pose.position.y,
+                                 cf_pose.pose.position.z])
+
+            goal = np.array([cf_goal.x,
+                             cf_goal.y,
+                             cf_goal.z])
+
+            error = abs(position - goal)
+            self.errors_data[1]['x'].append(error[0])
+            self.errors_data[1]['y'].append(error[1])
+            self.errors_data[1]['z'].append(error[2])
+
+            time = cf_pose.header.stamp.secs + round(cf_pose.header.stamp.nsecs/1000000000.0, 3)
+
+            if self.start_time is None:
+                self.start_time = time
+
+            time = time - self.start_time
+
+            self.errors_data[0].append(time)
+
+    def plot_error(self):
+        """Plot error
+        """
+        plt.title("Error during trajectory")
+        plt.xlabel("Time (sec)")
+        plt.ylabel("Error (m)")
+
+        plt.plot(self.errors_data[0], self.errors_data[1]['x'], 'b', label='x')
+        plt.plot(self.errors_data[0], self.errors_data[1]['y'], 'r', label='y')
+        plt.plot(self.errors_data[0], self.errors_data[1]['z'], 'c', label='z')
+        plt.legend()
+
+        plt.grid(True)
+
+        plt.show()
 
 
 class DataPlotter3d(object):
@@ -347,6 +423,7 @@ class DataPlotter3d(object):
 
         plt.show()
 
+
 class DataPlotter2d(object):
     """To plot flight data
     """
@@ -492,11 +569,12 @@ class DataPlotter2d(object):
 
         plt.show()
 
+
 if __name__ == '__main__':
     # pylint: disable=invalid-name
     parser = argparse.ArgumentParser(description='Analyse flight data')
-    parser.add_argument('--data-name', '-d', type=str, help='Name of data', default='')
-    parser.add_argument('--plot', '-p', action='store_true', help='To plot data', default=False)
+    parser.add_argument('-d', '--data-name', type=str, help='Name of data', default='')
+    parser.add_argument('-p', '--plot', action='store_true', help='To plot data', default=False)
 
     parsed_args = parser.parse_args()
     d_name = parsed_args.data_name
