@@ -118,6 +118,11 @@
     <param name="relax_inc" value="$(arg relax_inc)" />
   </node>
 
+  <!-- Launch flight recorder -->
+  <node name="flight_recorder" pkg="swarm_manager" type="flight_recorder.py" output="screen">
+    <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
+  </node>
+
   <!-- Rviz markers -->
   <node name="rviz_markers" pkg="swarm_manager" type="rviz_markers.py" output="screen" >
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>

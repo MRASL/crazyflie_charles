@@ -1,13 +1,18 @@
 #!/usr/bin/env python
-import os
-import yaml
+from mpl_toolkits.mplot3d import axes3d
+import matplotlib.pyplot as plt
 
-parentdir = os.path.dirname(os.path.abspath(__file__))
-file_path = os.path.join(parentdir, 'conf.yaml')
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
 
-with open(file_path) as f:
-    data = yaml.load(f, Loader=yaml.FullLoader)
-    print data
-    for group, args_dict in data.items():
-        for arg_name, arg_val in args_dict.items():
-            print arg_name + ':=' + str(arg_val)
+# load some test data for demonstration and plot a wireframe
+X, Y, Z = axes3d.get_test_data(0.1)
+ax.plot_wireframe(X, Y, Z, rstride=5, cstride=5)
+
+plt.show()
+
+# # rotate the axes and update
+# for angle in range(0, 360):
+#     ax.view_init(30, angle)
+#     plt.draw()
+#     plt.pause(.001)
