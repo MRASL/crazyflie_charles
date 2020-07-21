@@ -89,10 +89,11 @@ from state_machine import StateMachine
 from crazyflie import yaw_from_quat
 from swarm_manager.srv import SetParam
 
+from launch_swarm import launch_swarm
+
 class SwarmController(object):
     """Python API for easy control of the swarm.
     """
-
     def __init__(self, cf_list, to_sim):
         """
         Args:
@@ -927,6 +928,9 @@ if __name__ == '__main__':
     GND_HEIGHT = rospy.get_param("swarm")["gnd_height"]
     MIN_CF_DIST = rospy.get_param("swarm")["min_dist"]
     MIN_GOAL_DIST = rospy.get_param("swarm")["min_goal_dist"]
+
+    # Launch all CFs nodes
+    launch_swarm(CF_LIST)
 
     # Initialize swarm
     SWARM = SwarmController(CF_LIST, TO_SIM)

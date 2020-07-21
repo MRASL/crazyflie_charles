@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="to_sim" default="False" />
+    <arg name="to_sim" default="True" />
     <arg name="joy_dev" default="/dev/input/js0" />
     <arg name="to_save" default="False" />
 
@@ -23,12 +23,10 @@
     </node>
 
     <!-- Launch formation manager-->
-    <node name="formation_manager" pkg="formation_manager" type="formation_manager.py" output="screen">
-    </node>
+    <node name="formation_manager" pkg="formation_manager" type="formation_manager.py" output="screen" />
 
     <!-- Launch trajectory planner -->
-    <node name="trajectory_planner" pkg="trajectory_planner" type="trajectory_planner_ros.py" output="screen">
-    </node>
+    <node name="trajectory_planner" pkg="trajectory_planner" type="trajectory_planner_ros.py" output="screen" />
 
     <!-- Launch flight recorder -->
     <node name="flight_recorder" pkg="swarm_manager" type="flight_recorder.py" output="screen">
@@ -37,7 +35,7 @@
 
     <!-- rviz -->
     <node name="rviz_markers" pkg="swarm_manager" type="rviz_markers.py" output="screen" />
-    <param name="cf_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
+    <param name="cf_description" command="$(find xacro)/xacro $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find swarm_manager)/launch/crazyflie_pos.rviz" required="true" />
 
 </launch>

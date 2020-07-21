@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Script to manage all the crazyflies
+Script to launch each Crazyflie radio link
 
 Options:
     -n: To specify number of CFs in the swarm
@@ -18,13 +18,10 @@ Example:
 """
 
 import sys
-import os
-import argparse
 import rospy
 import roslaunch
-import yaml
 
-def launch_file(cli_args):
+def launch_file(uuid, cli_args):
     """To execute launch files with arguments
 
     Args:
@@ -63,75 +60,30 @@ def get_args(group_name, args_dict):
 
     return args_list
 
+def launch_swarm(cf_list):
+    """Launch CF node for each crazyflie
 
-if __name__ == '__main__':
-    # pylint: disable=invalid-name
-    # snake_case naming is ok
+    Args:
+        cf_list (list of str): Name of all CF
+    """
 
-    parser = argparse.ArgumentParser(description='Start crazyflie swarm')
-    parser.add_argument('-n', type=int, help='Number of crazyflie in the swarm', default=1)
-    parser.add_argument('--sim', '-s', action='store_true', help='Flag to launch in simulation')
-    parser.add_argument('--first-id', '-f', type=int, help='ID of first CF in swarm', default=0)
-    parser.add_argument('--save', action='store_true', help='To save flight data', default=False)
-
-    args = parser.parse_args()
-    n_cf = args.n
-    to_sim = args.sim
-    first_uri = args.first_id
-    to_save = args.save
-
-    # Read arguments from yaml file
-    parentdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    file_path = os.path.join(parentdir, 'conf.yaml')
-
-    with open(file_path) as f:
-        yaml_conf = yaml.load(f, Loader=yaml.FullLoader)
-
-    # Launch server
-    rospy.init_node('launchSwarm', anonymous=False)
-    rospy.loginfo("Initializing server for %i crazyflies" % n_cf)
+    print "Launching swarm"
     uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
     roslaunch.configure_logging(uuid)
 
-    # Create list /w name of the CFs
-    cf_list = [('cf' + str(i + 1)) for i in range(n_cf)]
-
-    # Launch server
-    cli_server = ['swarm_manager', 'init_server.launch', 'cf_list:='+str(cf_list),
-                  'to_sim:=%s' % to_sim, 'to_save:=%s' % to_save]
-
-    server_args = get_args('crazyflie', yaml_conf)
-    formation_args = get_args('formation', yaml_conf)
-    solver_args = get_args('trajectory_solver', yaml_conf)
-    cli_server = cli_server + server_args + formation_args + solver_args
-
-    launch_file(cli_server)
+    first_uri = 0
 
     # Launch CFs
     base_address = 0xE7E7E7E700 + first_uri
     base_radio = 'radio://0/80/2M/'
-    cf_args = get_args('crazyflie', yaml_conf)
-
-    starting_positions = yaml_conf['starting_positions']
+    to_sim = rospy.get_param("~to_sim", "False")
 
     # Add n CFs
     for each_cf in cf_list:
-        # TODO: Find uris of active CFs
         uri = base_radio + hex(base_address).upper()
-        try:
-            starting_pos = starting_positions[each_cf]
-            starting_pos = 'starting_position:=%s' % starting_pos
-        except KeyError:
-            starting_pos = None
 
         cli_add_cf = ['swarm_manager', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri,
                       'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
-        cli_add_cf = cli_add_cf + cf_args
 
-        if starting_pos is not None:
-            cli_add_cf.append(starting_pos)
-
-        launch_file(cli_add_cf)
+        launch_file(uuid, cli_add_cf)
         base_address = base_address + 1
-
-    rospy.spin()
