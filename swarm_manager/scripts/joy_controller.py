@@ -158,9 +158,6 @@ class Controller(object):
         rospy.wait_for_service('/swarm_emergency')
         self._emergency = rospy.ServiceProxy('/swarm_emergency', Empty)
 
-        rospy.wait_for_service('/toggle_teleop')
-        self._toggle_teleop_srv = rospy.ServiceProxy('/toggle_teleop', Empty)
-
         rospy.wait_for_service('/land_swarm')
         self._land = rospy.ServiceProxy('/land_swarm', Empty)
 
@@ -196,17 +193,16 @@ class Controller(object):
         self._get_buttons(data.buttons)
         self._get_buttons_axes(data.axes)
 
-        if self.in_teleop():
-            self.cf_vel_msg.linear.x = get_axis(data.axes, self.axes.x_axis)
-            self.cf_vel_msg.linear.y = get_axis(data.axes, self.axes.y_axi)
-            self.cf_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis)
-            self.cf_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis)
+        # if self.in_teleop():
+        #     self.cf_vel_msg.linear.x = get_axis(data.axes, self.axes.x_axis)
+        #     self.cf_vel_msg.linear.y = get_axis(data.axes, self.axes.y_axi)
+        #     self.cf_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis)
+        #     self.cf_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis)
 
-        else:
-            self.goal_vel_msg.linear.x = get_axis(data.axes, self.axes.x_axis, False)
-            self.goal_vel_msg.linear.y = get_axis(data.axes, self.axes.y_axi, False)
-            self.goal_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis, False)
-            self.goal_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis, False)
+        self.goal_vel_msg.linear.x = get_axis(data.axes, self.axes.x_axis, False)
+        self.goal_vel_msg.linear.y = get_axis(data.axes, self.axes.y_axi, False)
+        self.goal_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis, False)
+        self.goal_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis, False)
 
     def _get_buttons(self, buttons_data):
         """Find pressed buttons
@@ -225,20 +221,18 @@ class Controller(object):
             if self._buttons is None or buttons_data[i] != self._buttons[i]: # If button changed
                 if i == CIRCLE and buttons_data[i] == 1:
                     self._emergency()
-                if i == L1 and buttons_data[i] == 1:
-                    self._toggle_teleop()
 
-                if not self.in_teleop():
-                    if i == CROSS and buttons_data[i] == 1:
-                        self._land()
-                    if i == SQUARE and buttons_data[i] == 1:
-                        self._take_off_swarm()
+                if i == CROSS and buttons_data[i] == 1:
+                    self._land()
 
-                    if i == R2 and buttons_data[i] == 1:
-                        self._stop()
+                if i == SQUARE and buttons_data[i] == 1:
+                    self._take_off_swarm()
 
-                    if i == TRIANGLE and buttons_data[i] == 1:
-                        self._toggle_abs_ctrl_mode()
+                if i == R2 and buttons_data[i] == 1:
+                    self._stop()
+
+                if i == TRIANGLE and buttons_data[i] == 1:
+                    self._toggle_abs_ctrl_mode()
 
                 # if i == self._L2 and buttonsData[i] == 1:
                 #     value = int(rospy.get_param("ring/headlightEnable"))
@@ -255,66 +249,39 @@ class Controller(object):
         for i in range(0, len(axes_data)):
             # If button changed
             if self._buttons_axes is None or axes_data[i] != self._buttons_axes[i]:
-                if not self.in_teleop():
-                    if i == abs(PAD_U_D):
-                        val = axes_data[i]
-                        if PAD_U_D < 0:
-                            val = val*-1
+                if i == abs(PAD_U_D):
+                    val = axes_data[i]
+                    if PAD_U_D < 0:
+                        val = val*-1
 
-                        if val == -1:
-                            self._formation_dec_scale()
-                        elif val == 1:
-                            self._formation_inc_scale()
+                    if val == -1:
+                        self._formation_dec_scale()
+                    elif val == 1:
+                        self._formation_inc_scale()
 
-                    if i == abs(PAD_L_R):
-                        # Change formation
-                        val = axes_data[i]
-                        if PAD_L_R < 0:
-                            val = val*-1
+                if i == abs(PAD_L_R):
+                    # Change formation
+                    val = axes_data[i]
+                    if PAD_L_R < 0:
+                        val = val*-1
 
-                        if val == -1:
-                            self._prev_swarm_formation()
-                        elif val == 1:
-                            self._next_swarm_formation()
+                    if val == -1:
+                        self._prev_swarm_formation()
+                    elif val == 1:
+                        self._next_swarm_formation()
 
         self._buttons_axes = axes_data
-
-    def _toggle_teleop(self):
-        """Toggle between teleop and automatic mode
-
-        In teleop, CF is piloted with joystick.
-        In automatic, CF goal is controlled with joystick
-        """
-        if not self._to_sim:
-            self._to_teleop = not self._to_teleop
-            self._toggle_teleop_srv()  # Toggle in swarm controller
-            print "Teleop set to : %s" % self._to_teleop
-
-        else:
-            rospy.logwarn("Teleop not supported in simulation")
 
     def _take_off_swarm(self):
         """Take off all the CF in the swarm
         """
         self._takeoff()
 
-    def in_teleop(self):
-        """Return teleop value
-
-        Returns:
-            bool: True if in teleop mode
-        """
-        return self._to_teleop
-
     def execute(self):
         """Loop as long as alive
         """
         while not rospy.is_shutdown():
-            if self.in_teleop():
-                self.vel_publisher.publish(self.cf_vel_msg)
-
-            else:
-                self.goal_vel_publisher.publish(self.goal_vel_msg)
+            self.goal_vel_publisher.publish(self.goal_vel_msg)
 
             self.rate.sleep()
 

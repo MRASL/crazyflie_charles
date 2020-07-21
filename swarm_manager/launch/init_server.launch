@@ -4,6 +4,7 @@
   <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="cf_list" default="['cf1']" />
   <arg name="to_sim" default="False" />
+  <arg name="to_save" default="False" />
 
   <arg name="take_off_height" default="0.5" />
   <arg name="gnd_height" default="0.0" />
@@ -121,6 +122,7 @@
   <!-- Launch flight recorder -->
   <node name="flight_recorder" pkg="swarm_manager" type="flight_recorder.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
+    <param name="to_save" value="$(arg to_save)"/>
   </node>
 
   <!-- Rviz markers -->
