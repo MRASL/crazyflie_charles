@@ -45,7 +45,6 @@
     </include>
   </group>
 
-
   <!-- Initiate joystick -->
   <node name="joy" pkg="joy" type="joy_node" output="screen" >
     <param name="dev" value="$(arg joy_dev)" />

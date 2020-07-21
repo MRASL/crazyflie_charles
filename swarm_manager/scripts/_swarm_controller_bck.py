@@ -900,33 +900,18 @@ class CrazyfliePy(object):
 
         self.goals["goal"] = new_goal
 
-def generate_cf_list(n_cf):
-    """Generate a list with the names of CFs
-
-    Names are 'cf_id' i.e: cf_0, cf_1...
-
-    Args:
-        n_cf (int): Number of CF in the swarm
-
-    Returns:
-        list: List of CFs names
-    """
-    return [('cf_' + str(i)) for i in range(n_cf)]
-
 if __name__ == '__main__':
     # Launch node
     rospy.init_node('swarm_controller', anonymous=False)
 
     # Get params
-    CF_LIST = generate_cf_list(rospy.get_param("swarm")["n_cf"])
-    rospy.set_param("cf_list", CF_LIST)
-
+    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
     TO_SIM = rospy.get_param("~to_sim", "False")
 
-    TAKE_OFF_HEIGHT = rospy.get_param("swarm")["take_off_height"]
-    GND_HEIGHT = rospy.get_param("swarm")["gnd_height"]
-    MIN_CF_DIST = rospy.get_param("swarm")["min_dist"]
-    MIN_GOAL_DIST = rospy.get_param("swarm")["min_goal_dist"]
+    TAKE_OFF_HEIGHT = rospy.get_param("~take_off_height")
+    GND_HEIGHT = rospy.get_param("~gnd_height")
+    MIN_CF_DIST = rospy.get_param("~min_dist")
+    MIN_GOAL_DIST = rospy.get_param("~min_goal_dist")
 
     # Initialize swarm
     SWARM = SwarmController(CF_LIST, TO_SIM)

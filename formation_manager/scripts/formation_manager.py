@@ -437,13 +437,12 @@ class FormationManager(object):
 if __name__ == '__main__':
     # Launch node
     rospy.init_node('swarm_formation_manager', anonymous=False)
-    rospy.loginfo('Initialization of swarm formations manager')
+    rospy.loginfo('Formation: Initialization...')
 
     # Get params
-    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
-    MIN_DIST = rospy.get_param("~formation_min_dist", "0.5")
-    START_GOAL = rospy.get_param("~formation_start_pos", "['cf1']")
-
+    CF_LIST = rospy.get_param("cf_list")
+    MIN_DIST = rospy.get_param("formation")["formation_min_dist"]
+    START_GOAL = rospy.get_param("formation")["formation_start_pos"]
 
     # Initialize swarm
     FORMATION_MANAGER = FormationManager(CF_LIST, MIN_DIST, START_GOAL)

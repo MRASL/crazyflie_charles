@@ -401,7 +401,7 @@ def init_cf_goal_marker(cf_name):
 if __name__ == '__main__':
     rospy.init_node('rviz_markers', anonymous=False)
 
-    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
+    CF_LIST = rospy.get_param("cf_list")
     RVIZ_MARKERS = RvizMarkers(CF_LIST)
 
     RVIZ_MARKERS.publish()

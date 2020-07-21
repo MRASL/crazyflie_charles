@@ -92,9 +92,8 @@ if __name__ == '__main__':
     # Launch node
     rospy.init_node('flight_recorder', anonymous=False)
 
-    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
+    CF_LIST = rospy.get_param("cf_list")
     TO_SAVE = rospy.get_param("~to_save", "False")
-
 
     REC = Recorder(CF_LIST, TO_SAVE)
     rospy.on_shutdown(REC.on_shutdown)
