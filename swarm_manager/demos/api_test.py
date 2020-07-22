@@ -35,23 +35,39 @@ if __name__ == "__main__":
     swarm.link_joy_button("L2", swarm.set_formation, "v")
 
 
-    # goals = {"formation": [0, 0, 0, 0],
-    #          "cf_1": [1, 1, 1, 0],
-    #          "test": [2, 2, 2, 2]}
-    # swarm.link_joy_button("R1", swarm.set_goals, goals)
+    goals = {"cf_0": [1, 1, 1, 0],
+             "cf_1": [2, 2, 2, 0]}
+    swarm.link_joy_button("R1", swarm.go_to, goals)
 
 
-    # print "Take off"
+
+    # Exemple formation
+    # swarm.mode("formation")
+    # swarm.set_goals({'formation': [0, 1, 0.5, 0]})
+    # swarm.set_formation("v")
     # swarm.take_off()
-    # time.sleep(10)
 
-    # print "Square"
-    # swarm.set_formation("square")
+    # .. follow joy
 
-    # swarm.inc_scale()
-    # time.sleep(5)
+    # deux options
+    """
+    1 - set formation avant
 
-    # print "Land"
-    # swarm.land()
+    2:
+        take off
+        hover
+        set formation
+
+
+    """
+
+    # Exemple auto
+    # swarm.mode("automatic")
+    swarm.take_off()
+    pose = swarm.get_positions()
+    goals = {}
+    goals["cf_0"] = pose["cf_1"]
+    goals["cf_1"] = pose["cf_0"]
+    swarm.go_to(goals)
 
     rospy.spin()

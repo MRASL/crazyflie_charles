@@ -15,11 +15,11 @@ TODO:
         - [x] Link buttons and functions
         - [x] Link d_pad
     - [ ] Modes de controle
-        - [ ] Formation (meme chose que maintenant)
-        - [ ] Manuel (comme avec CF client)
-        - [ ] Assisted (control le deplacement)
-        - [ ] Automatic
-            - Control goal
+        - [x] Formation (meme chose que maintenant)
+        - [ ] Automatic (Control goal, no joystick)
+        - Futur:
+            - [ ] Manuel (comme avec CF client)
+            - [ ] Assisted (control le deplacement)
 """
 import ast
 import rospy
@@ -50,7 +50,7 @@ class SwarmAPI(object):
         self._link_service('take_off_swarm', Empty)
         self._link_service('land_swarm', Empty)
 
-        self._link_service('set_goals', SetGoals)
+        self._link_service('go_to', SetGoals)
         self._link_service('get_positions', GetPositions)
 
         self._link_service('set_swarm_formation', SetFormation)
@@ -194,8 +194,8 @@ class SwarmAPI(object):
         """
         self._services["toggle_ctrl_mode"]()
 
-    def set_goals(self, goals):
-        """Set formation and/or cf goal.
+    def go_to(self, goals):
+        """Move formation and/or cf to a position using the trajectory planner.
 
         Dict format: `"goal_name": [x, y, z, yaw]` where `"goal_name"` is either
         `"formation" or "cf_x"`
@@ -203,7 +203,7 @@ class SwarmAPI(object):
         Args:
             goals (dict):
         """
-        self._services["set_goals"](goals=str(goals))
+        self._services["go_to"](goals=str(goals))
 
     def get_positions(self, cf_list=None):
         """Get current position of crazyflies
