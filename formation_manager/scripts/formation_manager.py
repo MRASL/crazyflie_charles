@@ -440,7 +440,13 @@ if __name__ == '__main__':
     rospy.loginfo('Formation: Initialization...')
 
     # Get params
-    CF_LIST = rospy.get_param("cf_list")
+    while True: # Make sure cf_list has been set by `swarm_controller`
+        try:
+            CF_LIST = rospy.get_param("cf_list")
+            break
+        except KeyError:
+            pass
+
     MIN_DIST = rospy.get_param("formation")["formation_min_dist"]
     START_GOAL = rospy.get_param("formation")["formation_start_pos"]
 

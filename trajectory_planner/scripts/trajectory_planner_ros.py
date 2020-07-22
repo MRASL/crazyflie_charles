@@ -242,7 +242,12 @@ if __name__ == '__main__':
     rospy.init_node('trajectory_planner', anonymous=False)
 
     # Get params
-    CF_LIST = rospy.get_param("cf_list")
+    while True: # Make sure cf_list has been set by `swarm_controller`
+        try:
+            CF_LIST = rospy.get_param("cf_list")
+            break
+        except KeyError:
+            pass
 
     SOLVER_ARGS = rospy.get_param("trajectory_solver")
 

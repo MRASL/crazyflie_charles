@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Script to launch each Crazyflie radio link
+Script to launch `.launch` files from Python.
 
 Options:
     -n: To specify number of CFs in the swarm
@@ -61,7 +61,7 @@ def get_args(group_name, args_dict):
     return args_list
 
 def launch_swarm(cf_list):
-    """Launch CF node for each crazyflie
+    """Launch each CF node.
 
     Args:
         cf_list (list of str): Name of all CF
@@ -87,3 +87,6 @@ def launch_swarm(cf_list):
 
         launch_file(uuid, cli_add_cf)
         base_address = base_address + 1
+
+def launch_joystick():
+    pass

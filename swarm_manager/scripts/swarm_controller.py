@@ -89,12 +89,12 @@ from state_machine import StateMachine
 from crazyflie import yaw_from_quat
 from swarm_manager.srv import SetParam
 
-from launch_swarm import launch_swarm
+from launch_file_api import launch_swarm
 
 class SwarmController(object):
     """Python API for easy control of the swarm.
     """
-    def __init__(self, cf_list, to_sim):
+    def __init__(self):
         """
         Args:
             cf_list (list of str): Name of all CFs in the swarm
@@ -105,14 +105,14 @@ class SwarmController(object):
         self.crazyflies = {} # type: Dict[str, CrazyfliePy]
         #: Keys are name of the CF
 
-        self._to_sim = to_sim   #: bool: True if in simulation
+        self._to_sim = rospy.get_param("~to_sim", "False") #: bool: True if in simulation
         self.rate = rospy.Rate(10) #: Rate: Rate to publish messages
-        self.cf_list = cf_list #: List of str: List of all cf names in the swarm
+        self.cf_list = rospy.get_param("cf_list") #: List of str: List of all cf names in the swarm
 
         self.joy_swarm_vel = Twist() #: Twist: Velocity received from joystick
 
         # Initialize each Crazyflie
-        for each_cf in cf_list:
+        for each_cf in self.cf_list:
             self.crazyflies[each_cf] = CrazyfliePy(each_cf)
 
         self._init_params()
@@ -140,7 +140,7 @@ class SwarmController(object):
 
         # Find all possible formations and initialize swarm to 'line'
         self.formation_list = self.formation_services["get_list"]().formations.split(',')
-        self.formation = "circle"
+        self.formation = "line"
         self.extra_cf_list = [] #: list of str: ID of extra CF
         self.landed_cf_ids = [] #: list of str: Swarm Id of landed CFs
 
@@ -922,8 +922,6 @@ if __name__ == '__main__':
     CF_LIST = generate_cf_list(rospy.get_param("swarm")["n_cf"])
     rospy.set_param("cf_list", CF_LIST)
 
-    TO_SIM = rospy.get_param("~to_sim", "False")
-
     TAKE_OFF_HEIGHT = rospy.get_param("swarm")["take_off_height"]
     GND_HEIGHT = rospy.get_param("swarm")["gnd_height"]
     MIN_CF_DIST = rospy.get_param("swarm")["min_dist"]
@@ -933,7 +931,7 @@ if __name__ == '__main__':
     launch_swarm(CF_LIST)
 
     # Initialize swarm
-    SWARM = SwarmController(CF_LIST, TO_SIM)
+    SWARM = SwarmController()
 
     while not rospy.is_shutdown():
         SWARM.control_swarm()
