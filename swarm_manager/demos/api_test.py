@@ -20,6 +20,19 @@ if __name__ == "__main__":
 
     swarm.start_joystick()
 
+    swarm.link_joy_button("S", swarm.take_off)
+    swarm.link_joy_button("X", swarm.land)
+    swarm.link_joy_button("O", swarm.emergency)
+    # swarm.link_joy_button("T", swarm.toggle_ctrl_mode)
+    swarm.link_joy_button("R2", swarm.stop)
+
+    swarm.link_joy_button("DL", swarm.prev_formation)
+    swarm.link_joy_button("DR", swarm.next_formation)
+    swarm.link_joy_button("DU", swarm.inc_scale)
+    swarm.link_joy_button("DD", swarm.dec_scale)
+
+
+
     # print "Take off"
     # swarm.take_off()
     # time.sleep(10)

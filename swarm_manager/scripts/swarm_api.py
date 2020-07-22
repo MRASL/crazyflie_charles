@@ -11,9 +11,10 @@ TODO:
         - [ ] Get pose
         - [ ] Get initial pose
     - [ ] Control avec joystick
-        - [ ] Init joystick node
-        - [ ] Link buttons and functions
-        - [ ] Link
+        - [x] Init joystick node
+        - [x] Link buttons and functions
+        - [x] Link d_pad
+        - [ ] Relative ctrl mode
     - [ ] Modes de controle
         - [ ] Formation (meme chose que maintenant)
         - [ ] Manuel (comme avec CF client)
@@ -35,6 +36,9 @@ class SwarmAPI(object):
 
         self._services = {}
         self._init_services()
+
+        self.joy_type = None
+        self.joy_buttons = None
 
     def _init_services(self):
         # Subscribe to srvs
@@ -65,14 +69,49 @@ class SwarmAPI(object):
         self._services[service_name] = rospy.ServiceProxy('/%s' % service_name, service_type)
 
     # Joystick
-    @staticmethod
-    def start_joystick():
-        """Start joystick node
+    def start_joystick(self, joy_type="ds4"):
+        """Initialize joystick node
+
+        Possible types are:
+            - ds4
+
+        Args:
+            joy_type (str, optional): Controller type. Defaults to "ds4".
         """
-        launch_joystick("ds4")
+        self.joy_type = joy_type
+
+        launch_joystick(joy_type)
+
+        self.joy_buttons = {}
+
+        # Add buttons
+        for _, button in rospy.get_param(joy_type)["buttons"].items():
+            self.joy_buttons[button] = None
+
+        # Add buttons on a axis
+        for _, button in rospy.get_param(joy_type)["buttons_axes"].items():
+            self.joy_buttons[button] = None
+
+    def link_joy_button(self, button_name, func):
+        """Link a button to a function call
+
+        Args:
+            button_name (str): Name of button
+            func (Callable): Function to call
+        """
+        if button_name not in self.joy_buttons.keys():
+            raise KeyError("Invalid button name %s for controller %s"%(button_name, self.joy_type))
+
+        else:
+            self.joy_buttons[button_name] = func
 
     def _button_srv(self, srv_req):
         print srv_req.button
+
+        func = self.joy_buttons[srv_req.button]
+
+        if func is not None:
+            func()
 
         return {}
 

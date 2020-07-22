@@ -34,6 +34,7 @@ import rospy
 
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist
+from swarm_manager.srv import JoyButton
 
 from crazyflie_driver.srv import UpdateParams
 from std_srvs.srv import Empty
@@ -53,8 +54,6 @@ RS = 11
 # - mean buttons are inversed
 PAD_L_R = -9
 PAD_U_D = 10
-
-#! Only cf1 name is supported for teleop TODO #16
 
 class Axis(object):
     """Represents an axis
@@ -114,6 +113,16 @@ class Controller(object):
 
         # Axis parameters
         joy_params = rospy.get_param(joy_type)
+        self._button_mapping = joy_params["buttons"]
+        self._button_axes_mapping = joy_params["buttons_axes"]
+
+        # Convert keys to int
+        for key in self._button_mapping.keys():
+            self._button_mapping[int(key)] = self._button_mapping.pop(key)
+
+        for key in self._button_axes_mapping.keys():
+            self._button_axes_mapping[int(key)] = self._button_axes_mapping.pop(key)
+
         self.axes = Axes()
 
         self.axes.x_axis.axis_num = joy_params["axes"]["x"]
@@ -150,32 +159,9 @@ class Controller(object):
         # Find services
         rospy.loginfo("Joy: waiting for services...")
 
-        rospy.wait_for_service('/swarm_emergency')
-        self._emergency = rospy.ServiceProxy('/swarm_emergency', Empty)
+        rospy.wait_for_service('/joy_button')
+        self._button_pressed = rospy.ServiceProxy('/joy_button', JoyButton)
 
-        rospy.wait_for_service('/land_swarm')
-        self._land = rospy.ServiceProxy('/land_swarm', Empty)
-
-        rospy.wait_for_service('/take_off_swarm')
-        self._takeoff = rospy.ServiceProxy('/take_off_swarm', Empty)
-
-        rospy.wait_for_service('/stop_swarm')
-        self._stop = rospy.ServiceProxy('/stop_swarm', Empty)
-
-        rospy.wait_for_service('/inc_swarm_scale')
-        self._formation_inc_scale = rospy.ServiceProxy('/inc_swarm_scale', Empty)
-
-        rospy.wait_for_service('/dec_swarm_scale')
-        self._formation_dec_scale = rospy.ServiceProxy('/dec_swarm_scale', Empty)
-
-        rospy.wait_for_service('/toggle_ctrl_mode')
-        self._toggle_abs_ctrl_mode = rospy.ServiceProxy('/toggle_ctrl_mode', Empty)
-
-        rospy.wait_for_service('/next_swarm_formation')
-        self._next_swarm_formation = rospy.ServiceProxy('/next_swarm_formation', Empty)
-
-        rospy.wait_for_service('/prev_swarm_formation')
-        self._prev_swarm_formation = rospy.ServiceProxy('/prev_swarm_formation', Empty)
         rospy.loginfo("Joy: found services")
 
     def _joy_changed(self, data):
@@ -212,65 +198,25 @@ class Controller(object):
             Cross: Land
         """
 
-        for i in range(0, len(buttons_data)):
-            if self._buttons is None or buttons_data[i] != self._buttons[i]: # If button changed
-                if i == CIRCLE and buttons_data[i] == 1:
-                    self._emergency()
-
-                if i == CROSS and buttons_data[i] == 1:
-                    self._land()
-
-                if i == SQUARE and buttons_data[i] == 1:
-                    self._take_off_swarm()
-
-                if i == R2 and buttons_data[i] == 1:
-                    self._stop()
-
-                if i == TRIANGLE and buttons_data[i] == 1:
-                    self._toggle_abs_ctrl_mode()
-
-                # if i == self._L2 and buttonsData[i] == 1:
-                #     value = int(rospy.get_param("ring/headlightEnable"))
-                #     if value == 0:
-                #         rospy.set_param("ring/headlightEnable", 1)
-                #     else:
-                #         rospy.set_param("ring/headlightEnable", 0)
-                #     self._update_params(["ring/headlightEnable"])
-                #     rospy.loginfo('Head light: %s'  % (not value))
+        for idx, cur_val in enumerate(buttons_data):
+            if self._buttons is None or cur_val != self._buttons[idx]: # If button changed
+                if cur_val == 1:
+                    self._button_pressed(button=self._button_mapping[idx])
 
         self._buttons = buttons_data
 
     def _get_buttons_axes(self, axes_data):
-        for i in range(0, len(axes_data)):
-            # If button changed
-            if self._buttons_axes is None or axes_data[i] != self._buttons_axes[i]:
-                if i == abs(PAD_U_D):
-                    val = axes_data[i]
-                    if PAD_U_D < 0:
-                        val = val*-1
+        for idx, cur_val in enumerate(axes_data):
+            # Check axis is a button
+            if idx in self._button_axes_mapping.keys():
+                # If button changed
+                if self._buttons_axes is None or cur_val != self._buttons_axes[idx]:
 
-                    if val == -1:
-                        self._formation_dec_scale()
-                    elif val == 1:
-                        self._formation_inc_scale()
-
-                if i == abs(PAD_L_R):
-                    # Change formation
-                    val = axes_data[i]
-                    if PAD_L_R < 0:
-                        val = val*-1
-
-                    if val == -1:
-                        self._prev_swarm_formation()
-                    elif val == 1:
-                        self._next_swarm_formation()
+                    # If button is pressed
+                    if abs(cur_val) == 1:
+                        self._button_pressed(button=self._button_axes_mapping[idx*cur_val])
 
         self._buttons_axes = axes_data
-
-    def _take_off_swarm(self):
-        """Take off all the CF in the swarm
-        """
-        self._takeoff()
 
     def execute(self):
         """Loop as long as alive
