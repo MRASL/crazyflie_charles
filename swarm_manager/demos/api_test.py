@@ -3,6 +3,7 @@
 
 import os
 import time
+import rospy
 
 # pylint: disable=invalid-name
 # pylint: disable=wrong-import-position
@@ -17,16 +18,20 @@ from swarm_api import SwarmAPI
 if __name__ == "__main__":
     swarm = SwarmAPI()
 
-    print "Take off"
-    swarm.take_off()
-    time.sleep(10)
+    swarm.start_joystick()
 
-    print "Circle"
-    swarm.next_formation()
-    time.sleep(5)
+    # print "Take off"
+    # swarm.take_off()
+    # time.sleep(10)
 
-    swarm.inc_scale()
-    time.sleep(5)
+    # print "Circle"
+    # swarm.next_formation()
+    # time.sleep(5)
 
-    print "Land"
-    swarm.land()
+    # swarm.inc_scale()
+    # time.sleep(5)
+
+    # print "Land"
+    # swarm.land()
+
+    rospy.spin()

@@ -1,0 +1,18 @@
+ds4:
+  axes: # Axes start at 0
+    x: 1
+    y: 0
+    z: 5
+    yaw: 2
+
+  max_vel:
+    x: 30
+    y: -30
+    z: 60000
+    yaw: -200
+
+  max_goal:
+    x: 0.20
+    y: 0.20
+    z: 0.10
+    yaw: 0.20

@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="to_sim" default="True" />
-    <arg name="joy_dev" default="/dev/input/js0" />
     <arg name="to_save" default="False" />
 
     <rosparam command="load" file="$(find swarm_manager)/launch/swarm_conf.yaml" />
@@ -11,11 +10,6 @@
         <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
         </include>
     </group>
-
-    <!-- Initiate joystick -->
-    <node name="joy" pkg="joy" type="joy_node" output="screen" >
-        <param name="dev" value="$(arg joy_dev)" />
-    </node>
 
     <!-- Launch swarm controller-->
     <node name="swarm_controller" pkg="swarm_manager" type="swarm_controller.py" output="screen">

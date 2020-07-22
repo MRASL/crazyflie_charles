@@ -88,5 +88,16 @@ def launch_swarm(cf_list):
         launch_file(uuid, cli_add_cf)
         base_address = base_address + 1
 
-def launch_joystick():
-    pass
+def launch_joystick(joy_type):
+    """Launch joystick controller
+
+    Args:
+        joy_type (str): Joystick type
+    """
+    print "Launching joystick controller"
+    uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+    roslaunch.configure_logging(uuid)
+
+    cli_add_cf = ['swarm_manager', 'joy.launch', 'joy_type:=' + joy_type]
+
+    launch_file(uuid, cli_add_cf)

@@ -87,17 +87,15 @@ class Axes(object):
 class Controller(object):
     """Interface with the joystick
     """
-    def __init__(self, joy_topic, to_sim, teleop):
+    def __init__(self, joy_topic, joy_type):
         """Init
 
         Args:
             joy_topic (str): Topic with joystick values
-            to_sim (bool): True if simulation is activated
             teleop (bool): True if CF is to be controlled directly /w controller
         """
         # Attributes
 
-        self._to_sim = to_sim #: bool
         self._buttons = None  #: list: previous state of the buttons
         self._to_teleop = False #: bool: in automatic or teleop
         self.rate = rospy.Rate(100) #: rospy.Rate: Publishing rate
@@ -111,30 +109,27 @@ class Controller(object):
         rospy.Subscriber(joy_topic, Joy, self._joy_changed)
 
         # Publisher
-        # TODO Update to publish on cf_names from params
-        if not to_sim:
-            self.vel_publisher = rospy.Publisher("cf1/cmd_vel", Twist, queue_size=1)
-            self.cf_vel_msg = Twist()
-
         self.goal_vel_publisher = rospy.Publisher("/joy_swarm_vel", Twist, queue_size=1)
         self.goal_vel_msg = Twist()
 
         # Axis parameters
+        joy_params = rospy.get_param(joy_type)
         self.axes = Axes()
-        self.axes.x_axis.axis_num = rospy.get_param("~x_axis", 4)
-        self.axes.y_axi.axis_num = rospy.get_param("~y_axis", 3)
-        self.axes.z_axis.axis_num = rospy.get_param("~z_axis", 2)
-        self.axes.yaw_axis.axis_num = rospy.get_param("~yaw_axis", 1)
 
-        self.axes.x_axis.max_vel = rospy.get_param("~x_velocity_max", 2.0)
-        self.axes.y_axi.max_vel = rospy.get_param("~y_velocity_max", 2.0)
-        self.axes.z_axis.max_vel = rospy.get_param("~z_velocity_max", 2.0)
-        self.axes.yaw_axis.max_vel = rospy.get_param("~yaw_velocity_max", 2.0)
+        self.axes.x_axis.axis_num = joy_params["axes"]["x"]
+        self.axes.y_axi.axis_num = joy_params["axes"]["y"]
+        self.axes.z_axis.axis_num = joy_params["axes"]["z"]
+        self.axes.yaw_axis.axis_num = joy_params["axes"]["yaw"]
 
-        self.axes.x_axis.max_goal = rospy.get_param("~x_goal_max", 0.05)
-        self.axes.y_axi.max_goal = rospy.get_param("~y_goal_max", 0.05)
-        self.axes.z_axis.max_goal = rospy.get_param("~z_goal_max", 0.05)
-        self.axes.yaw_axis.max_goal = rospy.get_param("~yaw_goal_max", 0.05)
+        self.axes.x_axis.max_vel = joy_params["max_vel"]["x"]
+        self.axes.y_axi.max_vel = joy_params["max_vel"]["y"]
+        self.axes.z_axis.max_vel = joy_params["max_vel"]["z"]
+        self.axes.yaw_axis.max_vel = joy_params["max_vel"]["yaw"]
+
+        self.axes.x_axis.max_goal = joy_params["max_goal"]["x"]
+        self.axes.y_axi.max_goal = joy_params["max_goal"]["y"]
+        self.axes.z_axis.max_goal = joy_params["max_goal"]["z"]
+        self.axes.yaw_axis.max_goal = joy_params["max_goal"]["yaw"]
 
     def _init_services(self):
         """Init services
@@ -319,8 +314,8 @@ if __name__ == '__main__':
     rospy.init_node('joy_controller', anonymous=False)
 
     JOY_TOPIC = rospy.get_param("~joy_topic", "joy")
-    TO_SIM = rospy.get_param("~to_sim", "False")
-    TELEOP = rospy.get_param("~teleop", "False")
-    CONTROLLER = Controller(JOY_TOPIC, TO_SIM, TELEOP)
+    JOY_TYPE = rospy.get_param("~joy_type", "ds4")
+
+    CONTROLLER = Controller(JOY_TOPIC, JOY_TYPE)
 
     CONTROLLER.execute()

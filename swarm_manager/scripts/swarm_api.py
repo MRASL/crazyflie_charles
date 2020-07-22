@@ -4,7 +4,6 @@ This class is needed since the `SwarmController` needs to constantly publish eac
 
 
 TODO:
-    - [ ] Meme control mais avec l'api
     - [ ] Methodes a implementer
         - [ ] Set formation
         - [ ] Set formation goal
@@ -23,6 +22,9 @@ TODO:
 
 import rospy
 from std_srvs.srv import Empty
+from swarm_manager.srv import JoyButton
+
+from launch_file_api import launch_joystick
 
 class SwarmAPI(object):
     """API class to control the swarm
@@ -35,6 +37,7 @@ class SwarmAPI(object):
         self._init_services()
 
     def _init_services(self):
+        # Subscribe to srvs
         rospy.loginfo("API: waiting for services")
         self._link_service('swarm_emergency', Empty)
         self._link_service('stop_swarm', Empty)
@@ -48,6 +51,9 @@ class SwarmAPI(object):
 
         rospy.loginfo("API: services found")
 
+        # Start services
+        rospy.Service('/joy_button', JoyButton, self._button_srv)
+
     def _link_service(self, service_name, service_type):
         """Link service
 
@@ -59,8 +65,16 @@ class SwarmAPI(object):
         self._services[service_name] = rospy.ServiceProxy('/%s' % service_name, service_type)
 
     # Joystick
-    def start_joystick(self):
-        pass
+    @staticmethod
+    def start_joystick():
+        """Start joystick node
+        """
+        launch_joystick("ds4")
+
+    def _button_srv(self, srv_req):
+        print srv_req.button
+
+        return {}
 
     # Methods
     def take_off(self):
