@@ -75,19 +75,23 @@ Etapes generales:
         - [x] Land
 """
 
+import ast
 import rospy
 import numpy as np
 from numpy import dot
 from numpy.linalg import norm, inv
 
 from geometry_msgs.msg import Twist, PoseStamped
-from std_srvs.srv import Empty, SetBool
 from std_msgs.msg import String
-from crazyflie_charles.srv import SetFormation, GetFormationList, SetPositions
 from crazyflie_driver.msg import Position
+
+from std_srvs.srv import Empty, SetBool
+from swarm_manager.srv import SetParam, SetGoals, GetPositions
+from formation_manager.srv import SetFormation, GetFormationList
+from trajectory_planner.srv import SetPositions
+
 from state_machine import StateMachine
 from crazyflie import yaw_from_quat
-from swarm_manager.srv import SetParam
 
 from launch_file_api import launch_swarm
 
@@ -162,7 +166,11 @@ class SwarmController(object):
         rospy.Service('/stop_swarm', Empty, self._stop_swarm_srv)
         rospy.Service('/take_off_swarm', Empty, self._take_off_swarm_srv)
         rospy.Service('/land_swarm', Empty, self._land_swarm_srv)
+        rospy.Service('/set_goals', SetGoals, self._set_goals_srv)
+        rospy.Service('/get_positions', GetPositions, self._get_positions_srv)
 
+
+        rospy.Service('/set_swarm_formation', SetFormation, self._set_formation_srv)
         rospy.Service('/next_swarm_formation', Empty, self._next_swarm_formation_srv)
         rospy.Service('/prev_swarm_formation', Empty, self._prev_swarm_formation_srv)
         rospy.Service('/inc_swarm_scale', Empty, self._inc_swarm_scale_srv)
@@ -267,10 +275,63 @@ class SwarmController(object):
         self.go_to_formation(True)
         return {}
 
+    def _set_goals_srv(self, srv_req):
+        goals = ast.literal_eval(srv_req.goals)
+
+        for goal_id, goal_val in goals.items():
+            if goal_id == "formation":
+                print "Formation goal: {}".format(goal_val)
+
+            elif goal_id in self.cf_list:
+                print "{} goal: {}".format(goal_id, goal_val)
+                self.crazyflies[goal_id].goals["goal"].x = goal_val[0]
+                self.crazyflies[goal_id].goals["goal"].y = goal_val[1]
+                self.crazyflies[goal_id].goals["goal"].z = goal_val[2]
+                self.crazyflies[goal_id].goals["goal"].yaw = goal_val[3]
+
+            else:
+                rospy.logerr("%s: Invalid goal name" % goal_id)
+
+        return {}
+
+    def _get_positions_srv(self, srv_req):
+        cf_list = ast.literal_eval(srv_req.cf_list)
+
+        # If not list is passed, send position of all CFs
+        if not cf_list:
+            cf_list = self.cf_list
+
+        positions = {}
+        for each_cf in cf_list:
+            if each_cf in self.cf_list:
+                pose = self.crazyflies[each_cf].pose.pose
+                positions[each_cf] = [pose.position.x,
+                                      pose.position.y,
+                                      pose.position.z,
+                                      yaw_from_quat(pose.orientation)]
+
+            else:
+                rospy.logerr("%s: Invalid crazyflie name" % each_cf)
+
+        return {"positions":str(positions)}
+
     def _follow_traj_srv(self, _):
         """Follow a trajectory
         """
         self.state_machine.set_state("follow_traj")
+        return {}
+
+    def _set_formation_srv(self, srv_req):
+        if self.state_machine.in_state("in_formation"):
+            new_formation = srv_req.formation
+
+            if new_formation not in self.formation_list:
+                rospy.logerr("%s: Invalid formation" % new_formation)
+
+            else:
+                self.formation = new_formation
+                self.update_formation()
+
         return {}
 
     def _next_swarm_formation_srv(self, _):

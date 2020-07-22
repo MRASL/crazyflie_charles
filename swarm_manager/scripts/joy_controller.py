@@ -29,59 +29,11 @@ Publisher:
     - /joy_swarm_vel: Velocity of the swarm
 
 """
-
 import rospy
 
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist
 from swarm_manager.srv import JoyButton
-
-from crazyflie_driver.srv import UpdateParams
-from std_srvs.srv import Empty
-
-# Button mapping of DS4
-SQUARE = 0
-CROSS = 1
-CIRCLE = 2
-TRIANGLE = 3
-L1 = 4
-R1 = 5
-L2 = 6
-R2 = 7
-LS = 10
-RS = 11
-
-# - mean buttons are inversed
-PAD_L_R = -9
-PAD_U_D = 10
-
-class Axis(object):
-    """Represents an axis
-
-    Attributes:
-        axis_num (int): Index of the axis to read
-        max_vel (int): Maximum value for velocity control
-        max_goal (int): Maximum value for goal control
-    """
-    def __init__(self):
-        self.axis_num = 0
-        self.max_vel = 0
-        self.max_goal = 0
-
-class Axes(object):
-    """All the axis of a CF
-
-    Attributes:
-        x (Axis): X axis
-        y (Axis): Y axis
-        z (Axis): Z axis
-        yaw (Axis): Yaw axis
-    """
-    def __init__(self):
-        self.x_axis = Axis()
-        self.y_axi = Axis()
-        self.z_axis = Axis()
-        self.yaw_axis = Axis()
 
 class Controller(object):
     """Interface with the joystick
@@ -96,10 +48,9 @@ class Controller(object):
         # Attributes
 
         self._buttons = None  #: list: previous state of the buttons
-        self._to_teleop = False #: bool: in automatic or teleop
-        self.rate = rospy.Rate(100) #: rospy.Rate: Publishing rate
-
         self._buttons_axes = None #: list: previous sate of the buttons on the axes
+
+        self.rate = rospy.Rate(10) #: rospy.Rate: Publishing rate
 
         # Init services
         self._init_services()
@@ -206,6 +157,11 @@ class Controller(object):
         self._buttons = buttons_data
 
     def _get_buttons_axes(self, axes_data):
+        """Find pressed buttons that are on an axis
+
+        Args:
+            axes_data (list): All axes values
+        """
         for idx, cur_val in enumerate(axes_data):
             # Check axis is a button
             if idx in self._button_axes_mapping.keys():
@@ -225,6 +181,34 @@ class Controller(object):
             self.goal_vel_publisher.publish(self.goal_vel_msg)
 
             self.rate.sleep()
+
+class Axis(object):
+    """Represents an axis
+
+    Attributes:
+        axis_num (int): Index of the axis to read
+        max_vel (int): Maximum value for velocity control
+        max_goal (int): Maximum value for goal control
+    """
+    def __init__(self):
+        self.axis_num = 0
+        self.max_vel = 0
+        self.max_goal = 0
+
+class Axes(object):
+    """All the axis of a CF
+
+    Attributes:
+        x (Axis): X axis
+        y (Axis): Y axis
+        z (Axis): Z axis
+        yaw (Axis): Yaw axis
+    """
+    def __init__(self):
+        self.x_axis = Axis()
+        self.y_axi = Axis()
+        self.z_axis = Axis()
+        self.yaw_axis = Axis()
 
 def get_axis(axes_data, axis_to_read, in_teleop=True):
     """Find the value of the axis
