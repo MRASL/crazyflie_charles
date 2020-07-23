@@ -14,8 +14,10 @@ from crazyflie_driver.msg import Position
 class Recorder(object):
     """To record flight data of all CFs
     """
-    def __init__(self, cf_list):
+    def __init__(self, cf_list, to_save):
         self.cf_list = cf_list
+        self.to_save = to_save
+
         self.data_id = '0'
         self.data_path = None
         self.data_base_name = 'flight_data_'
@@ -78,17 +80,27 @@ class Recorder(object):
     def on_shutdown(self):
         """To save data upon exit
         """
-        user_cmd = raw_input("\nSave data? (y/n): ")
+        # user_cmd = raw_input("\nSave data? (y/n): ")
 
-        if user_cmd == 'y':
+        # if user_cmd == 'y':
+            # self._save_data()
+
+        if self.to_save:
             self._save_data()
 
 if __name__ == '__main__':
     # Launch node
     rospy.init_node('flight_recorder', anonymous=False)
 
-    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
+    while True: # Make sure cf_list has been set by `swarm_controller`
+        try:
+            CF_LIST = rospy.get_param("cf_list")
+            break
+        except KeyError:
+            pass
 
-    REC = Recorder(CF_LIST)
+    TO_SAVE = rospy.get_param("~to_save", "False")
+
+    REC = Recorder(CF_LIST, TO_SAVE)
     rospy.on_shutdown(REC.on_shutdown)
     rospy.spin()

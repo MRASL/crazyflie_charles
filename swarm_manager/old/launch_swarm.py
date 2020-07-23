@@ -72,11 +72,13 @@ if __name__ == '__main__':
     parser.add_argument('-n', type=int, help='Number of crazyflie in the swarm', default=1)
     parser.add_argument('--sim', '-s', action='store_true', help='Flag to launch in simulation')
     parser.add_argument('--first-id', '-f', type=int, help='ID of first CF in swarm', default=0)
+    parser.add_argument('--save', action='store_true', help='To save flight data', default=False)
 
     args = parser.parse_args()
     n_cf = args.n
     to_sim = args.sim
     first_uri = args.first_id
+    to_save = args.save
 
     # Read arguments from yaml file
     parentdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -96,7 +98,7 @@ if __name__ == '__main__':
 
     # Launch server
     cli_server = ['swarm_manager', 'init_server.launch', 'cf_list:='+str(cf_list),
-                  'to_sim:=%s' % to_sim]
+                  'to_sim:=%s' % to_sim, 'to_save:=%s' % to_save]
 
     server_args = get_args('crazyflie', yaml_conf)
     formation_args = get_args('formation', yaml_conf)

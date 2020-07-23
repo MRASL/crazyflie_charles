@@ -242,34 +242,14 @@ if __name__ == '__main__':
     rospy.init_node('trajectory_planner', anonymous=False)
 
     # Get params
-    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
+    while True: # Make sure cf_list has been set by `swarm_controller`
+        try:
+            CF_LIST = rospy.get_param("cf_list")
+            break
+        except KeyError:
+            pass
 
-    SOLVER_ARGS = {}
-    SOLVER_ARGS['max_acc'] = rospy.get_param("~max_acc")
-    SOLVER_ARGS['min_acc'] = rospy.get_param("~min_acc")
-    SOLVER_ARGS['max_pos'] = rospy.get_param("~max_pos")
-    SOLVER_ARGS['min_pos'] = rospy.get_param("~min_pos")
-
-    SOLVER_ARGS['max_time'] = rospy.get_param("~max_time")
-    SOLVER_ARGS['goal_thres'] = rospy.get_param("~goal_thres")
-    SOLVER_ARGS['r_min'] = rospy.get_param("~r_min")
-    SOLVER_ARGS['step_interval'] = rospy.get_param("~step_interval")
-    SOLVER_ARGS['interp_step'] = rospy.get_param("~interp_step")
-    SOLVER_ARGS['horizon_time'] = rospy.get_param("~horizon_time")
-    SOLVER_ARGS['col_radius_ratio'] = rospy.get_param("~col_radius_ratio")
-
-    SOLVER_ARGS['goal_agg'] = rospy.get_param("~goal_agg")
-    SOLVER_ARGS['error_weight'] = rospy.get_param("~error_weight")
-    SOLVER_ARGS['effort_weight'] = rospy.get_param("~effort_weight")
-    SOLVER_ARGS['input_weight'] = rospy.get_param("~input_weight")
-    SOLVER_ARGS['relax_weight_sq'] = rospy.get_param("~relax_weight_sq")
-    SOLVER_ARGS['relax_weight_lin'] = rospy.get_param("~relax_weight_lin")
-
-    SOLVER_ARGS['relax_max'] = rospy.get_param("~relax_max")
-    SOLVER_ARGS['relax_min'] = rospy.get_param("~relax_min")
-    SOLVER_ARGS['relax_inc'] = rospy.get_param("~relax_inc")
-
-    # print SOLVER_ARGS
+    SOLVER_ARGS = rospy.get_param("trajectory_solver")
 
     # Initialize planner
     PLANNER = TrajectoryPlanner(CF_LIST, SOLVER_ARGS)

@@ -58,6 +58,10 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   SetParam.srv
+  JoyButton.srv
+  SetGoals.srv
+  GetPositions.srv
+  SetMode.srv
 )
 
 ## Generate actions in the 'action' folder

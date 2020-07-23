@@ -414,8 +414,9 @@ if __name__ == '__main__':
     # Get params
     CF_ID = rospy.get_param("~cf_name", "cf_default")
     TO_SIM = rospy.get_param("~to_sim", "False")
-    TAKE_OFF_HEIGHT = rospy.get_param("~take_off_height")
-    GND_HEIGHT = rospy.get_param("~gnd_height")
+
+    TAKE_OFF_HEIGHT = rospy.get_param("/swarm")["take_off_height"]
+    GND_HEIGHT = rospy.get_param("/swarm")["gnd_height"]
 
     # Initialize cfx
     CF = Crazyflie(CF_ID, TO_SIM)

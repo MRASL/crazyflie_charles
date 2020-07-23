@@ -96,7 +96,7 @@ if __name__ == '__main__':
     # Launch node
     rospy.init_node('cf_sim', anonymous=False)
     CF_ID = rospy.get_param("~cf_name", "cf_default")
-    START_POSITION = rospy.get_param("~starting_position")
+    START_POSITION = rospy.get_param("/starting_positions")[CF_ID]
 
     # Get params
     CF_SIM = CrazyflieSim(CF_ID, START_POSITION)
