@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+"""Demo script to move swarm in formation.
 
-"""Test api
+Press 'O' in case of emergency.
+
+Move formation with joystick sticks
 """
 
 import os
-import time
 import rospy
 
 # pylint: disable=invalid-name
@@ -17,40 +18,15 @@ os.sys.path.insert(0, api_path)
 
 from swarm_api import SwarmAPI
 
-
-def formation_test():
-    """To test formation mode
+def init_joystick():
+    """Start joystick and link buttons
     """
-    print "Formation test"
-    swarm.set_mode("formation")
-    swarm.set_formation("line")
-    swarm.take_off()
-    time.sleep(7)
-    print "Moving formation"
-    swarm.go_to({'formation': [2, 2, 0.5, 0]})
-
-def automatic_test():
-    """To test automatic mode
-    """
-    swarm.set_mode("automatic")
-    swarm.take_off()
-    pose = swarm.get_positions()
-    goals = {}
-    goals["cf_0"] = pose["cf_1"]
-    goals["cf_1"] = pose["cf_0"]
-    swarm.go_to(goals)
-
-if __name__ == "__main__":
-    swarm = SwarmAPI()
-
     swarm.start_joystick()
 
     swarm.link_joy_button("S", swarm.take_off)
     swarm.link_joy_button("X", swarm.land)
     swarm.link_joy_button("O", swarm.emergency)
     swarm.link_joy_button("T", swarm.toggle_ctrl_mode)
-    swarm.link_joy_button("R2", swarm.stop)
-
 
     swarm.link_joy_button("DL", swarm.prev_formation)
     swarm.link_joy_button("DR", swarm.next_formation)
@@ -59,8 +35,19 @@ if __name__ == "__main__":
 
     swarm.link_joy_button("L2", swarm.set_formation, "v")
 
-    swarm.set_mode("automatic")
-    # swarm.link_joy_button("L1", formation_test)
-    swarm.link_joy_button("L1", automatic_test)
+if __name__ == "__main__":
+    swarm = SwarmAPI()
+
+    init_joystick()
+
+    print "Formation demo"
+    swarm.set_mode("formation")
+    swarm.set_formation("line")
+
+    swarm.take_off()
+    rospy.sleep(7)
+
+    print "Moving formation to (2, 2, 0.5)"
+    swarm.go_to({'formation': [2, 2, 0.5, 0]})
 
     rospy.spin()

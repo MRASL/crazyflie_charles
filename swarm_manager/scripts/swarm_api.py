@@ -1,26 +1,8 @@
+#!/usr/bin/env python
+
 """Python API to control the swarm.
 
 This class is needed since the `SwarmController` needs to constantly publish each CF goal.
-
-
-TODO:
-    - [x] Methodes a implementer
-        - [x] Set formation
-        - [x] Set formation goal
-        - [x] Set CF goals
-        - [x] Get pose
-        - [x] Relative ctrl mode
-    - [x] Controle avec joystick
-        - [x] Init joystick node
-        - [x] Link buttons and functions
-        - [x] Link d_pad
-    - [x] Modes de controle
-        - [x] Formation (meme chose que maintenant)
-        - [x] Automatic (Control goal, no joystick)
-    - [ ] Control de parametres
-    - [ ]Autre
-        - [ ] Fix landing
-        - [x] go_to for formation
 """
 import ast
 import rospy
@@ -148,7 +130,6 @@ class SwarmAPI(object):
             Will only take off landed CFs
 
         """
-        print "TAKE OFF"
         self._services["take_off_swarm"]()
 
     def stop(self):
