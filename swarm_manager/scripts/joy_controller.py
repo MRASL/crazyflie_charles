@@ -46,7 +46,6 @@ class Controller(object):
             teleop (bool): True if CF is to be controlled directly /w controller
         """
         # Attributes
-
         self._buttons = None  #: list: previous state of the buttons
         self._buttons_axes = None #: list: previous sate of the buttons on the axes
 
@@ -136,6 +135,8 @@ class Controller(object):
         self.goal_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis, False)
         self.goal_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis, False)
 
+        rospy.sleep(0.01)
+
     def _get_buttons(self, buttons_data):
         """Find pressed buttons
 
@@ -148,7 +149,6 @@ class Controller(object):
             Square: TakeOff
             Cross: Land
         """
-
         for idx, cur_val in enumerate(buttons_data):
             if self._buttons is None or cur_val != self._buttons[idx]: # If button changed
                 if cur_val == 1:

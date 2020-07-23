@@ -129,6 +129,8 @@ class SwarmAPI(object):
             self.joy_buttons[button_name] = [func, args, kwargs]
 
     def _button_srv(self, srv_req):
+        print "Button pressed: %s" % srv_req.button
+
         func = self.joy_buttons[srv_req.button][0]
         args = self.joy_buttons[srv_req.button][1]
         kwargs = self.joy_buttons[srv_req.button][2]
@@ -141,7 +143,12 @@ class SwarmAPI(object):
     # Methods
     def take_off(self):
         """ Take off all CFs
+
+        .. note::
+            Will only take off landed CFs
+
         """
+        print "TAKE OFF"
         self._services["take_off_swarm"]()
 
     def stop(self):

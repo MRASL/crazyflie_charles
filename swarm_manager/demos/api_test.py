@@ -57,6 +57,7 @@ if __name__ == "__main__":
 
     swarm.link_joy_button("L2", swarm.set_formation, "v")
 
+    swarm.set_mode("automatic")
     # swarm.link_joy_button("L1", formation_test)
     swarm.link_joy_button("L1", automatic_test)
 

@@ -149,7 +149,7 @@ class SwarmController(object):
                        "follow_traj": self._follow_traj_state,
                        "in_formation": self._in_formation_state,
                        "hover": self._hover_state,
-                       "land_swarm": self._land_state,}
+                       "landing": self._landing_state,}
         self._state_machine = StateMachine(_state_list)
         self._state_machine.set_state("landed")
 
@@ -381,6 +381,8 @@ class SwarmController(object):
         Args:
             land_swarm (bool): When True, land all CFs in swarm
         """
+        self._landed_cf_ids = []
+
         for cf_id, cf_vals in self.crazyflies.items():
             if land_swarm:
                 cf_initial_pose = cf_vals.initial_pose
@@ -585,7 +587,7 @@ class SwarmController(object):
         for _, each_cf in self.crazyflies.items():
             each_cf.update_goal()
 
-    def _land_state(self):
+    def _landing_state(self):
         """Land CF to their starting position
         """
         rospy.loginfo("Swarm: land")
@@ -648,8 +650,8 @@ class SwarmController(object):
     def _take_off_swarm_srv(self, _):
         """Take off all cf in swarm
         """
-        self._call_all_cf_service("take_off")
         self._update_cf_goal()
+        self._call_all_cf_service("take_off", cf_list=self._landed_cf_ids)
         self._wait_for_take_off()
         self._state_machine.set_state("hover")
 
@@ -662,7 +664,12 @@ class SwarmController(object):
     def _land_swarm_srv(self, _):
         """Land all cf in swarm
         """
+        # Bring swarm to initial pose
         self.go_to_goal(land_swarm=True)
+
+        # Land
+        self._after_traj_state = "landing"
+
         return {}
 
     def _set_mode_srv(self, mode_req):
