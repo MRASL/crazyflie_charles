@@ -76,6 +76,7 @@ Etapes generales:
 """
 
 import ast
+import queue
 import rospy
 import numpy as np
 from numpy import dot
@@ -116,6 +117,7 @@ class SwarmController(object):
             self.crazyflies[each_cf] = CrazyfliePy(each_cf)
 
         self._init_params()
+        self._stabilize_position()
 
         # Init services
         self.formation_services = {}
@@ -207,6 +209,58 @@ class SwarmController(object):
         self.update_swarm_param("stabilizer/estimator", 2) # Use EKF
         self.update_swarm_param("stabilizer/controller", 1) # 1: High lvl, 2: Mellinger
         self.update_swarm_param("kalman/resetEstimation", 1)
+
+    def _stabilize_position(self):
+        """To wait until position of all CFs is stable.
+
+        A CF position is considered stable when the variance of it's position in x, y and z is less
+        than a threshold.
+
+        The variance is calculated over the past 10 sec (10 data)
+        """
+        rospy.loginfo("Swarm: Waiting for position to stabilize...")
+        threshold = 0.1
+
+        positions = {}
+        var_list = {}
+
+        position_stable = False
+        queue_full = False
+
+        # Initialize position history
+        for cf_id in self.crazyflies:
+            queue_dict = {}
+            queue_dict['x'] = queue.Queue(10)
+            queue_dict['y'] = queue.Queue(10)
+            queue_dict['z'] = queue.Queue(10)
+
+            positions[cf_id] = queue_dict
+
+        while not position_stable:
+            for cf_id, cf_info in self.crazyflies.items():
+                cf_pose = cf_info.pose.pose
+
+                if positions[cf_id]['x'].full():
+                    queue_full = True
+                    positions[cf_id]['x'].get()
+                    positions[cf_id]['y'].get()
+                    positions[cf_id]['z'].get()
+
+                positions[cf_id]['x'].put(cf_pose.position.x)
+                positions[cf_id]['y'].put(cf_pose.position.y)
+                positions[cf_id]['z'].put(cf_pose.position.z)
+
+                if queue_full:
+                    var_list[cf_id] = max([np.var(positions[cf_id]['x'].queue),
+                                           np.var(positions[cf_id]['y'].queue),
+                                           np.var(positions[cf_id]['z'].queue)])
+
+            if queue_full:
+                max_var = max([v for _, v in var_list.items()])
+                if max_var < threshold:
+                    position_stable = True
+
+        rospy.loginfo("Swarm: All CF position stable")
 
     # Methods
     def control_swarm(self):
