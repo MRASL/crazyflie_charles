@@ -14,17 +14,18 @@ TODO:
         - [x] Init joystick node
         - [x] Link buttons and functions
         - [x] Link d_pad
-    - [ ] Modes de controle
+    - [x] Modes de controle
         - [x] Formation (meme chose que maintenant)
-        - [ ] Automatic (Control goal, no joystick)
-        - Futur:
-            - [ ] Manuel (comme avec CF client)
-            - [ ] Assisted (control le deplacement)
+        - [x] Automatic (Control goal, no joystick)
+    - [ ] Control de parametres
+    - [ ]Autre
+        - [ ] Fix landing
+        - [x] go_to for formation
 """
 import ast
 import rospy
 from std_srvs.srv import Empty
-from swarm_manager.srv import JoyButton, SetGoals, GetPositions
+from swarm_manager.srv import JoyButton, SetGoals, GetPositions, SetMode
 from formation_manager.srv import SetFormation
 
 from launch_file_api import launch_joystick
@@ -50,6 +51,7 @@ class SwarmAPI(object):
         self._link_service('take_off_swarm', Empty)
         self._link_service('land_swarm', Empty)
 
+        self._link_service('set_mode', SetMode)
         self._link_service('go_to', SetGoals)
         self._link_service('get_positions', GetPositions)
 
@@ -94,11 +96,11 @@ class SwarmAPI(object):
 
         # Add buttons
         for _, button in rospy.get_param(joy_type)["buttons"].items():
-            self.joy_buttons[button] = None
+            self.joy_buttons[button] = [None, None, None]
 
         # Add buttons on a axis
         for _, button in rospy.get_param(joy_type)["buttons_axes"].items():
-            self.joy_buttons[button] = None
+            self.joy_buttons[button] = [None, None, None]
 
     def link_joy_button(self, button_name, func, args=None, kwargs=None):
         """Link a button to a function call
@@ -156,6 +158,30 @@ class SwarmAPI(object):
         """Land all CFs
         """
         self._services["land_swarm"]()
+
+    def set_mode(self, new_mode):
+        """Set `SwarmController` control mode.
+
+        Possible modes are:
+            - Automatic: CF will plot trajectory to new goals. go_to commands from script
+            - Formation: Swarm moves in formation. Formation position changed /w joystick
+
+        Not implemented:
+            - Pilot: Like CF client. No formation
+            - Assisted: Control change of position /w joystick. No formation
+
+
+        * Modes are not case sensitive
+
+        Args:
+            new_mode (str): New control mode
+        """
+        res = self._services["set_mode"](new_mode)
+
+        if not res.success:
+            rospy.logerr("%s is not an avaible mode" % new_mode)
+        else:
+            rospy.loginfo("Mode set to: %s" % new_mode.lower())
 
     def set_formation(self, formation_name):
         """Set formation

@@ -17,7 +17,7 @@
     </node>
 
     <!-- Launch formation manager-->
-    <node name="formation_manager" pkg="formation_manager" type="formation_manager.py" output="screen" />
+    <node name="formation_manager" pkg="formation_manager" type="formation_manager_ros.py" output="screen" />
 
     <!-- Launch trajectory planner -->
     <node name="trajectory_planner" pkg="trajectory_planner" type="trajectory_planner_ros.py" output="screen" />

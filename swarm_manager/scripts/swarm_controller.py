@@ -86,7 +86,7 @@ from std_msgs.msg import String
 from crazyflie_driver.msg import Position
 
 from std_srvs.srv import Empty, SetBool
-from swarm_manager.srv import SetParam, SetGoals, GetPositions
+from swarm_manager.srv import SetParam, SetGoals, GetPositions, SetMode
 from formation_manager.srv import SetFormation, GetFormationList
 from trajectory_planner.srv import SetPositions
 
@@ -165,9 +165,10 @@ class SwarmController(object):
         rospy.Service('/stop_swarm', Empty, self._stop_swarm_srv)
         rospy.Service('/take_off_swarm', Empty, self._take_off_swarm_srv)
         rospy.Service('/land_swarm', Empty, self._land_swarm_srv)
+
+        rospy.Service('/set_mode', SetMode, self._set_mode_srv)
         rospy.Service('/go_to', SetGoals, self._go_to_srv)
         rospy.Service('/get_positions', GetPositions, self._get_positions_srv)
-
 
         rospy.Service('/set_swarm_formation', SetFormation, self._set_formation_srv)
         rospy.Service('/next_swarm_formation', Empty, self._next_swarm_formation_srv)
@@ -282,15 +283,21 @@ class SwarmController(object):
             rospy.logerr("CF too close, emergency")
             self._swarm_emergency_srv(Empty())
 
-    def update_formation(self):
-        """Update formation of formation manager to match current formation
+    def update_formation(self, formation_goal=None):
+        """To change formation of the swarm.
+
+        Formation center will be `formation_goal` if is specified. If not, it will be stay at the
+        same place
+
+        Args:
+            formation_goal (list, optional): New formation goal: [x, y, z, yaw]. Defaults to None.
         """
         # Change state to make sure CF don't 'teleport' to new formation
         self._state_machine.set_state("hover")
         rospy.sleep(0.1)
 
         # Set new formation
-        self._send_formation()
+        self._send_formation(formation_goal)
 
         self.go_to_goal()
 
@@ -338,8 +345,14 @@ class SwarmController(object):
         else:
             self._state_machine.set_state("hover")
 
-    def _send_formation(self):
-        """Send desired formation to formation manager. Gets CFs in extra in return.
+    def _send_formation(self, formation_goal=None):
+        """Send desired formation to formation manager.
+
+        `formation_manager` package will compute the new `formation_goal` of each CF and return all
+        CFs in extra.
+
+        Args:
+            formation_goal (list, optional): New formation goal: [x, y, z, yaw]. Defaults to None.
         """
         start_positions = {}
         for cf_id, cf_vals in self.crazyflies.items():
@@ -350,7 +363,8 @@ class SwarmController(object):
                                       cf_pose.position.z]
 
         srv_res = self.formation_services["set_formation"](formation=self.formation,
-                                                           positions=str(start_positions))
+                                                           positions=str(start_positions),
+                                                           goal=str(formation_goal))
 
         self._extra_cf_list = srv_res.extra_cf.split(',')
 
@@ -450,7 +464,7 @@ class SwarmController(object):
             # Goal of CF in formation
             elif cf_id not in self._extra_cf_list: # If CF in formation
                 target_pose = None
-                if target_goals is None:
+                if target_goals is None or cf_id not in target_goals.keys():
                     target_pose = cf_vals.goals["formation"]
                 else:
                     target_pose = target_goals[cf_id]
@@ -640,10 +654,8 @@ class SwarmController(object):
         self._state_machine.set_state("hover")
 
         if self.ctrl_mode == "formation":
-            self._send_formation()
             self._after_traj_state = "in_formation"
-
-            self.go_to_goal()
+            self.update_formation()
 
         return {}
 
@@ -653,37 +665,53 @@ class SwarmController(object):
         self.go_to_goal(land_swarm=True)
         return {}
 
+    def _set_mode_srv(self, mode_req):
+        new_mode = mode_req.new_mode.lower()
+        avalaible_mode = False
+
+        if new_mode in ["formation", "automatic"]:
+            self.ctrl_mode = new_mode
+            avalaible_mode = True
+
+        return {'success': avalaible_mode}
+
     def _go_to_srv(self, srv_req):
         goals = ast.literal_eval(srv_req.goals)
         target_goals = {}
+        formation_goal = None
 
-        for goal_id, goal_val in goals.items():
-            if goal_id == "formation":
-                print "Formation goal: {}".format(goal_val)
+        # Make sure swarm is in hover or formation state
+        if self._state_machine.in_state("in_formation") or self._state_machine.in_state("hover"):
 
-            elif goal_id in self.cf_list:
-                print "{} goal: {}".format(goal_id, goal_val)
-                new_goal = Position()
-                new_goal.x = goal_val[0]
-                new_goal.y = goal_val[1]
-                new_goal.z = goal_val[2]
-                new_goal.yaw = goal_val[3]
+            for goal_id, goal_val in goals.items():
 
-                target_goals[goal_id] = new_goal
+                if goal_id == "formation":
+                    # print "Formation goal: {}".format(goal_val)
+                    formation_goal = goal_val
 
+                elif goal_id in self.cf_list:
+                    # print "{} goal: {}".format(goal_id, goal_val)
+                    new_goal = Position()
+                    new_goal.x = goal_val[0]
+                    new_goal.y = goal_val[1]
+                    new_goal.z = goal_val[2]
+                    new_goal.yaw = goal_val[3]
 
-                # self.crazyflies[goal_id].goals["goal"].x = goal_val[0]
-                # self.crazyflies[goal_id].goals["goal"].y = goal_val[1]
-                # self.crazyflies[goal_id].goals["goal"].z = goal_val[2]
-                # self.crazyflies[goal_id].goals["goal"].yaw = goal_val[3]
+                    target_goals[goal_id] = new_goal
 
-            else:
-                rospy.logerr("%s: Invalid goal name" % goal_id)
+                else:
+                    rospy.logerr("%s: Invalid goal name" % goal_id)
 
-        self.go_to_goal(target_goals=target_goals)
+            if self.ctrl_mode == "automatic":
+                self._after_traj_state = "hover"
+                self.go_to_goal(target_goals=target_goals)
 
-        if self.ctrl_mode == "automatic":
-            self._after_traj_state = "hover"
+            elif self.ctrl_mode == "formation":
+                self._after_traj_state = "in_formation"
+                self.update_formation(formation_goal=formation_goal)
+
+        else:
+            rospy.logerr("Swarm not ready to move")
 
         return {}
 
@@ -715,15 +743,18 @@ class SwarmController(object):
         return {}
 
     def _set_formation_srv(self, srv_req):
-        if self._state_machine.in_state("in_formation"):
-            new_formation = srv_req.formation
+        new_formation = srv_req.formation
 
+        if self._state_machine.in_state("in_formation"):
             if new_formation not in self._formation_list:
                 rospy.logerr("%s: Invalid formation" % new_formation)
 
             else:
                 self.formation = new_formation
                 self.update_formation()
+
+        else:
+            self.formation = new_formation
 
         return {}
 

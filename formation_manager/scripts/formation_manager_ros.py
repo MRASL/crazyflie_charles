@@ -39,7 +39,7 @@ import pandas as pd
 from geometry_msgs.msg import Pose, Twist
 from std_srvs.srv import Empty
 import rospy
-from crazyflie_charles.srv import SetFormation, GetFormationList
+from formation_manager.srv import SetFormation, GetFormationList
 from crazyflie_driver.msg import Position
 
 from square_formation import SquareFormation
@@ -169,10 +169,19 @@ class FormationManager(object):
         """
         new_formation = srv_call.formation
         cf_initial_positions = ast.literal_eval(srv_call.positions)
+        new_goal = ast.literal_eval(srv_call.goal)
+
         valid_formation = True
 
         if new_formation in self.formations.keys():
             rospy.loginfo("Formation: Setting formation to %s" % new_formation)
+
+            if new_goal is not None:
+                self.formation_goal.x = new_goal[0]
+                self.formation_goal.y = new_goal[1]
+                self.formation_goal.z = new_goal[2]
+                self.formation_goal.yaw = new_goal[3]
+
             self.formation = self.formations[new_formation]
             self.init_formation(cf_initial_positions)
             self.link_swarm_and_formation()

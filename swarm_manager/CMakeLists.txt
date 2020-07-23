@@ -61,6 +61,7 @@ add_service_files(
   JoyButton.srv
   SetGoals.srv
   GetPositions.srv
+  SetMode.srv
 )
 
 ## Generate actions in the 'action' folder
