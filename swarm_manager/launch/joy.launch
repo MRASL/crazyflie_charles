@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="joy_dev" default="/dev/input/js0" />
+    <arg name="joy_type" default="ds4" />
+
+    <rosparam command="load" file="$(find swarm_manager)/launch/joy_conf.yaml" />
+
+
+    <!-- Initiate joystick -->
+    <node name="joy" pkg="joy" type="joy_node" output="screen" >
+        <param name="dev" value="$(arg joy_dev)" />
+    </node>
+
+    <!-- Map controller to services -->
+    <node name="joystick_controller" pkg="swarm_manager" type="joy_controller.py" output="screen">
+        <param name="joy_topic" value="/joy" />
+        <param name="joy_type" value="$(arg joy_type)" />
+    </node>
+
+</launch>

@@ -4,6 +4,7 @@
   <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="cf_list" default="['cf1']" />
   <arg name="to_sim" default="False" />
+  <arg name="to_save" default="False" />
 
   <arg name="take_off_height" default="0.5" />
   <arg name="gnd_height" default="0.0" />
@@ -44,7 +45,6 @@
     </include>
   </group>
 
-
   <!-- Initiate joystick -->
   <node name="joy" pkg="joy" type="joy_node" output="screen" >
     <param name="dev" value="$(arg joy_dev)" />
@@ -73,7 +73,7 @@
   </node>
 
   <!-- Launch swarm manager-->
-  <node name="swarm_manager" pkg="swarm_manager" type="swarm_manager.py" output="screen">
+  <node name="swarm_controller" pkg="swarm_manager" type="swarm_controller.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
     <param name="to_sim" value="$(arg to_sim)"/>
 
@@ -116,6 +116,12 @@
     <param name="relax_max" value="$(arg relax_max)" />
     <param name="relax_min" value="$(arg relax_min)" />
     <param name="relax_inc" value="$(arg relax_inc)" />
+  </node>
+
+  <!-- Launch flight recorder -->
+  <node name="flight_recorder" pkg="swarm_manager" type="flight_recorder.py" output="screen">
+    <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
+    <param name="to_save" value="$(arg to_save)"/>
   </node>
 
   <!-- Rviz markers -->

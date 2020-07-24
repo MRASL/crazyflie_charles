@@ -169,13 +169,13 @@ def init_room_msg():
     """
     obstacle_list = []
 
-    obstacle_list.append(init_obstacle(0, BED_POS, BED_SCALE))
-    obstacle_list.append(init_obstacle(1, WALL_BOT_POS, WALL_BOT_SCALE))
-    # obstacle_list.append(init_obstacle(2, WALL_LEFT_POS, WALL_LEFT_SCALE))
-    obstacle_list.append(init_obstacle(3, WALL_RIGHT_POS, WALL_RIGHT_SCALE))
-    obstacle_list.append(init_obstacle(4, WALL_R_1_POS, WALL_R_1_SCALE))
-    obstacle_list.append(init_obstacle(5, WALL_R_2_POS, WALL_R_2_SCALE))
-    obstacle_list.append(init_obstacle(6, WALL_TOP_POS, WALL_TOP_SCALE))
+    # obstacle_list.append(init_obstacle(0, BED_POS, BED_SCALE))
+    # obstacle_list.append(init_obstacle(1, WALL_BOT_POS, WALL_BOT_SCALE))
+    # # obstacle_list.append(init_obstacle(2, WALL_LEFT_POS, WALL_LEFT_SCALE))
+    # obstacle_list.append(init_obstacle(3, WALL_RIGHT_POS, WALL_RIGHT_SCALE))
+    # obstacle_list.append(init_obstacle(4, WALL_R_1_POS, WALL_R_1_SCALE))
+    # obstacle_list.append(init_obstacle(5, WALL_R_2_POS, WALL_R_2_SCALE))
+    # obstacle_list.append(init_obstacle(6, WALL_TOP_POS, WALL_TOP_SCALE))
 
 
     return obstacle_list
@@ -401,7 +401,12 @@ def init_cf_goal_marker(cf_name):
 if __name__ == '__main__':
     rospy.init_node('rviz_markers', anonymous=False)
 
-    CF_LIST = rospy.get_param("~cf_list", "['cf1']")
+    while True: # Make sure cf_list has been set by `swarm_controller`
+        try:
+            CF_LIST = rospy.get_param("cf_list")
+            break
+        except KeyError:
+            pass
     RVIZ_MARKERS = RvizMarkers(CF_LIST)
 
     RVIZ_MARKERS.publish()

@@ -1,5 +1,6 @@
 string formation
 string positions
+string goal
 ---
 string extra_cf
 bool success

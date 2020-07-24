@@ -5,7 +5,7 @@ Class to act as the crazyflie in simulation. Publish position of CF based on cmd
 """
 
 import rospy
-from tf.transformations import quaternion_from_euler
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 from crazyflie_driver.msg import Position, Hover
 from geometry_msgs.msg import Twist, PoseStamped
@@ -19,7 +19,7 @@ class CrazyflieSim(object):
         self.cf_id = '/' + cf_id
 
         self.world_frame = rospy.get_param("~worldFrame", "/world")
-        self.rate = rospy.Rate(100)
+        self.rate = rospy.Rate(10)
 
         # Declare publishers
         self.position_pub = rospy.Publisher(self.cf_id + '/pose', PoseStamped, queue_size=1)
@@ -58,12 +58,25 @@ class CrazyflieSim(object):
         rospy.logerr("%s: Emergency service called" % self.cf_id)
         return {}
 
-    def _cmd_vel_handler(self, vel_data):
+    def _cmd_vel_handler(self, _):
         # rospy.logwarn("cmd_vel not implemented in simulation")
         pass
 
-    def _cmd_hover_handler(self, _):
-        rospy.logwarn("cmd_hovering not implemented in simulation")
+    def _cmd_hover_handler(self, hover_data):
+        self.position.pose.position.x += hover_data.vx
+        self.position.pose.position.y += hover_data.vy
+        self.position.pose.position.z = hover_data.zDistance
+
+        _, _, current_yaw = euler_from_quaternion([self.position.pose.orientation.x,
+                                                   self.position.pose.orientation.y,
+                                                   self.position.pose.orientation.z,
+                                                   self.position.pose.orientation.w])
+        yaw = current_yaw + hover_data.yawrate
+        [x_quat, y_quat, z_quat, w_quat] = quaternion_from_euler(0, 0, yaw)
+        self.position.pose.orientation.x = x_quat
+        self.position.pose.orientation.y = y_quat
+        self.position.pose.orientation.z = z_quat
+        self.position.pose.orientation.w = w_quat
 
     def _cmd_pos_handler(self, pos_data):
         self.position.pose.position.x = pos_data.x
@@ -83,7 +96,7 @@ if __name__ == '__main__':
     # Launch node
     rospy.init_node('cf_sim', anonymous=False)
     CF_ID = rospy.get_param("~cf_name", "cf_default")
-    START_POSITION = rospy.get_param("~starting_position")
+    START_POSITION = rospy.get_param("/starting_positions")[CF_ID]
 
     # Get params
     CF_SIM = CrazyflieSim(CF_ID, START_POSITION)

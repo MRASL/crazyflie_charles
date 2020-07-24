@@ -117,8 +117,8 @@ class Agent(object):
         dist_z = norm(self.goal[2, 0] - self.start_position[2, 0])
 
         speed_z = dist_z * speed / dist if dist != 0 else 0
-        # dist_xy = np.sqrt(dist**2 - dist_z**2)
-        speed_xy = np.sqrt(speed**2 - speed_z**2)
+        d_speed = speed**2 - speed_z**2
+        speed_xy = np.sqrt(d_speed) if d_speed > 0 else 0
 
         dist_x = norm(self.goal[0, 0] - self.start_position[0, 0])
         dist_y = norm(self.goal[1, 0] - self.start_position[1, 0])

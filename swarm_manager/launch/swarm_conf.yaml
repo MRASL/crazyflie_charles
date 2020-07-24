@@ -1,13 +1,14 @@
-crazyflie:
-  take_off_height: 0.7
-  gnd_height: 0.2
+swarm:
+  n_cf: 2
+  take_off_height: 0.5
+  gnd_height: 0.0
   min_dist: 0.40  # Absolute min distance between CFs
   min_goal_dist: 0.40 # Absolute min distance between CFs goals
 
 formation:
   formation_min_dist: 0.6 # Min distance between agents in formation
-  # formation_start_pos: [1.0, 1.0, 0.5, 0.0] # [x, y, z, yaw]
-  formation_start_pos: [2.1, 2.1, 0.9, 0.0] # [x, y, z, yaw]
+  formation_start_pos: [0.5, 0.5, 0.5, 0.0] # [x, y, z, yaw]
+  # formation_start_pos: [2.1, 2.1, 0.9, 0.0] # [x, y, z, yaw]
 
 trajectory_solver:
   max_acc: 1.0
@@ -35,21 +36,24 @@ trajectory_solver:
 
 # Starting positions in simulation
 starting_positions:
-  cf1: [2.1, 2.5, 0.2]
-  cf2: [2.1, 1.8, 0.2]
+  # cf_0: [2.1, 2.5, 0.2]
+  # cf_1: [2.1, 1.8, 0.2]
 
-  # cf1: [0.0, 0.0, 0.0]
-  # cf2: [0.0, 0.5, 0.0]
-  cf3: [0.0, 1.0, 0.0]
-  cf4: [0.5, 0.0, 0.0]
-  cf5: [0.5, 0.5, 0.0]
-  cf6: [0.5, 1.0, 0.0]
-  cf7: [1.0, 0.0, 0.0]
-  cf8: [1.0, 0.5, 0.0]
-  cf9: [1.0, 1.0, 0.0]
-  cf10: [0.0, 1.5, 0.0]
-  cf11: [0.0, 2.0, 0.0]
-  cf12: [0.5, 1.5, 0.0]
-  cf13: [0.5, 2.0, 0.0]
-  cf14: [1.0, 1.5, 0.0]
-  cf15: [1.0, 2.0, 0.0]
+  cf_0: [0.2, 0.4, 0.0]
+  cf_1: [1.0, 0.8, 0.0]
+
+  # cf_0: [0.0, 0.0, 0.0]
+  # cf_1: [0.0, 0.5, 0.0]
+  cf_2: [0.0, 1.0, 0.0]
+  cf_3: [0.5, 0.0, 0.0]
+  cf_4: [0.5, 0.5, 0.0]
+  cf_5: [0.5, 1.0, 0.0]
+  cf_6: [1.0, 0.0, 0.0]
+  cf_7: [1.0, 0.5, 0.0]
+  cf_8: [1.0, 1.0, 0.0]
+  cf_9: [0.0, 1.5, 0.0]
+  cf_10: [0.0, 2.0, 0.0]
+  cf_11: [0.5, 1.5, 0.0]
+  cf_12: [0.5, 2.0, 0.0]
+  cf_13: [1.0, 1.5, 0.0]
+  cf_14: [1.0, 2.0, 0.0]

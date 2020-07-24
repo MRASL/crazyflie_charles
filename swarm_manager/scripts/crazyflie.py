@@ -21,6 +21,7 @@ from std_srvs.srv import Empty as Empty_srv
 from geometry_msgs.msg import Twist, PoseStamped, Pose, Quaternion
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from state_machine import StateMachine
+from swarm_manager.srv import SetParam
 
 class Crazyflie(object):
     """Controller of a single crazyflie.
@@ -70,13 +71,7 @@ class Crazyflie(object):
             rospy.loginfo(self.cf_id + ": waiting for update_params service...")
             rospy.wait_for_service(self.cf_id + '/update_params')
             rospy.loginfo(self.cf_id + ": found update_params service")
-            self.update_params = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
-
-            # Set parameters # TODO: Move to swarmManager
-            self.set_param("commander/enHighLevel", 1)
-            self.set_param("stabilizer/estimator", 2) # Use EKF
-            self.set_param("stabilizer/controller", 1) # 1: Higyh lvl, 2: Mellinger
-            self.set_param("kalman/resetEstimation", 1)
+            self.update_param = rospy.ServiceProxy(self.cf_id + '/update_params', UpdateParams)
 
         # Declare services
         self._init_services()
@@ -130,6 +125,7 @@ class Crazyflie(object):
         rospy.Service(self.cf_id + '/land', Empty_srv, self.land)
         rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
         rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggle_teleop)
+        rospy.Service(self.cf_id + '/set_param', SetParam, self._set_param)
 
     # Handlers
     def _pose_handler(self, pose_stamped):
@@ -169,16 +165,22 @@ class Crazyflie(object):
         # rospy.loginfo(self.initial_pose)
 
     # Setter & Getters
-    def set_param(self, name, value):
+    def _set_param(self, param_req):
         """Changes the value of the given parameter.
 
         Args:
             name (str): The parameter's name.
             value (Any): The parameter's value.
         """
+        param_name = param_req.param
+        param_val = param_req.value
 
-        rospy.set_param(self.cf_id + "/" + name, value)
-        self.update_params([name])
+        rospy.set_param(self.cf_id + "/" + param_name, param_val)
+
+        if not self._to_sim:
+            self.update_param([param_name])
+
+        return {}
 
     def get_cf_id(self):
         """Get crazyflie id
@@ -394,8 +396,9 @@ if __name__ == '__main__':
     # Get params
     CF_ID = rospy.get_param("~cf_name", "cf_default")
     TO_SIM = rospy.get_param("~to_sim", "False")
-    TAKE_OFF_HEIGHT = rospy.get_param("~take_off_height")
-    GND_HEIGHT = rospy.get_param("~gnd_height")
+
+    TAKE_OFF_HEIGHT = rospy.get_param("/swarm")["take_off_height"]
+    GND_HEIGHT = rospy.get_param("/swarm")["gnd_height"]
 
     # Initialize cfx
     CF = Crazyflie(CF_ID, TO_SIM)
