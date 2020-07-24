@@ -65,17 +65,24 @@ Swarm
     (crazyflie_driver/Position)
 
 
-.. _formation-goal:
+.. _cf-formation-goal:
 
 /cfx/formation_goal
 ^^^^^^^^^^^^^^^^^^^^
     (crazyflie_driver/Position)
 
 
-.. _joy-swarm-vel:
+.. _formation-goal:
 
-/joy_swarm_vel
-^^^^^^^^^^^^^^
+/formation_goal
+^^^^^^^^^^^^^^^
+    (geometry_msgs/Twist)
+
+
+.. _formation-pose:
+
+/formation_pose
+^^^^^^^^^^^^^^^
     (geometry_msgs/Twist)
 
 
@@ -83,4 +90,11 @@ Swarm
 
 /formation_goal_vel
 ^^^^^^^^^^^^^^^^^^^
+    (geometry_msgs/Twist)
+
+
+.. _joy-swarm-vel:
+
+/joy_swarm_vel
+^^^^^^^^^^^^^^
     (geometry_msgs/Twist)

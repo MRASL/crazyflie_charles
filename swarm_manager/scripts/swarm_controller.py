@@ -23,7 +23,7 @@ ROS Features
 ------------
 Subscribed Topics
 ^^^^^^^^^^^^^^^^^
-:ref:`formation-goal` (crazyflie_driver/Position)
+:ref:`cf-formation-goal` (crazyflie_driver/Position)
     Position of the CF in formation
 
 :ref:`trajectory-goal` (crazyflie_driver/Position)
@@ -981,7 +981,6 @@ class CrazyfliePy(object):
         self._link_service("land", Empty)
         self._link_service("hover", Empty)
         self._link_service("stop", Empty)
-        self._link_service("toggle_teleop", Empty)
         self._link_service("emergency", Empty)
         self._link_service("set_param", SetParam)
         rospy.loginfo("Swarm: found services of %s " % self.cf_id)

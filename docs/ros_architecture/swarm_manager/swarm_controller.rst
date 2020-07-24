@@ -14,7 +14,7 @@ ROS Features
 ------------
 Subscribed Topics
 ^^^^^^^^^^^^^^^^^
-:ref:`formation-goal` (crazyflie_driver/Position)
+:ref:`cf-formation-goal` (crazyflie_driver/Position)
     Position of the CF in formation
 
 :ref:`trajectory-goal` (crazyflie_driver/Position)

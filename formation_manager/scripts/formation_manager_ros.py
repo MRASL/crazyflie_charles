@@ -5,30 +5,63 @@
 In charge of computing the positions of all the crazyflies.
 
 Avalaible formations:
+---------------------
     - Square
     - Pyramid
     - Circle
     - V
     - Ligne
 
-Services:
-    - set_formation: Set formation type and initial position of each CF
-    - toggle_ctrl_mode: Toggle between absolute and relative ctrl mode
-    - formation_inc_scale: Increase scale of formation
-    - formation_dec_scale: Decrease scale of formation
-    - get_formation_list: Returns a list /w all possible formations
 
-Subscribed Services:
-    None
+ROS Features
+------------
+Subscribed Topics
+^^^^^^^^^^^^^^^^^
+:ref:`formation-goal-vel` (`geometry_msgs/Twist`_)
+    Formation center goal variation
 
-Subscribtion:
-    /formation_goal_vel: Velocity of formation center
-    /cfx/pose: To compute formation current center
+Published Topics
+^^^^^^^^^^^^^^^^
+:ref:`cf-formation-goal` (crazyflie_driver/Position)
+    Goal of a single CF in the formation
 
-Publisher:
-    /formation_center: Center of the formation
-    /formation_goal: Goal of formation
-    /cfx/formation_goal: Goal, in formation, of each CF
+:ref:`formation-goal` (crazyflie_driver/Position)
+    Goal of formation
+
+:ref:`formation-pose` (`geometry_msgs/Pose`_)
+    Position of the formation
+
+
+Services
+^^^^^^^^
+ /set_formation(formation_manager/SetFormation)
+   Set swarm to a formation
+
+ /formation_inc_scale(`std_srvs/Empty`_)
+    Increase scale of formation
+
+ /formation_dec_scale(`std_srvs/Empty`_)
+    Decrease scale of formation
+
+ /toggle_ctrl_mode(`std_srvs/Empty`_)
+    To change between absolute and relative control mode
+
+ /get_formations_list(formation_manager/GetFormationList)
+    Return a list with all possible formations
+
+
+
+Services Called
+^^^^^^^^^^^^^^^
+None
+
+Parameters
+^^^^^^^^^^
+~n_cf(int)
+
+.. _geometry_msgs/Twist: http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Twist.html
+.. _geometry_msgs/Pose: http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Pose.html
+.. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
 """
 from math import sin, cos, pi
 import ast
@@ -97,7 +130,7 @@ class FormationManager(object):
             self.formation_goal = self.initial_formation_goal
 
         # Subscribers
-        rospy.Subscriber("/formation_goal_vel", Twist, self.formation_goal_vel_handler)
+        rospy.Subscriber("/formation_goal_vel", Twist, self._formation_goal_vel_handler)
 
         self.crazyflies = {} #: dict of list: Information of each CF
         # Initialize each CF
@@ -119,7 +152,7 @@ class FormationManager(object):
         rospy.Service('/get_formations_list', GetFormationList, self.return_formation_list)
 
     # Services and subscriptions
-    def formation_goal_vel_handler(self, goal_vel):
+    def _formation_goal_vel_handler(self, goal_vel):
         """To change formation goal based on a velocity
 
         Depends on ctrl mode
