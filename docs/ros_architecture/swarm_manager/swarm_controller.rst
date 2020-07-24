@@ -1,22 +1,13 @@
-swarm_manager
-=============
+swarm_controller
+================
 
-To manage the flight of the swarm.
+To control flight of the swarm. By using a state machine, this node will determine each crazyflie goal and
+control it's desired position by publishing to :ref:`cf-goal`.
 
-Controls the position of each CF in the swarm by publishing to /cfx/goal.
-
-Goal of each CF computed by different nodes.
-
-.. todo:: Elaborate
+The goal will change depending of the services called by SwarmAPI.
 
 .. note::
-    Swarm: Groupe of all the crazyflies
-
-    Formation: Layout of the swarm
-
-
-Usage
------
+   See :doc:`/glossary` for definition of Swarm and Formation
 
 
 ROS Features
@@ -61,8 +52,17 @@ Services
  /land_swarm(`std_srvs/Empty`_)
     Land all CF to their starting position
 
- /update_swarm_params(`std_srvs/Empty`_)
-    Update parameter of all swarm
+ /get_positions(swarm_manager/GetPositions)
+    Get current position of CFs
+
+ /go_to(swarm_manager/SetGoals)
+    Move CFs or formation to specified positions
+
+ /set_mode(swarm_manger/SetMode)
+   Set control of swarm_controller
+ 
+ /set_swarm_formation(formation_manager/SetFormation)
+   Set swarm to a formation
 
  /inc_swarm_scale(`std_srvs/Empty`_)
     Increase scale of formation
@@ -84,27 +84,37 @@ Services
 
 Services Called
 ^^^^^^^^^^^^^^^
-/set_formation(formation_manager/SetFormation)
+ /set_formation(formation_manager/SetFormation)
+    From :doc:`/ros_architecture/formation_manager`
 
-/get_formations_list(formation_manager/GetFormationList)
+ /get_formations_list(formation_manager/GetFormationList)
+    From :doc:`/ros_architecture/formation_manager`
 
-/formation_inc_scale(`std_srvs/Empty`_)
+ /formation_inc_scale(`std_srvs/Empty`_)
+    From :doc:`/ros_architecture/formation_manager`
 
-/formation_dec_scale(`std_srvs/Empty`_)
+ /formation_dec_scale(`std_srvs/Empty`_)
+    From :doc:`/ros_architecture/formation_manager`
 
-/set_planner_positions(trajectory_planner/SetPositions)
+ /set_planner_positions(trajectory_planner/SetPositions)
+    From :doc:`/ros_architecture/trajectory_planner`
 
-/plan_trajectories(`std_srvs/Empty`_)
+ /plan_trajectories(`std_srvs/Empty`_)
+    From :doc:`/ros_architecture/trajectory_planner`
 
-/pub_trajectories(`std_srvs/Empty`_)
+ /pub_trajectories(`std_srvs/Empty`_)
+    From :doc:`/ros_architecture/trajectory_planner`
 
 Parameters
 ^^^^^^^^^^
-~cf_list(str, default: ['cf1'])
-~to_sim(bool, default: False)
+~n_cf(int)
+
 ~take_off_height(float)
+
 ~gnd_height(float)
+
 ~min_dist(float)
+
 ~min_goal_dist(float)
 
 .. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html

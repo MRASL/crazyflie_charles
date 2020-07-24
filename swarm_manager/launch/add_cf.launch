@@ -34,20 +34,20 @@
     </group>
 
     <!-- CF controller -->
-    <node name="controller" pkg="swarm_manager" type="crazyflie.py" output="screen">
+    <node name="cf_controller" pkg="swarm_manager" type="crazyflie.py" output="screen">
         <param name="cf_name" value="$(arg cf_name)"/>
         <param name="to_sim" value="$(arg to_sim)"/>
     </node>
 
     <!-- Simulation of CF -->
     <group if="$(arg to_sim)">
-      <node name="$(arg cf_name)_sim" pkg="swarm_manager" type="crazyflie_sim.py" output="screen">
+      <node name="cf_sim" pkg="swarm_manager" type="crazyflie_sim.py" output="screen">
         <param name="cf_name" value="$(arg cf_name)"/>
       </node>
     </group>
 
     <!-- Position frame -->
-    <node name="crazyflie_broadcaster" pkg="swarm_manager" type="crazyflie_tf.py" output="screen">
+    <node name="cf_broadcaster" pkg="swarm_manager" type="crazyflie_tf.py" output="screen">
       <param name="cf_name" value="$(arg cf_name)" />
       <param name="frame" value="$(arg frame)" />
     </node>

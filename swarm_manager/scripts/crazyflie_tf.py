@@ -1,7 +1,37 @@
 #!/usr/bin/env python
 
 """
-Script to create a frame from the crazyflie current position
+Node to create a frame from the crazyflie current position
+
+ROS Features
+------------
+Subscribed Topics
+^^^^^^^^^^^^^^^^^
+:ref:`cf-pose` (geometry_msgs/PoseStamped)
+    Current pose of CF
+
+Published Topics
+^^^^^^^^^^^^^^^^
+/tf
+    Pose for TF package
+
+Services
+^^^^^^^^
+None
+
+Services Called
+^^^^^^^^^^^^^^^
+ None
+
+
+Parameters
+^^^^^^^^^^
+~world(str, world)
+
+~cf_name(str)
+
+~frame(str)
+
 """
 
 import rospy

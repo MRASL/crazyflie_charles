@@ -1,19 +1,16 @@
-joy_controller
+joy_controller 
 ==============
 
 To control the swarm with a joystick.
 
-.. todo:: Joystick axis and button mapping
-
-Usage
------
+Sends button pressed to :doc:`/ros_architecture/swarm_manager/swarm_api` through  ``swarm_manager/JoyButton`` service.
 
 
 ROS Features
 ------------
 Subscribed Topics
 ^^^^^^^^^^^^^^^^^
-/joy(sensor_msgs/Joy)
+/joy(`sensor_msgs/Joy`_)
     Joystick input
 
 
@@ -29,26 +26,8 @@ None
 
 Services Called
 ^^^^^^^^^^^^^^^
-/swarm_emergency(`std_srvs/Empty`_)
-
-/toggle_teleop(`std_srvs/Empty`_)
-
-/land_swarm(`std_srvs/Empty`_)
-
-/take_off_swarm(`std_srvs/Empty`_)
-
-/stop_swarm(`std_srvs/Empty`_)
-
-/inc_swarm_scale(`std_srvs/Empty`_)
-
-/dec_swarm_scale(`std_srvs/Empty`_)
-
-/toggle_ctrl_mode(`std_srvs/Empty`_)
-
-/next_swarm_formation(`std_srvs/Empty`_)
-
-/prev_swarm_formation(`std_srvs/Empty`_)
-
+/joy_button(swarm_manager/JoyButton)
+    From :doc:`/ros_architecture/swarm_manager/swarm_api` 
 
 Parameters
 ^^^^^^^^^^
@@ -82,4 +61,4 @@ Parameters
 
 ~yaw_goal_max(float, default: 0.05)
 
-.. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
+.. _sensor_msgs/Joy: http://docs.ros.org/melodic/api/sensor_msgs/html/msg/Joy.html

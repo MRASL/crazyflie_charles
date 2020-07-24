@@ -28,9 +28,9 @@ Ros Architecture
 ----------------
 To control the swarm, three different ros packages are used:
 
-* :doc:`/ros_architecture/swarm_manager`: Main package. Link between the other packages and `crazyflie ros stack`_.
-* :doc:`/ros_architecture/formation_manager`: Handles movement of swarm in a specific formation
-* :doc:`/ros_architecture/trajectory_planner`: Moves agents between positions. Used to change formation
+* :doc:`/ros_architecture/swarm_manager`: Main package. Link between the other packages and `crazyflie ros stack`_. Includes a python api.
+* :doc:`/ros_architecture/formation_manager`: To move the swarm in a specific formation (i.e square, circle, ...)
+* :doc:`/ros_architecture/trajectory_planner`: To move agents without collisions. Used to change formation
 
 The general architecture can be found here :doc:`/ros_architecture/general_architecture`.
 
@@ -64,11 +64,21 @@ In-depth description of each package
    package_description/formation_manager
    package_description/trajectory_planner
 
-Indices and tables
-------------------
+Glossary, Indices and tables
+----------------------------
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Glossary
+
+   glossary
+
+* :doc:`glossary`
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
 
 
 .. _crazyflie ros stack: https://github.com/whoenig/crazyflie_ros

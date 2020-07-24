@@ -2,6 +2,51 @@
 
 """
 Class to act as the crazyflie in simulation. Publish position of CF based on cmd_x received
+
+ROS Features
+------------
+Subscribed Topics
+^^^^^^^^^^^^^^^^^
+:ref:`cmd-position` (crazyflie_driver/Position)
+    Position command
+
+:ref:`cmd-hovering` (crazyflie_driver/Hover)
+    Hovering command
+
+:ref:`cmd-stop` (`std_msgs/Empty`_)
+    Stop CF
+
+:ref:`cmd-vel` (`geometry_msgs/Twist`_)
+    Velocity of CF
+
+Published Topics
+^^^^^^^^^^^^^^^^
+:ref:`cf-pose` (geometry_msgs/PoseStamped)
+    Current pose of CF
+
+Services
+^^^^^^^^
+ /cfx/emergency(`std_srvs/Empty`_)
+    Simulation of emergency service
+
+Services Called
+^^^^^^^^^^^^^^^
+None
+
+
+Parameters
+^^^^^^^^^^
+
+~cf_name"(str)
+
+/starting_positions")[cf_name](list of float)
+
+.. _geometry_msgs/Twist: http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Twist.html
+.. _std_msgs/Empty: http://docs.ros.org/melodic/api/std_msgs/html/msg/Empty.html
+.. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
+
+``CrazyflieSim`` class
+----------------------
 """
 
 import rospy

@@ -59,8 +59,8 @@ Parameters
 ^^^^^^^^^^
 ~cf_list(str, default: ['cf1'])
 
-TrajectoryPlanner Class
------------------------
+`TrajectoryPlanner` Class
+-------------------------
 
 .. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
 .. _std_srvs/SetBool: http://docs.ros.org/api/std_srvs/html/srv/SetBool.html

@@ -2,32 +2,6 @@
 
 """
 Script to map inputs of the controller to services and teleop CF in manual mode
-
-Services:
-    - None
-
-Subscribed services:
-    - From swarm_controller
-        - update_params
-        - emergency
-        - toggle_teleop
-        - land
-        - take_off
-        - stop
-        - formation_inc_scale
-        - formation_dec_scale
-        - toggle_ctrl_mode
-        - next_swarm_formation
-        - prev_swarm_formation
-
-Subscription:
-    - from joy
-        - joy_topic
-
-Publisher:
-    - /cf1/cmd_vel: Velocity of a single CF (only when in teleop)
-    - /joy_swarm_vel: Velocity of the swarm
-
 """
 import rospy
 

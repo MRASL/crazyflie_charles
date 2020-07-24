@@ -40,7 +40,6 @@ class Crazyflie(object):
         Attributes:
             cf_id (str): Name of the CF
             _to_sim (bool): To sim
-            _to_teleop (bool): To teleop
 
             _states (list of str): All possible states of the CF
             _state (str): Current state of the CF
@@ -49,7 +48,6 @@ class Crazyflie(object):
         self.cf_id = '/' + cf_id
 
         self._to_sim = to_sim
-        self._to_teleop = False
 
         # Initialize state machine
         self._state_list = {"landed": self._stop,
@@ -124,7 +122,6 @@ class Crazyflie(object):
         rospy.Service(self.cf_id + '/hover', Empty_srv, self.hover)
         rospy.Service(self.cf_id + '/land', Empty_srv, self.land)
         rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
-        rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggle_teleop)
         rospy.Service(self.cf_id + '/set_param', SetParam, self._set_param)
 
     # Handlers
@@ -190,14 +187,6 @@ class Crazyflie(object):
         """
         return self.cf_id
 
-    def in_teleop(self):
-        """Returns true if controlled by joystick
-
-        Returns:
-            bool: True if in teleop
-        """
-        return self._state_machine.in_state("teleop")
-
     # Services
     def take_off(self, _):
         """Take off service
@@ -224,16 +213,6 @@ class Crazyflie(object):
         """Stop service
         """
         self._state_machine.set_state("stop")
-        return {}
-
-    def toggle_teleop(self, _):
-        """Toggle teleop service
-        """
-        if self._state_machine.in_state("teleop"):
-            self._state_machine.set_state("stop")
-        else:
-            self._state_machine.set_state("teleop")
-
         return {}
 
     # Methods depending on state
@@ -353,7 +332,7 @@ class Crazyflie(object):
 
     # Run methods
     def run(self):
-        """Run controller, when not in teleop
+        """Run controller
         """
         state_function = self._state_machine.run_state()
         state_function()
@@ -404,8 +383,5 @@ if __name__ == '__main__':
     CF = Crazyflie(CF_ID, TO_SIM)
 
     while not rospy.is_shutdown():
-        if not CF.in_teleop():
-            CF.run()
-
-        else:
-            pass
+        CF.run()
+        

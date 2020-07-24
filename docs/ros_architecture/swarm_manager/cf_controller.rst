@@ -1,12 +1,7 @@
-cfx_controller node
-===================
+cf_controller
+=============
 
 Node to control a single crazyflie. Each CF has it's own node.
-
-
-Usage
------
-
 
 ROS Features
 ------------
@@ -31,10 +26,10 @@ Published Topics
 :ref:`cmd-hovering` (crazyflie_driver/Hover)
     Hover CF
 
-:ref:`cmd-vel` (geometry_msgs/Twist)
+:ref:`cmd-vel` (`geometry_msgs/Twist`_)
     Control velocity of CF
 
-:ref:`cmd-stop` (std_msgs/Empty)
+:ref:`cmd-stop` (`std_msgs/Empty`_)
     Stop CF
 
 Services
@@ -51,6 +46,9 @@ Services
  /stop(`std_srvs/Empty`_)
     Stop CF
 
+ /set_param (swarm_manager/SetParam)
+    Set a parameter
+
 
 Services Called
 ^^^^^^^^^^^^^^^
@@ -59,8 +57,13 @@ None
 Parameters
 ^^^^^^^^^^
 ~cf_name(str, default: cf_default)
+
 ~to_sim(bool, default: False)
+
 ~take_off_height(float)
+
 ~gnd_height(float)
 
 .. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
+.. _geometry_msgs/Twist: http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Twist.html
+.. _std_msgs/Empty: http://docs.ros.org/melodic/api/std_msgs/html/msg/Empty.html
