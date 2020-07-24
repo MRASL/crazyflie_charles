@@ -72,7 +72,7 @@ import rospy
 
 from std_srvs.srv import Empty, SetBool
 from crazyflie_driver.msg import Position
-from crazyflie_charles.srv import SetPositions
+from trajectory_planner.srv import SetPositions
 from trajectory_solver import TrajectorySolver
 from agent import Agent
 

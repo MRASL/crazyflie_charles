@@ -116,7 +116,7 @@ TrajectoryPlanner Class
 """
 
 import ast
-import queue
+import Queue
 import rospy
 import numpy as np
 from numpy import dot
@@ -270,9 +270,9 @@ class SwarmController(object):
         # Initialize position history
         for cf_id in self.crazyflies:
             queue_dict = {}
-            queue_dict['x'] = queue.Queue(10)
-            queue_dict['y'] = queue.Queue(10)
-            queue_dict['z'] = queue.Queue(10)
+            queue_dict['x'] = Queue.Queue(10)
+            queue_dict['y'] = Queue.Queue(10)
+            queue_dict['z'] = Queue.Queue(10)
 
             positions[cf_id] = queue_dict
 

@@ -17,19 +17,19 @@
     </node>
 
     <!-- Launch formation manager-->
-    <!-- <node name="formation_manager" pkg="formation_manager" type="formation_manager_ros.py" output="screen" /> -->
+    <node name="formation_manager" pkg="formation_manager" type="formation_manager_ros.py" output="screen" />
 
     <!-- Launch trajectory planner -->
-    <!-- <node name="trajectory_planner" pkg="trajectory_planner" type="trajectory_planner_ros.py" output="screen" /> -->
+    <node name="trajectory_planner" pkg="trajectory_planner" type="trajectory_planner_ros.py" output="screen" />
 
     <!-- Launch flight recorder -->
-    <!-- <node name="flight_recorder" pkg="swarm_manager" type="flight_recorder.py" output="screen">
+    <node name="flight_recorder" pkg="swarm_manager" type="flight_recorder.py" output="screen">
         <param name="to_save" value="$(arg to_save)"/>
-    </node> -->
+    </node>
 
     <!-- rviz -->
-    <!-- <node name="rviz_markers" pkg="swarm_manager" type="rviz_markers.py" output="screen" />
+    <node name="rviz_markers" pkg="swarm_manager" type="rviz_markers.py" output="screen" />
     <param name="cf_description" command="$(find xacro)/xacro $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find swarm_manager)/launch/crazyflie_pos.rviz" required="true" /> -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find swarm_manager)/launch/crazyflie_pos.rviz" required="true" />
 
 </launch>
