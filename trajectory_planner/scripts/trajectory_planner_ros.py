@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 """Package to compute collision free trajectories for each agent.
 
-The algorithm used is based on Distributed Model Predictive Control.
-
-.. todo:: ADD Article
+The algorithm [CIT1]_ used is based on Distributed Model Predictive Control.
 
 Usage
 -----
@@ -43,8 +41,6 @@ Services
 
 Services Called
 ^^^^^^^^^^^^^^^
-.. todo:: Add link to swarm_manager srv
-
 /traj_found(`std_srvs/SetBool`_)
     Service called once a trajectory is found.
 

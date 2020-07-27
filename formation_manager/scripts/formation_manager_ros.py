@@ -1,67 +1,27 @@
 #!/usr/bin/env python
 
-"""To manage the formation of the swarm
+"""Module to compute the position of agents in a formation.
 
-In charge of computing the positions of all the crazyflies.
+A formation is defined as a certain number of agents moving in a specific shape.
 
-Avalaible formations:
----------------------
-    - Square
-    - Pyramid
-    - Circle
-    - V
-    - Ligne
+.. note::
+    An agent is NOT a crazyflie. A crazyflie is the actual robot. An agent is a position in a
+    formation
 
+This package uses two classes:
 
-ROS Features
-------------
-Subscribed Topics
-^^^^^^^^^^^^^^^^^
-:ref:`formation-goal-vel` (`geometry_msgs/Twist`_)
-    Formation center goal variation
+    - :py:class:`FormationManager` to switch between formations
+    - :py:class:`FormationClass` to compute the position of each agent for a formation.
+      One for each formation.
 
-Published Topics
-^^^^^^^^^^^^^^^^
-:ref:`cf-formation-goal` (crazyflie_driver/Position)
-    Goal of a single CF in the formation
+To set a new formation, ``set_formation`` service is called. The new positions of agents will be
+computed using the desired :py:class:`FormationClass` child class.
 
-:ref:`formation-goal` (crazyflie_driver/Position)
-    Goal of formation
+Based on the position of each crazyflie, :py:class:`FormationManager` will then link each CF to an
+agent. Once a CF is linked to an agent, this CF will follow this agent's position in the formation.
 
-:ref:`formation-pose` (`geometry_msgs/Pose`_)
-    Position of the formation
-
-
-Services
-^^^^^^^^
- /set_formation(formation_manager/SetFormation)
-   Set swarm to a formation
-
- /formation_inc_scale(`std_srvs/Empty`_)
-    Increase scale of formation
-
- /formation_dec_scale(`std_srvs/Empty`_)
-    Decrease scale of formation
-
- /toggle_ctrl_mode(`std_srvs/Empty`_)
-    To change between absolute and relative control mode
-
- /get_formations_list(formation_manager/GetFormationList)
-    Return a list with all possible formations
-
-
-
-Services Called
-^^^^^^^^^^^^^^^
-None
-
-Parameters
-^^^^^^^^^^
-~n_cf(int)
-
-.. _geometry_msgs/Twist: http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Twist.html
-.. _geometry_msgs/Pose: http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Pose.html
-.. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
+``FormationManager`` class
+--------------------------
 """
 from math import sin, cos, pi
 import ast
@@ -69,11 +29,11 @@ import numpy as np
 from numpy.linalg import norm
 import pandas as pd
 
-from geometry_msgs.msg import Pose, Twist
-from std_srvs.srv import Empty
 import rospy
-from formation_manager.srv import SetFormation, GetFormationList
+from geometry_msgs.msg import Pose, Twist
 from crazyflie_driver.msg import Position
+from std_srvs.srv import Empty
+from formation_manager.srv import SetFormation, GetFormationList
 
 from square_formation import SquareFormation
 from line_formation import LineFormation
@@ -82,36 +42,33 @@ from pyramid_formation import PyramidFormation
 from v_formation import VFormation
 
 class FormationManager(object):
-    """To manage to position of all CF in the formation.
-
-    Associates formation position /w a CF
-
+    """To change between formations and associate agents and CFs
     """
     def __init__(self, cf_list, min_dist, start_goal):
-        self.min_dist = min_dist
-        self.cf_list = cf_list
-        self.n_cf = len(cf_list) #: (int) Number of CF in the swarm
-        self.pose_cnt = 0 #: (int) To know when compute pose
+        self._min_dist = min_dist #: (float) Minimum distance between agents in formation
+        self._cf_list = cf_list
+        self._n_cf = len(cf_list) #: (int) Number of CF in the swarm
+        self._pose_cnt = 0 #: (int) To know when compute pose
 
         #: In abs ctrl mode, moves in world/ In rel ctrl mode, moves relative to yaw
         self.abs_ctrl_mode = False
 
-        self.rate = rospy.Rate(100)
+        self._rate = rospy.Rate(100)
 
-        self.initial_formation_goal = Position() #: Position: formation start position
-        self.initial_formation_goal.x = start_goal[0]
-        self.initial_formation_goal.y = start_goal[1]
-        self.initial_formation_goal.z = start_goal[2]
-        self.initial_formation_goal.yaw = start_goal[3]
+        _initial_formation_goal = Position() #: Position: formation start position
+        _initial_formation_goal.x = start_goal[0]
+        _initial_formation_goal.y = start_goal[1]
+        _initial_formation_goal.z = start_goal[2]
+        _initial_formation_goal.yaw = start_goal[3]
 
         self.scale = 1.0
 
         #: All possible formations
-        self.formations = {"square": SquareFormation(self.min_dist),
-                           "v": VFormation(self.min_dist),
-                           "pyramid": PyramidFormation(self.min_dist),
-                           "circle": CircleFormation(self.min_dist),
-                           "line": LineFormation(self.min_dist),}
+        self._formations = {"square": SquareFormation(self._min_dist),
+                            "v": VFormation(self._min_dist),
+                            "pyramid": PyramidFormation(self._min_dist),
+                            "circle": CircleFormation(self._min_dist),
+                            "line": LineFormation(self._min_dist),}
         self.formation = None #: (str) Current formation
 
         #: (list of list of float): Starting pos of each agent in formation, independant of CF id
@@ -120,14 +77,13 @@ class FormationManager(object):
         self.extra_agents = []
 
         # Publisher
-        self.formation_pose_pub = rospy.Publisher('/formation_pose', Pose, queue_size=1)
-        self.formation_goal_pub = rospy.Publisher('/formation_goal', Position, queue_size=1)
-        self.formation_pose = Pose()
-        self.formation_goal = Position()
-        self.formation_goal_vel = Twist()
+        self._formation_pose_pub = rospy.Publisher('/formation_pose', Pose, queue_size=1)
+        self._formation_goal_pub = rospy.Publisher('/formation_goal', Position, queue_size=1)
+        self._formation_pose = Pose()
+        self._formation_goal = Position()
+        self._formation_goal_vel = Twist()
 
-        if self.initial_formation_goal is not None:
-            self.formation_goal = self.initial_formation_goal
+        self._formation_goal = _initial_formation_goal
 
         # Subscribers
         rospy.Subscriber("/formation_goal_vel", Twist, self._formation_goal_vel_handler)
@@ -145,11 +101,11 @@ class FormationManager(object):
                 rospy.Publisher('/%s/formation_goal' % cf_id, Position, queue_size=1)
 
         # Start services
-        rospy.Service('/set_formation', SetFormation, self.set_formation)
-        rospy.Service('/toggle_ctrl_mode', Empty, self.toggle_ctrl_mode)
-        rospy.Service('/formation_inc_scale', Empty, self.formation_inc_scale)
-        rospy.Service('/formation_dec_scale', Empty, self.formation_dec_scale)
-        rospy.Service('/get_formations_list', GetFormationList, self.return_formation_list)
+        rospy.Service('/set_formation', SetFormation, self._set_formation)
+        rospy.Service('/toggle_ctrl_mode', Empty, self._toggle_ctrl_mode)
+        rospy.Service('/formation_inc_scale', Empty, self._formation_inc_scale)
+        rospy.Service('/formation_dec_scale', Empty, self._formation_dec_scale)
+        rospy.Service('/get_formations_list', GetFormationList, self._return_formation_list)
 
     # Services and subscriptions
     def _formation_goal_vel_handler(self, goal_vel):
@@ -160,38 +116,38 @@ class FormationManager(object):
         Args:
             goal_vel (Twist): Swarm goal velocity
         """
-        self.formation_goal_vel = goal_vel
+        self._formation_goal_vel = goal_vel
 
         # Moves relative to world
         if self.abs_ctrl_mode:
-            self.formation_goal.x += self.formation_goal_vel.linear.x
-            self.formation_goal.y += self.formation_goal_vel.linear.y
-            self.formation_goal.z += self.formation_goal_vel.linear.z
-            self.formation_goal.yaw += self.formation_goal_vel.angular.z
+            self._formation_goal.x += self._formation_goal_vel.linear.x
+            self._formation_goal.y += self._formation_goal_vel.linear.y
+            self._formation_goal.z += self._formation_goal_vel.linear.z
+            self._formation_goal.yaw += self._formation_goal_vel.angular.z
 
         # Moves relative to orientation. X axis in front, y axis on toward the left, z axis up
         else:
-            x_vel = self.formation_goal_vel.linear.x
-            y_vel = self.formation_goal_vel.linear.y
-            theta = self.formation_goal.yaw
+            x_vel = self._formation_goal_vel.linear.x
+            y_vel = self._formation_goal_vel.linear.y
+            theta = self._formation_goal.yaw
             x_dist = x_vel * cos(theta) + y_vel * cos(theta + pi/2.0)
             y_dist = x_vel * sin(theta) + y_vel * sin(theta + pi/2.0)
-            self.formation_goal.x += x_dist
-            self.formation_goal.y += y_dist
-            self.formation_goal.yaw += self.formation_goal_vel.angular.z
+            self._formation_goal.x += x_dist
+            self._formation_goal.y += y_dist
+            self._formation_goal.yaw += self._formation_goal_vel.angular.z
 
             # Make sure formation stays above ground
-            new_z = self.formation_goal.z + self.formation_goal_vel.linear.z
+            new_z = self._formation_goal.z + self._formation_goal_vel.linear.z
             if new_z > self.formation.min_height:
-                self.formation_goal.z = new_z
+                self._formation_goal.z = new_z
             else:
-                self.formation_goal.z = self.formation_goal.z
+                self._formation_goal.z = self._formation_goal.z
 
         # Update formation goal of each CF
         if self.formation is not None:
-            self.formation.update_agents_positions(self.formation_goal, self.crazyflies)
+            self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
 
-    def set_formation(self, srv_call):
+    def _set_formation(self, srv_call):
         """Set formation
 
         Args:
@@ -206,19 +162,19 @@ class FormationManager(object):
 
         valid_formation = True
 
-        if new_formation in self.formations.keys():
+        if new_formation in self._formations.keys():
             rospy.loginfo("Formation: Setting formation to %s" % new_formation)
 
             if new_goal is not None:
-                self.formation_goal.x = new_goal[0]
-                self.formation_goal.y = new_goal[1]
-                self.formation_goal.z = new_goal[2]
-                self.formation_goal.yaw = new_goal[3]
+                self._formation_goal.x = new_goal[0]
+                self._formation_goal.y = new_goal[1]
+                self._formation_goal.z = new_goal[2]
+                self._formation_goal.yaw = new_goal[3]
 
-            self.formation = self.formations[new_formation]
+            self.formation = self._formations[new_formation]
             self.init_formation(cf_initial_positions)
             self.link_swarm_and_formation()
-            self.formation.update_agents_positions(self.formation_goal, self.crazyflies)
+            self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
 
         else:
             rospy.logerr("Formation: Invalid formation: %s" % new_formation)
@@ -226,7 +182,7 @@ class FormationManager(object):
 
         return {"success": valid_formation, "extra_cf": ','.join(self.extra_agents)}
 
-    def toggle_ctrl_mode(self, _):
+    def _toggle_ctrl_mode(self, _):
         """Toggle control mode
 
         Absolute mode: Controls in world reference
@@ -241,7 +197,7 @@ class FormationManager(object):
 
         return {}
 
-    def formation_inc_scale(self, _):
+    def _formation_inc_scale(self, _):
         """Service to increase scale of the formation
         """
         self.scale += 0.5
@@ -253,11 +209,11 @@ class FormationManager(object):
         self.formation.compute_formation_positions()
 
         # Update CFs positions
-        self.formation.update_agents_positions(self.formation_goal, self.crazyflies)
+        self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
 
         return {}
 
-    def formation_dec_scale(self, _):
+    def _formation_dec_scale(self, _):
         """Service to reduce scale of the formation
         """
         self.scale -= 0.5
@@ -269,17 +225,17 @@ class FormationManager(object):
         self.formation.compute_formation_positions()
 
         # Update CFs positions
-        self.formation.update_agents_positions(self.formation_goal, self.crazyflies)
+        self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
 
         return {}
 
-    def return_formation_list(self, _):
+    def _return_formation_list(self, _):
         """To get a list of all possible formations
 
         Returns:
             list of str: Possible formation
         """
-        possible_formations = self.formations.keys()
+        possible_formations = self._formations.keys()
         return {"formations": ','.join(possible_formations)}
 
     # Formation initialization methods
@@ -289,13 +245,13 @@ class FormationManager(object):
         Args:
             initial_positions (dict of list): Keys: Id of CF, Items: Initial position [x, y, z]
         """
-        self.formation.set_n_agents(len(self.cf_list))
+        self.formation.set_n_agents(len(self._cf_list))
         self.formation.set_scale(self.scale)
 
         self.check_goal_height()
 
         self.formation.compute_formation_positions()
-        self.formation.update_agents_positions(self.formation_goal)
+        self.formation.update_agents_positions(self._formation_goal)
 
         for cf_id, initial_position in initial_positions.items():
             self.crazyflies[cf_id]["initial_position"] = initial_position
@@ -305,8 +261,8 @@ class FormationManager(object):
 
         If it's not the case, set formation goal height to mimimum
         """
-        if self.formation.min_height > self.formation_goal.z:
-            self.formation_goal.z = self.formation.min_height
+        if self.formation.min_height > self._formation_goal.z:
+            self._formation_goal.z = self.formation.min_height
 
     def link_swarm_and_formation(self):
         """Link each agent of formation to a CF of the swarm and initialize formation goals
@@ -380,9 +336,9 @@ class FormationManager(object):
         n_goals = len(agents_id_list)
 
         # Find distances
-        all_distances = np.zeros((n_goals, self.n_cf))
+        all_distances = np.zeros((n_goals, self._n_cf))
 
-        for cf_idx in range(self.n_cf): # col
+        for cf_idx in range(self._n_cf): # col
             for goal_idx in range(n_goals): # row
                 rows = slice(3*goal_idx, 3*goal_idx + 3)
                 dist = norm(initial_position_mat[rows, cf_idx] - goal_mat[rows, 0])
@@ -448,7 +404,7 @@ class FormationManager(object):
         self.extra_agents = [cf_id for cf_id in cf_id_list if cf_id not in linked_cf]
 
     # Publishers
-    def publish_cf_formation_goal(self):
+    def _publish_cf_formation_goal(self):
         """Publish formation goal of each CF
         """
         for _, cf_attrs in self.crazyflies.items():
@@ -456,25 +412,25 @@ class FormationManager(object):
                 break
             cf_attrs["formation_goal_pub"].publish(cf_attrs["formation_goal"])
 
-    def publish_formation_pose(self):
+    def _publish_formation_pose(self):
         """Publish current position of the formation (center)
         """
-        self.formation_pose_pub.publish(self.formation_pose)
+        self._formation_pose_pub.publish(self._formation_pose)
 
-    def publish_formation_goal(self):
+    def _publish_formation_goal(self):
         """Publish current goal of the formation
         """
-        self.formation_goal_pub.publish(self.formation_goal)
+        self._formation_goal_pub.publish(self._formation_goal)
 
     def run_formation(self):
         """Execute formation
         """
         while not rospy.is_shutdown():
             if self.formation is not None:
-                self.publish_cf_formation_goal()
-                self.publish_formation_pose()
-                self.publish_formation_goal()
-            self.rate.sleep()
+                self._publish_cf_formation_goal()
+                self._publish_formation_pose()
+                self._publish_formation_goal()
+            self._rate.sleep()
 
 if __name__ == '__main__':
     # Launch node
