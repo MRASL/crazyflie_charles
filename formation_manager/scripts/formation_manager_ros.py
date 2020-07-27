@@ -43,15 +43,29 @@ from v_formation import VFormation
 
 class FormationManager(object):
     """To change between formations and associate agents and CFs
+
+    Args:
+        cf_list (:obj:`list` of :obj:`str`): List of all CFs in swarm
+        min_dist (:obj:`float`): Minimum distance between agents in formation
+        start_goal (:obj:`list` of :obj:`float`): Formation start goal
+
+    Attributes:
+        abs_ctrl_mode (:obj:`bool`): In abs ctrl mode, moves in world/ In rel ctrl mode,
+                                     moves relative to yaw
+        scale (:obj:`float`): Formation scale
+        formation (:obj:`str`): Current formation
+        extra_agents (:obj:`list` of :obj:`str`): Id of CFs in extra
     """
     def __init__(self, cf_list, min_dist, start_goal):
+        self.abs_ctrl_mode = False
+        self.scale = 1.0
+        self.formation = None
+        self.extra_agents = []
+
         self._min_dist = min_dist #: (float) Minimum distance between agents in formation
         self._cf_list = cf_list
         self._n_cf = len(cf_list) #: (int) Number of CF in the swarm
         self._pose_cnt = 0 #: (int) To know when compute pose
-
-        #: In abs ctrl mode, moves in world/ In rel ctrl mode, moves relative to yaw
-        self.abs_ctrl_mode = False
 
         self._rate = rospy.Rate(100)
 
@@ -61,7 +75,6 @@ class FormationManager(object):
         _initial_formation_goal.z = start_goal[2]
         _initial_formation_goal.yaw = start_goal[3]
 
-        self.scale = 1.0
 
         #: All possible formations
         self._formations = {"square": SquareFormation(self._min_dist),
@@ -69,12 +82,7 @@ class FormationManager(object):
                             "pyramid": PyramidFormation(self._min_dist),
                             "circle": CircleFormation(self._min_dist),
                             "line": LineFormation(self._min_dist),}
-        self.formation = None #: (str) Current formation
 
-        #: (list of list of float): Starting pos of each agent in formation, independant of CF id
-        self.start_positions = []
-
-        self.extra_agents = []
 
         # Publisher
         self._formation_pose_pub = rospy.Publisher('/formation_pose', Pose, queue_size=1)
@@ -88,16 +96,16 @@ class FormationManager(object):
         # Subscribers
         rospy.Subscriber("/formation_goal_vel", Twist, self._formation_goal_vel_handler)
 
-        self.crazyflies = {} #: dict of list: Information of each CF
+        self._crazyflies = {} #: dict of list: Information of each CF
         # Initialize each CF
         for cf_id in cf_list:
-            self.crazyflies[cf_id] = {"formation_goal": Position(), # msg
+            self._crazyflies[cf_id] = {"formation_goal": Position(), # msg
                                       "swarm_id": 0,                # int, id in the swarm
                                       "formation_goal_pub": None,   # publisher
                                       "initial_position": None}
 
             # Add goal publisher
-            self.crazyflies[cf_id]["formation_goal_pub"] =\
+            self._crazyflies[cf_id]["formation_goal_pub"] =\
                 rospy.Publisher('/%s/formation_goal' % cf_id, Position, queue_size=1)
 
         # Start services
@@ -138,14 +146,14 @@ class FormationManager(object):
 
             # Make sure formation stays above ground
             new_z = self._formation_goal.z + self._formation_goal_vel.linear.z
-            if new_z > self.formation.min_height:
+            if new_z > self.formation._min_height:
                 self._formation_goal.z = new_z
             else:
                 self._formation_goal.z = self._formation_goal.z
 
         # Update formation goal of each CF
         if self.formation is not None:
-            self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
+            self.formation.update_agents_positions(self._formation_goal, self._crazyflies)
 
     def _set_formation(self, srv_call):
         """Set formation
@@ -174,7 +182,7 @@ class FormationManager(object):
             self.formation = self._formations[new_formation]
             self.init_formation(cf_initial_positions)
             self.link_swarm_and_formation()
-            self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
+            self.formation.update_agents_positions(self._formation_goal, self._crazyflies)
 
         else:
             rospy.logerr("Formation: Invalid formation: %s" % new_formation)
@@ -203,13 +211,13 @@ class FormationManager(object):
         self.scale += 0.5
 
         self.formation.set_scale(self.scale)
-        self.check_goal_height()
+        self._check_goal_height()
 
         # Find new agents positions around goal
         self.formation.compute_formation_positions()
 
         # Update CFs positions
-        self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
+        self.formation.update_agents_positions(self._formation_goal, self._crazyflies)
 
         return {}
 
@@ -219,13 +227,13 @@ class FormationManager(object):
         self.scale -= 0.5
 
         self.formation.set_scale(self.scale)
-        self.check_goal_height()
+        self._check_goal_height()
 
         # Find new agents positions around goal
         self.formation.compute_formation_positions()
 
         # Update CFs positions
-        self.formation.update_agents_positions(self._formation_goal, self.crazyflies)
+        self.formation.update_agents_positions(self._formation_goal, self._crazyflies)
 
         return {}
 
@@ -240,7 +248,9 @@ class FormationManager(object):
 
     # Formation initialization methods
     def init_formation(self, initial_positions):
-        """Initialize formation goal and cf positions
+        """Initialize formation goal and cf positions.
+
+        ``initial_positions`` used to associate CF and agents
 
         Args:
             initial_positions (dict of list): Keys: Id of CF, Items: Initial position [x, y, z]
@@ -248,38 +258,38 @@ class FormationManager(object):
         self.formation.set_n_agents(len(self._cf_list))
         self.formation.set_scale(self.scale)
 
-        self.check_goal_height()
+        self._check_goal_height()
 
         self.formation.compute_formation_positions()
         self.formation.update_agents_positions(self._formation_goal)
 
         for cf_id, initial_position in initial_positions.items():
-            self.crazyflies[cf_id]["initial_position"] = initial_position
-
-    def check_goal_height(self):
-        """Make sure formation goal is above formation minimum height.
-
-        If it's not the case, set formation goal height to mimimum
-        """
-        if self.formation.min_height > self._formation_goal.z:
-            self._formation_goal.z = self.formation.min_height
+            self._crazyflies[cf_id]["initial_position"] = initial_position
 
     def link_swarm_and_formation(self):
         """Link each agent of formation to a CF of the swarm and initialize formation goals
         """
-        agents_id_list, goal_mat = self.create_goal_matrix()
+        agents_id_list, goal_mat = self._create_goal_matrix()
         n_goals = len(agents_id_list)
 
-        cf_id_list, initial_position_mat = self.create_initial_pos_matrix(n_goals)
+        cf_id_list, initial_position_mat = self._create_initial_pos_matrix(n_goals)
 
-        all_distances = self.compute_distances(cf_id_list, initial_position_mat,
+        all_distances = self._compute_distances(cf_id_list, initial_position_mat,
                                                agents_id_list, goal_mat)
 
-        match_positions = self.find_association(all_distances)
+        match_positions = self._find_association(all_distances)
 
-        self.update_associations(cf_id_list, match_positions)
+        self._update_associations(cf_id_list, match_positions)
 
-    def create_goal_matrix(self):
+    def _check_goal_height(self):
+        """Make sure formation goal is above formation minimum height.
+
+        If it's not the case, set formation goal height to mimimum
+        """
+        if self.formation._min_height > self._formation_goal.z:
+            self._formation_goal.z = self.formation._min_height
+
+    def _create_goal_matrix(self):
         """Create a matrix with all the goals stacked vertically
 
         Returns:
@@ -298,7 +308,7 @@ class FormationManager(object):
 
         return agents_id_list, goal_mat
 
-    def create_initial_pos_matrix(self, n_goals):
+    def _create_initial_pos_matrix(self, n_goals):
         """Create initial position matrix: cols Initial position of cf, rows: for each goal
 
         Returns:
@@ -306,7 +316,7 @@ class FormationManager(object):
         """
         initial_position_mat = None
         cf_id_list = [] # list of str: Cf id corresponding to each col
-        for cf_id, cf_vals in self.crazyflies.items():
+        for cf_id, cf_vals in self._crazyflies.items():
             cf_id_list.append(cf_id)
             initial_pos = np.array([cf_vals["initial_position"]]).reshape(3, 1)
             current_pos = initial_pos
@@ -321,7 +331,7 @@ class FormationManager(object):
 
         return cf_id_list, initial_position_mat
 
-    def compute_distances(self, cf_id_list, initial_position_mat, agents_id_list, goal_mat):
+    def _compute_distances(self, cf_id_list, initial_position_mat, agents_id_list, goal_mat):
         """Compute distance from each goal and CF
 
         Args:
@@ -347,7 +357,7 @@ class FormationManager(object):
         all_distances = pd.DataFrame(all_distances, index=agents_id_list, columns=cf_id_list)
         return all_distances
 
-    def find_association(self, all_distances):
+    def _find_association(self, all_distances):
         """To minimze total distance traveled when linking cf and formation agents
         """
         n_goals = len(all_distances.index)
@@ -390,7 +400,7 @@ class FormationManager(object):
 
         return match_positions
 
-    def update_associations(self, cf_id_list, match_positions):
+    def _update_associations(self, cf_id_list, match_positions):
         """Update CF associations and extra agents list
         """
         linked_cf = []
@@ -398,7 +408,7 @@ class FormationManager(object):
         for each_match in match_positions:
             cf_id = each_match[0]
             agent_id = each_match[1]
-            self.crazyflies[cf_id]['swarm_id'] = agent_id
+            self._crazyflies[cf_id]['swarm_id'] = agent_id
             linked_cf.append(cf_id)
 
         self.extra_agents = [cf_id for cf_id in cf_id_list if cf_id not in linked_cf]
@@ -407,7 +417,7 @@ class FormationManager(object):
     def _publish_cf_formation_goal(self):
         """Publish formation goal of each CF
         """
-        for _, cf_attrs in self.crazyflies.items():
+        for _, cf_attrs in self._crazyflies.items():
             if rospy.is_shutdown():
                 break
             cf_attrs["formation_goal_pub"].publish(cf_attrs["formation_goal"])

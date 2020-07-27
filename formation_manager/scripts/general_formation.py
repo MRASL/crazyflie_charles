@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-"""Abstract Class that represents a general formation"""
+"""Abstract Class that represents a general formation.
+
+Cylindrical coordinates are used to specify the position of each agent in the formation.Center
+of formation is defined as (0, 0, 0)
+"""
 
 from math import sin, cos, pi, sqrt, atan
 import rospy
@@ -11,36 +15,30 @@ from tf.transformations import quaternion_from_euler, quaternion_multiply, euler
 class FormationClass(object):
     """Basic formation type
 
+    Args:
+        min_dist (:obj:`float`): Minimum distance between agents in formation
     """
     def __init__(self, min_dist):
-        self.n_agents = 0 #: (int) Number of CF in the formation
-        self.n_agents_landed = 0 #(int) Number of CF landed, not part of current formation
-        self.min_dist = min_dist
+        self._n_agents = 0 #: (int) Number of CF in the formation
+        self._n_agents_landed = 0 #(int) Number of CF landed, not part of current formation
+        self._min_dist = min_dist
 
-        self.agents_goals = {} #: (dict of Position) Target Pose of all the CF
-        self.center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
-        self.angle = {} #: (dict of float) Keys: swarm id, Item: Angle(rad) from x axis
+        self._agents_goals = {} #: (dict of Position) Target Pose of all the CF
+        self._center_dist = {} #: (dict of float) Keys: swarm id, Item: Distance from center
+        self._angle = {} #: (dict of float) Keys: swarm id, Item: Angle(rad) from x axis
 
-        self.extra_agents_id = [] #: list of int: Id of landed agents
+        self._extra_agents_id = [] #: list of int: Id of landed agents
 
         #: (dict of float) Keys: swarm id, Item: Height from center (<0 -> below swarm center)
-        self.center_height = {}
+        self._center_height = {}
 
-        self.scale = 0.0 #: (float) scale of the formation
-        self.min_scale = 0.0
-        self.max_scale = 5.0
+        self._scale = 0.0 #: (float) scale of the formation
+        self._min_scale = 0.0
+        self._max_scale = 5.0
 
-        self.min_height = 0.5 #: float: Minimum height of formation goal
+        self._min_height = 0.5 #: float: Minimum height of formation goal
 
     # General methods, valid between formations
-    def get_n_agents(self):
-        """Returns number of CF in the swarm
-
-        Returns:
-            int: Number of CF in the swarm
-        """
-        return self.n_agents
-
     def get_agents_goals(self):
         """Return goal of each agent in formation
 
@@ -48,7 +46,7 @@ class FormationClass(object):
             dict of list: Keys: agents id, Items: goal [x, y, z]
         """
         goals = {}
-        for agent_id, agent_goal in self.agents_goals.items():
+        for agent_id, agent_goal in self._agents_goals.items():
             goals[agent_id] = [agent_goal.x, agent_goal.y, agent_goal.z]
 
         return goals
@@ -59,13 +57,13 @@ class FormationClass(object):
         Args:
             new_scale (float): New formation scale
         """
-        self.scale = new_scale
-        self.scale = self.min_scale if self.scale < self.min_scale else self.scale
-        self.scale = self.max_scale if self.scale > self.max_scale else self.scale
+        self._scale = new_scale
+        self._scale = self._min_scale if self._scale < self._min_scale else self._scale
+        self._scale = self._max_scale if self._scale > self._max_scale else self._scale
 
         self.update_formation_scale()
 
-        rospy.loginfo("Formation: Formation scale: %.2f" % self.scale)
+        rospy.loginfo("Formation: Formation scale: %.2f" % self._scale)
 
     def update_agents_positions(self, formation_goal, crazyflies=None):
         """Compute goal of each agent and updates corresponding CF goal.
@@ -79,25 +77,25 @@ class FormationClass(object):
             crazyflies (dict, optional): Information of each Crazyflie
         """
         # Compute position of all CF
-        for swarm_id in range(self.n_agents):
+        for swarm_id in range(self._n_agents):
             if rospy.is_shutdown():
                 break
             yaw = formation_goal.yaw
 
             # Could fail if swarm position is being calculated
             try:
-                theta = self.angle[swarm_id] + yaw
+                theta = self._angle[swarm_id] + yaw
             except KeyError:
                 break
 
-            x_dist = cos(theta) * self.center_dist[swarm_id]
-            y_dist = sin(theta) * self.center_dist[swarm_id]
-            z_dist = self.center_height[swarm_id]
+            x_dist = cos(theta) * self._center_dist[swarm_id]
+            y_dist = sin(theta) * self._center_dist[swarm_id]
+            z_dist = self._center_height[swarm_id]
 
-            self.agents_goals[swarm_id].x = formation_goal.x + x_dist
-            self.agents_goals[swarm_id].y = formation_goal.y + y_dist
-            self.agents_goals[swarm_id].z = formation_goal.z + z_dist
-            self.agents_goals[swarm_id].yaw = yaw
+            self._agents_goals[swarm_id].x = formation_goal.x + x_dist
+            self._agents_goals[swarm_id].y = formation_goal.y + y_dist
+            self._agents_goals[swarm_id].z = formation_goal.z + z_dist
+            self._agents_goals[swarm_id].yaw = yaw
 
         # Update all CF formation goal based on swarm ID
         if crazyflies is not None:
@@ -106,21 +104,24 @@ class FormationClass(object):
                     break
                 cf_id = cf_attrs["swarm_id"]
                 try:
-                    cf_attrs["formation_goal"].x = self.agents_goals[cf_id].x
-                    cf_attrs["formation_goal"].y = self.agents_goals[cf_id].y
-                    cf_attrs["formation_goal"].z = self.agents_goals[cf_id].z
-                    cf_attrs["formation_goal"].yaw = self.agents_goals[cf_id].yaw
+                    cf_attrs["formation_goal"].x = self._agents_goals[cf_id].x
+                    cf_attrs["formation_goal"].y = self._agents_goals[cf_id].y
+                    cf_attrs["formation_goal"].z = self._agents_goals[cf_id].z
+                    cf_attrs["formation_goal"].yaw = self._agents_goals[cf_id].yaw
                 except KeyError:
                     # Pass, keys arn't initialized yet because of new formation
                     pass
 
     def find_extra_agents(self):
-        """Find extra agents formation id
-        """
-        self.extra_agents_id = []
+        """Find id of agents in extra.
 
-        for agent_id in range(self.n_agents, self.n_agents + self.n_agents_landed + 1):
-            self.extra_agents_id.append(agent_id)
+        Extra agents can happen when there are too many agents for a formation.
+        i.e: Making a square with 10 agents will result in one extra agent.
+        """
+        self._extra_agents_id = []
+
+        for agent_id in range(self._n_agents, self._n_agents + self._n_agents_landed + 1):
+            self._extra_agents_id.append(agent_id)
 
     # Methods depending on formation
     def set_n_agents(self, n_agents):
@@ -130,10 +131,10 @@ class FormationClass(object):
             n (int): Number of CF
         """
         if n_agents > 0:
-            self.n_agents = n_agents
-            rospy.loginfo("Formation made of %i crazyflies" % self.n_agents)
+            self._n_agents = n_agents
+            rospy.loginfo("Formation made of %i crazyflies" % self._n_agents)
         else:
-            self.n_agents = 0
+            self._n_agents = 0
             rospy.logerr("Unsuported number of CFs")
 
     def compute_min_scale(self):
@@ -191,7 +192,7 @@ def compute_info_from_center(agent_position):
     return center_dist, theta, z_dist
 
 def calculate_rot(start_orientation, rot):
-    """Apply rotation to quaternion
+    """Apply rotation to a quaternion
 
     Args:
         start_orientation (Quaternion): Initial orientation

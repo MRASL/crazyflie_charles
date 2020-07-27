@@ -1,118 +1,10 @@
 #!/usr/bin/env python
 
 """
-To manage the flight of the swarm.
+Module to move the swarm and use ``TrajectoryPlanner`` and ``FormationManager`` packages.
 
-Controls the position of each CF in the swarm by publishing to /cfx/goal.
-
-Goal of each CF computed by different nodes.
-
-.. todo:: Elaborate
-
-.. note::
-    Swarm: Groupe of all the crazyflies
-
-    Formation: Layout of the swarm
-
-
-Usage
------
-
-
-ROS Features
-------------
-Subscribed Topics
-^^^^^^^^^^^^^^^^^
-:ref:`cf-formation-goal` (crazyflie_driver/Position)
-    Position of the CF in formation
-
-:ref:`trajectory-goal` (crazyflie_driver/Position)
-    Position of the CF on the trajectory, at each time step
-
-:ref:`state` (std_msgs/String)
-    Current state of CF
-
-:ref:`pose` (geometry_msgs/PoseStamped)
-    Current pose of CF
-
-:ref:`joy-swarm-vel` (geometry_msgs/Twist)
-    Input from joystick
-
-
-Published Topics
-^^^^^^^^^^^^^^^^
-:ref:`goal` (crazyflie_driver/Position)
-    Target position of CF
-
-:ref:`formation-goal-vel` (geometry_msgs/Twist)
-    Formation center goal variation
-
-Services
-^^^^^^^^
- /take_off_swarm(`std_srvs/Empty`_)
-    Take off all CFs
-
- /stop_swarm(`std_srvs/Empty`_)
-    Stop all CFs
-
- /swarm_emergency(`std_srvs/Empty`_)
-    Emgergency stop of all CFs
-
- /land_swarm(`std_srvs/Empty`_)
-    Land all CF to their starting position
-
- /update_swarm_params(`std_srvs/Empty`_)
-    Update parameter of all swarm
-
- /inc_swarm_scale(`std_srvs/Empty`_)
-    Increase scale of formation
-
- /dec_swarm_scale(`std_srvs/Empty`_)
-    Decrease scale of formation
-
- /next_swarm_formation(`std_srvs/Empty`_)
-    Go to next formation
-
- /prev_swarm_formation(`std_srvs/Empty`_)
-    Go to previous formation
-
- /traj_found(`std_srvs/SetBool`_)
-    To call once the trajectory planner is done
-
- /traj_done(`std_srvs/Empty`_)
-    To call once the trajectory is done
-
-Services Called
-^^^^^^^^^^^^^^^
-/set_formation(formation_manager/SetFormation)
-
-/get_formations_list(formation_manager/GetFormationList)
-
-/formation_inc_scale(`std_srvs/Empty`_)
-
-/formation_dec_scale(`std_srvs/Empty`_)
-
-/set_planner_positions(trajectory_planner/SetPositions)
-
-/plan_trajectories(`std_srvs/Empty`_)
-
-/pub_trajectories(`std_srvs/Empty`_)
-
-Parameters
-^^^^^^^^^^
-~cf_list(str, default: ['cf1'])
-~to_sim(bool, default: False)
-~take_off_height(float)
-~gnd_height(float)
-~min_dist(float)
-~min_goal_dist(float)
-
-
-TrajectoryPlanner Class
------------------------
-
-.. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
-.. _std_srvs/SetBool: http://docs.ros.org/api/std_srvs/html/srv/SetBool.html
+``SwarmController`` class
+-------------------------
 """
 
 import ast
@@ -137,24 +29,19 @@ from crazyflie import yaw_from_quat
 from launch_file_api import launch_swarm
 
 class SwarmController(object):
-    """Python API for easy control of the swarm.
+    """Main class
     """
     def __init__(self):
-        """
-        Args:
-            cf_list (list of str): Name of all CFs in the swarm
-            to_sim (bool): To simulate or not
-        """
         rospy.loginfo("Swarm: Initialization...")
 
-        self.crazyflies = {} #: Keys are name of the CF
-        self.cf_list = rospy.get_param("cf_list") #: List of str: List of all cf names in the swarm
+        self._crazyflies = {} #: Dict of :py:class:`CrazyfliePy`
+        self._cf_list = rospy.get_param("cf_list") #: List of str: List of all cf names in the swarm
 
-        self.rate = rospy.Rate(10) #: Rate: Rate to publish messages
+        self._rate = rospy.Rate(10) #: Rate: Rate to publish messages
 
         # Initialize each Crazyflie
-        for each_cf in self.cf_list:
-            self.crazyflies[each_cf] = CrazyfliePy(each_cf)
+        for each_cf in self._cf_list:
+            self._crazyflies[each_cf] = CrazyfliePy(each_cf)
 
         self._init_params()
         self._stabilize_position()
@@ -268,7 +155,7 @@ class SwarmController(object):
         queue_full = False
 
         # Initialize position history
-        for cf_id in self.crazyflies:
+        for cf_id in self._crazyflies:
             queue_dict = {}
             queue_dict['x'] = Queue.Queue(10)
             queue_dict['y'] = Queue.Queue(10)
@@ -277,7 +164,7 @@ class SwarmController(object):
             positions[cf_id] = queue_dict
 
         while not position_stable:
-            for cf_id, cf_info in self.crazyflies.items():
+            for cf_id, cf_info in self._crazyflies.items():
                 cf_pose = cf_info.pose.pose
 
                 if positions[cf_id]['x'].full():
@@ -310,13 +197,13 @@ class SwarmController(object):
         state_function = self._state_machine.run_state()
         state_function()
 
-        if len(self.cf_list) > 1:
+        if len(self._cf_list) > 1:
             self.check_positions()
 
         # Publish goal of each CF
         self._pub_cf_goals()
 
-        self.rate.sleep()
+        self._rate.sleep()
 
     def update_swarm_param(self, param, value):
         """Update parameter of all swarm
@@ -338,7 +225,7 @@ class SwarmController(object):
 
         scaling_matrix_inv = inv(np.diag([1, 1, 2]))
 
-        for cf_id, each_cf in self.crazyflies.items():
+        for cf_id, each_cf in self._crazyflies.items():
 
             cf_position = each_cf.pose.pose
             cf_position = np.array([cf_position.position.x,
@@ -350,7 +237,7 @@ class SwarmController(object):
                                 cf_goal.y,
                                 cf_goal.z])
 
-            for other_id, other_cf in self.crazyflies.items():
+            for other_id, other_cf in self._crazyflies.items():
                 if other_id != cf_id:
                     other_pos = other_cf.pose.pose
                     other_pos = np.array([other_pos.position.x,
@@ -449,7 +336,7 @@ class SwarmController(object):
             formation_goal (list, optional): New formation goal: [x, y, z, yaw]. Defaults to None.
         """
         start_positions = {}
-        for cf_id, cf_vals in self.crazyflies.items():
+        for cf_id, cf_vals in self._crazyflies.items():
             cf_pose = cf_vals.pose.pose
 
             start_positions[cf_id] = [cf_pose.position.x,
@@ -477,7 +364,7 @@ class SwarmController(object):
         """
         self._landed_cf_ids = []
 
-        for cf_id, cf_vals in self.crazyflies.items():
+        for cf_id, cf_vals in self._crazyflies.items():
             if land_swarm:
                 cf_initial_pose = cf_vals.initial_pose
 
@@ -517,7 +404,7 @@ class SwarmController(object):
         """
         # Send each CF starting position to planner
         start_positions = {}
-        for cf_id, cf_vals in self.crazyflies.items():
+        for cf_id, cf_vals in self._crazyflies.items():
             cf_pose = cf_vals.pose.pose
 
             # If landed, starting position is 0.5m above
@@ -548,7 +435,7 @@ class SwarmController(object):
             target_goals (dict, optional): To specify each_cf goal. Defaults to None.
         """
         goals = {}
-        for cf_id, cf_vals in self.crazyflies.items():
+        for cf_id, cf_vals in self._crazyflies.items():
             # Land all CFs in air
             if land_swarm and cf_id not in self._landed_cf_ids:
                 cf_initial_pose = cf_vals.initial_pose
@@ -590,11 +477,11 @@ class SwarmController(object):
             if rospy.is_shutdown():
                 break
 
-            for cf_id, each_cf in self.crazyflies.items():
+            for cf_id, each_cf in self._crazyflies.items():
                 if each_cf.state != "hover" and cf_id not in self._extra_cf_list:
                     all_cf_in_air = False
 
-            self.rate.sleep()
+            self._rate.sleep()
 
     def _wait_for_planner(self):
         """Wait until planner finds a trajectory
@@ -604,10 +491,10 @@ class SwarmController(object):
             if rospy.is_shutdown():
                 break
 
-            for _, each_cf in self.crazyflies.items():
+            for _, each_cf in self._crazyflies.items():
                 each_cf.update_goal()
 
-            self.rate.sleep()
+            self._rate.sleep()
 
         self._traj_found = False
 
@@ -617,7 +504,7 @@ class SwarmController(object):
         Args:
             land_swarm (bool, optional): True if all swarm is to be landed. Default: False
         """
-        for cf_id, cf_vals in self.crazyflies.items():
+        for cf_id, cf_vals in self._crazyflies.items():
             # If land all swarm or (cf in extra and not landed)
             if land_swarm or\
                             (cf_vals.state not in ["landed", "land", "stop"] and\
@@ -640,7 +527,7 @@ class SwarmController(object):
         """All cf follow a specified trajectory
         """
         # Set CF goal to trajectory goal
-        for cf_id, each_cf in self.crazyflies.items():
+        for cf_id, each_cf in self._crazyflies.items():
             traj_goal = each_cf.goals["trajectory"]
             # Make sure first msg was sent
             if traj_goal is not None:
@@ -660,7 +547,7 @@ class SwarmController(object):
         self._pub_formation_goal_vel(self._formation_goal_vel)
 
         # Set CF goal to formation goal
-        for cf_id, each_cf in self.crazyflies.items():
+        for cf_id, each_cf in self._crazyflies.items():
             # If CF part of formation, set goal to formation_goal
             if cf_id not in self._extra_cf_list:
                 each_cf.update_goal("formation")
@@ -678,7 +565,7 @@ class SwarmController(object):
         """CFs hover in place
         """
         # Set CF goal to current pose
-        for _, each_cf in self.crazyflies.items():
+        for _, each_cf in self._crazyflies.items():
             each_cf.update_goal()
 
     def _landing_state(self):
@@ -709,7 +596,7 @@ class SwarmController(object):
     def _pub_cf_goals(self):
         """Publish goal of each CF
         """
-        for _, each_cf in self.crazyflies.items():
+        for _, each_cf in self._crazyflies.items():
             each_cf.publish_goal()
 
     # Services
@@ -723,7 +610,7 @@ class SwarmController(object):
             service_msg (srv_msg, optional): Message to send. Defaults to None.
             cf_list (list of str, optional): Only call service of CF in list. Defaults to None.
         """
-        for cf_id, each_cf in self.crazyflies.items():
+        for cf_id, each_cf in self._crazyflies.items():
             if cf_list is None or cf_id in cf_list:
                 each_cf.call_srv(service_name, args, kwargs)
 
@@ -790,7 +677,7 @@ class SwarmController(object):
                     # print "Formation goal: {}".format(goal_val)
                     formation_goal = goal_val
 
-                elif goal_id in self.cf_list:
+                elif goal_id in self._cf_list:
                     # print "{} goal: {}".format(goal_id, goal_val)
                     new_goal = Position()
                     new_goal.x = goal_val[0]
@@ -821,12 +708,12 @@ class SwarmController(object):
 
         # If not list is passed, send position of all CFs
         if not cf_list:
-            cf_list = self.cf_list
+            cf_list = self._cf_list
 
         positions = {}
         for each_cf in cf_list:
-            if each_cf in self.cf_list:
-                pose = self.crazyflies[each_cf].pose.pose
+            if each_cf in self._cf_list:
+                pose = self._crazyflies[each_cf].pose.pose
                 positions[each_cf] = [pose.position.x,
                                       pose.position.y,
                                       pose.position.z,
