@@ -3,29 +3,119 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+****************************************
 Crazyflie Swarm Controller documentation
-========================================
+****************************************
 
-.. todo:: Ajouter description et exemple
-.. todo:: Ajouter features, sim, trajectory, formation...
+Overview
+========
 
-First Steps
------------
+`Crazyflie Swarm Controller` is a ROS package to fly a swarm of crazyflie in formation.
 
-installation, dependencies, ressources
+Main features:
 
-.. todo:: Required skills, suggested reading
+* Python API
+* Collision free trajectory planning via a DMPC algorithm
+* Fly swarm in various formations (square, circle, line...)
+* Simulation
+* Easy control with a joystick
+
+Exemple
+-------
+
+Formation Exemple
+^^^^^^^^^^^^^^^^^
+::
+
+   # Formation exemple
+   swarm = SwarmAPI()
+
+   # Link joystick buttons to commands
+   swarm.link_joy_button("S", swarm.take_off)
+   swarm.link_joy_button("X", swarm.land)
+   swarm.link_joy_button("O", swarm.emergency)
+   swarm.link_joy_button("T", swarm.toggle_ctrl_mode)
+
+   # Start swarm
+   swarm.set_mode("formation")
+   swarm.set_formation("line")
+
+   swarm.take_off()
+   rospy.sleep(10)
+
+   # Change formation
+   swarm.set_formation("pyramid")
+
+
+High level controller exemple
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
+
+   # Trade spots demo
+   swarm = SwarmAPI()
+   swarm.set_mode("automatic")
+
+   # Take off
+   swarm.take_off()
+
+   # Switch positions
+   pose = swarm.get_positions()
+   goals = {}
+   goals["cf_0"] = pose["cf_1"]
+   goals["cf_1"] = pose["cf_0"]
+   swarm.go_to(goals)
+
+   rospy.sleep(10)
+
+   # Land
+   swarm.land()
+
+
+.. |video1| image:: /images/formation-demo.gif
+   :height: 400px
+   :width: 400px
+
+.. |video2| image:: /images/cf-spots.gif
+   :height: 400px
+   :width: 400px
+
+.. table::
+   :align: center
+
+   +----------+----------+
+   | |video1| | |video2| |
+   +----------+----------+
+
+
+Getting Started
+===============
+
+
+
+See :doc:`this page</getting_started/installation>` for a guide on how to install the package.
+
+
+
+If you are a developper, :doc:`look here</getting_started/tutorials>` for some basic tutorials. At the end of the tutorials, you should be able to:
+
+* Create new formation
+* Customize controller mapping
+* ...
+
+
+Additonal ressources about crazyflie, trajectory planning and uav can be found :doc:`here<getting_started/ressources>`
 
 .. toctree::
    :maxdepth: 2
    :hidden:
    :caption: First steps
 
-   first_steps/installation
-   first_steps/ressources
+   getting_started/installation
+   getting_started/tutorials
+   getting_started/ressources
 
-Ros Architecture
-----------------
+ROS Architecture
+================
 To control the swarm, three different ros packages are used:
 
 * :doc:`/ros_architecture/swarm_manager`: Main package. Link between the other packages and `crazyflie ros stack`_. Includes a python api.
@@ -46,18 +136,18 @@ The general architecture can be found here :doc:`/ros_architecture/general_archi
    ros_architecture/topics
 
 User Guide
-----------
+==========
 .. toctree::
    :maxdepth: 2
    :hidden:
    :caption: User Guide
 
 Package Description
--------------------
+===================
 In-depth description of each package
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Package Description
 
    package_description/swarm_manager
@@ -65,7 +155,7 @@ In-depth description of each package
    package_description/trajectory_planner
 
 Glossary, Indices and tables
-----------------------------
+============================
 
 .. toctree::
    :maxdepth: 2

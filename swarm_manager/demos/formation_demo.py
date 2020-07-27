@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     print "Formation demo"
     swarm.set_mode("formation")
-    swarm.set_formation("line")
+    swarm.set_formation("v")
 
     swarm.take_off()
     rospy.sleep(10)
