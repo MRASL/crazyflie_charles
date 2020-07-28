@@ -42,12 +42,14 @@ if __name__ == "__main__":
 
     print "Formation demo"
     swarm.set_mode("formation")
-    swarm.set_formation("line")
+    swarm.set_formation("v")
 
     swarm.take_off()
-    rospy.sleep(7)
+    rospy.sleep(10)
 
     print "Moving formation to (2, 2, 0.5)"
-    swarm.go_to({'formation': [2, 2, 0.5, 0]})
+    swarm.set_formation("pyramid")
+
+    # swarm.go_to({'formation': [2, 2, 0.5, 0]})
 
     rospy.spin()

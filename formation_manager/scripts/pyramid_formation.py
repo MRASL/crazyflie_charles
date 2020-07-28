@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Square formation
+"""Pyramid formation
 """
 
 from math import sin, pi, ceil
@@ -54,7 +54,7 @@ class PyramidFormation(FormationClass):
     def __init__(self, min_dist):
         super(PyramidFormation, self).__init__(min_dist)
 
-        self.min_height = self.scale + 0.5
+        self._min_height = self._scale + 0.5
 
         # Attrs specific to square
         self.n_tier = 0 #: (int) Number of tier in the Pyramid
@@ -67,15 +67,15 @@ class PyramidFormation(FormationClass):
     def set_n_agents(self, n_agents):
         # Verify number of CFs, n-1 must be a multiple of 4
         if n_agents > 0 and (n_agents  - 1) % 4 == 0:
-            self.n_agents = n_agents
-            self.n_agents_landed = 0
+            self._n_agents = n_agents
+            self._n_agents_landed = 0
         else:
-            self.n_agents_landed = (n_agents  - 1) % 4
-            self.n_agents = n_agents - self.n_agents_landed
+            self._n_agents_landed = (n_agents  - 1) % 4
+            self._n_agents = n_agents - self._n_agents_landed
             rospy.loginfo("Formation: Unsuported number of CFs, landing %i CF" %\
-                self.n_agents_landed)
+                self._n_agents_landed)
 
-        rospy.loginfo("Formation: %i crazyflies in formation" % self.n_agents)
+        rospy.loginfo("Formation: %i crazyflies in formation" % self._n_agents)
         self.find_extra_agents()
 
         self.update_formation_scale()
@@ -83,21 +83,21 @@ class PyramidFormation(FormationClass):
 
     # Computing
     def compute_min_scale(self):
-        min_scale_tier_dist = self.min_dist*self.n_tier if self.n_tier > 0 else 0
-        min_scale_ag_dist = self.min_dist/(2*sin(self.theta))*self.n_tier
+        min_scale_tier_dist = self._min_dist*self.n_tier if self.n_tier > 0 else 0
+        min_scale_ag_dist = self._min_dist/(2*sin(self.theta))*self.n_tier
 
-        self.min_scale = min(min_scale_tier_dist, min_scale_ag_dist)
+        self._min_scale = min(min_scale_tier_dist, min_scale_ag_dist)
 
     def compute_formation_positions(self):
         # (dX, dY) sign for each position in tier
         tier_poses_sign = [(-1, -1), (-1, 1), (1, 1), (1, -1)]
 
-        for i in range(self.n_agents):
+        for i in range(self._n_agents):
             if rospy.is_shutdown():
                 break
 
             # Initialize agent formation goal
-            self.agents_goals[i] = Position()
+            self._agents_goals[i] = Position()
 
             # Find tier information
             # i=0 -> tier=0, i=1,2,3,4 -> tier = 1, i=5,6,7,8 -> tier = 2 ...
@@ -113,13 +113,13 @@ class PyramidFormation(FormationClass):
 
             # information from center
             center_dist, theta, center_height = compute_info_from_center([x_dist, y_dist, z_dist])
-            self.center_dist[i] = center_dist
-            self.angle[i] = theta
-            self.center_height[i] = center_height
+            self._center_dist[i] = center_dist
+            self._angle[i] = theta
+            self._center_height[i] = center_height
 
     def update_formation_scale(self):
-        self.n_tier = (self.n_agents - 1) / 4
-        self.min_height = self.scale + 0.5 if self.n_tier > 1 else 0.5
+        self.n_tier = (self._n_agents - 1) / 4
+        self._min_height = self._scale + 0.5 if self.n_tier > 1 else 0.5
 
         # Space between tiers
-        self.tier_dist = self.scale/self.n_tier if self.n_tier > 0 else 0
+        self.tier_dist = self._scale/self.n_tier if self.n_tier > 0 else 0

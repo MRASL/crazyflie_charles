@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 """Package to compute collision free trajectories for each agent.
 
-The algorithm used is based on Distributed Model Predictive Control.
-
-.. todo:: ADD Article
+The algorithm [CIT1]_ used is based on Distributed Model Predictive Control.
 
 Usage
 -----
@@ -43,8 +41,6 @@ Services
 
 Services Called
 ^^^^^^^^^^^^^^^
-.. todo:: Add link to swarm_manager srv
-
 /traj_found(`std_srvs/SetBool`_)
     Service called once a trajectory is found.
 
@@ -59,19 +55,20 @@ Parameters
 ^^^^^^^^^^
 ~cf_list(str, default: ['cf1'])
 
-TrajectoryPlanner Class
------------------------
+`TrajectoryPlanner` Class
+-------------------------
 
 .. _std_srvs/Empty: http://docs.ros.org/api/std_srvs/html/srv/Empty.html
 .. _std_srvs/SetBool: http://docs.ros.org/api/std_srvs/html/srv/SetBool.html
 """
+
 
 import ast
 import rospy
 
 from std_srvs.srv import Empty, SetBool
 from crazyflie_driver.msg import Position
-from crazyflie_charles.srv import SetPositions
+from trajectory_planner.srv import SetPositions
 from trajectory_solver import TrajectorySolver
 from agent import Agent
 

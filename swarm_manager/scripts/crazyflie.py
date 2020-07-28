@@ -4,7 +4,7 @@
 
 Args:
     cf_name (str): Name of the crazyflie
-    to_sim (bool): To run in simulation or not
+    sim (bool): To run in simulation or not
 
 :: _Voir les topics possibles:
     https://github.com/bitcraze/crazyflie-firmware/blob/master/src/modules/src/crtp_commander_generic.c
@@ -30,44 +30,24 @@ class Crazyflie(object):
 
     Args:
         object ([type]): [description]
-
-    Services:
-        *to add
-
-    Subscription:
-        *to add
-
-    Publishers:
-        *to add
-
     """
-    def __init__(self, cf_id, to_sim):
+    def __init__(self, cf_id, sim):
         """
         Args:
             cf_id (str): Name of the CF
-            to_sim (bool): To sim
+            sim (bool): To sim
 
         Attributes:
             cf_id (str): Name of the CF
-            _to_sim (bool): To sim
-            _to_teleop (bool): To teleop
+            _sim (bool): To sim
 
             _states (list of str): All possible states of the CF
             _state (str): Current state of the CF
-
-        Publishers:
-
-        Messages:
-
-        Services:
-
-
         """
         # Attributes
         self.cf_id = '/' + cf_id
 
-        self._to_sim = to_sim
-        self._to_teleop = False
+        self._sim = sim
 
         # Initialize state machine
         self._state_list = {"landed": self._stop,
@@ -85,7 +65,7 @@ class Crazyflie(object):
         self.rate = rospy.Rate(10)
 
         # If not in simulation, find services and set parameters
-        if not self._to_sim:
+        if not self._sim:
             rospy.loginfo(self.cf_id + ": waiting for update_params service...")
             rospy.wait_for_service(self.cf_id + '/update_params')
             rospy.loginfo(self.cf_id + ": found update_params service")
@@ -142,7 +122,6 @@ class Crazyflie(object):
         rospy.Service(self.cf_id + '/hover', Empty_srv, self.hover)
         rospy.Service(self.cf_id + '/land', Empty_srv, self.land)
         rospy.Service(self.cf_id + '/stop', Empty_srv, self.stop)
-        rospy.Service(self.cf_id + '/toggle_teleop', Empty_srv, self.toggle_teleop)
         rospy.Service(self.cf_id + '/set_param', SetParam, self._set_param)
 
     # Handlers
@@ -195,7 +174,7 @@ class Crazyflie(object):
 
         rospy.set_param(self.cf_id + "/" + param_name, param_val)
 
-        if not self._to_sim:
+        if not self._sim:
             self.update_param([param_name])
 
         return {}
@@ -207,14 +186,6 @@ class Crazyflie(object):
             int: cf_id
         """
         return self.cf_id
-
-    def in_teleop(self):
-        """Returns true if controlled by joystick
-
-        Returns:
-            bool: True if in teleop
-        """
-        return self._state_machine.in_state("teleop")
 
     # Services
     def take_off(self, _):
@@ -242,16 +213,6 @@ class Crazyflie(object):
         """Stop service
         """
         self._state_machine.set_state("stop")
-        return {}
-
-    def toggle_teleop(self, _):
-        """Toggle teleop service
-        """
-        if self._state_machine.in_state("teleop"):
-            self._state_machine.set_state("stop")
-        else:
-            self._state_machine.set_state("teleop")
-
         return {}
 
     # Methods depending on state
@@ -371,7 +332,7 @@ class Crazyflie(object):
 
     # Run methods
     def run(self):
-        """Run controller, when not in teleop
+        """Run controller
         """
         state_function = self._state_machine.run_state()
         state_function()
@@ -413,17 +374,13 @@ if __name__ == '__main__':
 
     # Get params
     CF_ID = rospy.get_param("~cf_name", "cf_default")
-    TO_SIM = rospy.get_param("~to_sim", "False")
+    SIM = rospy.get_param("~sim", "False")
 
     TAKE_OFF_HEIGHT = rospy.get_param("/swarm")["take_off_height"]
     GND_HEIGHT = rospy.get_param("/swarm")["gnd_height"]
 
     # Initialize cfx
-    CF = Crazyflie(CF_ID, TO_SIM)
+    CF = Crazyflie(CF_ID, SIM)
 
     while not rospy.is_shutdown():
-        if not CF.in_teleop():
-            CF.run()
-
-        else:
-            pass
+        CF.run()

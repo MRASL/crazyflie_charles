@@ -2,6 +2,41 @@
 
 """
 To record and analyse flight data of all CFs
+
+.. note::
+    See ``flight_analysis.py`` for plotting and analysis of flight data
+
+ROS Features
+------------
+Subscribed Topics
+^^^^^^^^^^^^^^^^^
+:ref:`cf-goal` (crazyflie_driver/Position)
+    Target position of CF
+
+:ref:`cf-pose` (geometry_msgs/PoseStamped)
+    Current pose of CF
+
+Published Topics
+^^^^^^^^^^^^^^^^
+None
+
+Services
+^^^^^^^^
+None
+
+Services Called
+^^^^^^^^^^^^^^^
+ None
+
+
+Parameters
+^^^^^^^^^^
+~cf_list(list of str)
+
+~save(bool, false)
+
+``Recorder`` Class
+------------------
 """
 
 import os
@@ -24,7 +59,7 @@ class Recorder(object):
 
         self._find_id()
 
-        self.crazyflies = {} #: dict: Keys are name of the CF
+        self.crazyflies = {} #: dict: To store positions of all CFs. Keys are CF id
 
         # Initialize each Crazyflie
         for each_cf in cf_list:
@@ -78,13 +113,8 @@ class Recorder(object):
         np.save(file_path, self.crazyflies)
 
     def on_shutdown(self):
-        """To save data upon exit
+        """To save data upon rospy shutdown
         """
-        # user_cmd = raw_input("\nSave data? (y/n): ")
-
-        # if user_cmd == 'y':
-            # self._save_data()
-
         if self.to_save:
             self._save_data()
 
@@ -99,7 +129,7 @@ if __name__ == '__main__':
         except KeyError:
             pass
 
-    TO_SAVE = rospy.get_param("~to_save", "False")
+    TO_SAVE = rospy.get_param("~save", "False")
 
     REC = Recorder(CF_LIST, TO_SAVE)
     rospy.on_shutdown(REC.on_shutdown)

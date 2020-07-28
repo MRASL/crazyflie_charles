@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Square formation
+"""Line formation
 """
 
 import rospy
@@ -43,33 +43,33 @@ class LineFormation(FormationClass):
     def set_n_agents(self, n_agents):
         # Verify number of CFs, all n are valid
         if n_agents > 0:
-            self.n_agents = n_agents
-            self.n_agents_landed = 0
+            self._n_agents = n_agents
+            self._n_agents_landed = 0
         else:
             rospy.loginfo("Formation: Unsuported number of agents, landing %i agents"\
-                % self.n_agents_landed)
+                % self._n_agents_landed)
 
-        rospy.loginfo("Formation: %i agents in formation" % self.n_agents)
+        rospy.loginfo("Formation: %i agents in formation" % self._n_agents)
 
         self.update_formation_scale()
         self.compute_min_scale()
 
     # Computing
     def compute_min_scale(self):
-        if self.n_agents > 1:
-            self.min_scale = self.min_dist*(self.n_agents - 1)
+        if self._n_agents > 1:
+            self._min_scale = self._min_dist*(self._n_agents - 1)
         else:
-            self.min_scale = 0.0
+            self._min_scale = 0.0
 
     def compute_formation_positions(self):
-        center_offset = self.scale/2
+        center_offset = self._scale/2
 
-        for i in range(self.n_agents):
+        for i in range(self._n_agents):
             if rospy.is_shutdown():
                 break
 
             # Initialize agent formation goal
-            self.agents_goals[i] = Position()
+            self._agents_goals[i] = Position()
 
             # Compute formation position
             z_dist = 0
@@ -78,9 +78,9 @@ class LineFormation(FormationClass):
 
             # Compute information from center
             center_dist, theta, center_height = compute_info_from_center([x_dist, y_dist, z_dist])
-            self.center_dist[i] = center_dist
-            self.angle[i] = theta
-            self.center_height[i] = center_height
+            self._center_dist[i] = center_dist
+            self._angle[i] = theta
+            self._center_height[i] = center_height
 
     def update_formation_scale(self):
-        self.agents_dist = self.scale / (self.n_agents - 1) if self.n_agents > 1 else 0
+        self.agents_dist = self._scale / (self._n_agents - 1) if self._n_agents > 1 else 0

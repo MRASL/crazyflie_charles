@@ -3,14 +3,9 @@
 """
 Package used to find a collision less trajectory between a number of agents.
 
-Algorithme
+Algorithm
 ----------
-.. todo:: Completer
-
-- Verifie si trajectoire en collision
-- Si oui, resous probleme de collision
-- Si non, probleme simplifier
-    - Si solution entre en collision -> probleme collision
+The algorithm used is the one presented in this paper: [CIT1]_
 
 Exemple
 -------
@@ -53,7 +48,7 @@ class TrajectorySolver(object):
 
     Args:
         agent_list (list of Agents): Compute trajectory of all agents in the list
-        verbose (bool): If True, prints information
+        verbose (:obj:`bool`): If True, prints information
 
     Attributes:
         horizon_time(:obj:`float`): Horizon to predict trajectory [sec]

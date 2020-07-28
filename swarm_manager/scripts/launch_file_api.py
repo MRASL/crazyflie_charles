@@ -76,14 +76,14 @@ def launch_swarm(cf_list):
     # Launch CFs
     base_address = 0xE7E7E7E700 + first_uri
     base_radio = 'radio://0/80/2M/'
-    to_sim = rospy.get_param("~to_sim", "False")
+    sim = rospy.get_param("~sim", "False")
 
     # Add n CFs
     for each_cf in cf_list:
         uri = base_radio + hex(base_address).upper()
 
         cli_add_cf = ['swarm_manager', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri,
-                      'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
+                      'frame:='+each_cf+'/'+each_cf, 'sim:=%s' % sim]
 
         launch_file(uuid, cli_add_cf)
         base_address = base_address + 1

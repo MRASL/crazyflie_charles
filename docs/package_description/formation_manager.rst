@@ -1,4 +1,10 @@
 Formation Manager
 =================
 
-Package used to find a collision less trajectory between a number of agents.
+.. automodule:: formation_manager_ros
+    :members:
+
+``FormationClass`` class
+------------------------
+.. automodule:: general_formation
+    :members:

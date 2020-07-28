@@ -58,7 +58,7 @@ def formation_demo(n_agents, formation_type):
     formation.update_agents_positions(formation_goal)
 
     start_positions = compute_start_positions(n_agents)
-    goals = {ag_id: [goal.x, goal.y, goal.z] for ag_id, goal in formation.agents_goals.items()}
+    goals = {ag_id: [goal.x, goal.y, goal.z] for ag_id, goal in formation._agents_goals.items()}
 
     agent_list = []
 

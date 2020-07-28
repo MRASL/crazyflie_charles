@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     n_cf = args.n
-    to_sim = args.sim
+    sim = args.sim
     first_uri = args.first_id
     to_save = args.save
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
     # Launch server
     cli_server = ['swarm_manager', 'init_server.launch', 'cf_list:='+str(cf_list),
-                  'to_sim:=%s' % to_sim, 'to_save:=%s' % to_save]
+                  'sim:=%s' % sim, 'save:=%s' % to_save]
 
     server_args = get_args('crazyflie', yaml_conf)
     formation_args = get_args('formation', yaml_conf)
@@ -125,7 +125,7 @@ if __name__ == '__main__':
             starting_pos = None
 
         cli_add_cf = ['swarm_manager', 'add_cf.launch', 'cf_name:='+each_cf, 'uri:='+uri,
-                      'frame:='+each_cf+'/'+each_cf, 'to_sim:=%s' % to_sim]
+                      'frame:='+each_cf+'/'+each_cf, 'sim:=%s' % sim]
         cli_add_cf = cli_add_cf + cf_args
 
         if starting_pos is not None:
