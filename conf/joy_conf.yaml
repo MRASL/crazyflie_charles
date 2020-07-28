@@ -1,0 +1,40 @@
+ds4:
+  axes: # Axes start at 0
+    x: 1
+    y: 0
+    z: 5
+    yaw: 2
+
+  buttons:
+    '0': S # Square
+    '1': X # Cross
+    '2': O # Circle
+    '3': T # Triangle
+    '4': L1
+    '5': R1
+    '6': L2
+    '7': R2
+    '8': SHARE
+    '9': OPT
+    '10': LS # Left Stick
+    '11': RS # Right Stick
+    '12': PS # PS button
+    '13': PAD
+
+  buttons_axes:
+    '9': DL
+    '-9' : DR
+    '10' : DU
+    '-10': DD
+
+  max_vel:
+    x: 30
+    y: -30
+    z: 60000
+    yaw: -200
+
+  max_goal:
+    x: 0.20
+    y: 0.20
+    z: 0.10
+    yaw: 0.20
