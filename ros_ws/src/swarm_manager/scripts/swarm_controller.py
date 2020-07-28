@@ -23,10 +23,10 @@ from swarm_manager.srv import SetParam, SetGoals, GetPositions, SetMode
 from formation_manager.srv import SetFormation, GetFormationList
 from trajectory_planner.srv import SetPositions
 
+from swarm_api.launch_file_api import launch_swarm
 from state_machine import StateMachine
 from crazyflie import yaw_from_quat
 
-from launch_file_api import launch_swarm
 
 class SwarmController(object):
     """Main class

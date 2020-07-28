@@ -5,18 +5,11 @@
 Press 'O' in case of emergency
 """
 
-import os
 import rospy
 
 # pylint: disable=invalid-name
-# pylint: disable=wrong-import-position
-# pylint: disable=import-error
+from swarm_manager.api import SwarmAPI
 
-parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-api_path = os.path.join(parentdir, 'scripts')
-os.sys.path.insert(0, api_path)
-
-from swarm_api import SwarmAPI
 
 def init_joystick():
     """Start joystick and link buttons
