@@ -1,4 +1,4 @@
-joy_controller 
+joy_controller
 ==============
 
 To control the swarm with a joystick.
@@ -27,13 +27,13 @@ None
 Services Called
 ^^^^^^^^^^^^^^^
 /joy_button(swarm_manager/JoyButton)
-    From :doc:`/ros_architecture/swarm_manager/swarm_api` 
+    From :doc:`/ros_architecture/swarm_manager/swarm_api`
 
 Parameters
 ^^^^^^^^^^
 ~joy_topic(str, default:"joy")
 
-~to_sim(bool, default: False)
+~sim(bool, default: False)
 
 ~teleop(bool, default: False)
 

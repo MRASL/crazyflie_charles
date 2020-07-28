@@ -3,8 +3,8 @@
 <launch>
   <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="cf_list" default="['cf1']" />
-  <arg name="to_sim" default="False" />
-  <arg name="to_save" default="False" />
+  <arg name="sim" default="False" />
+  <arg name="save" default="False" />
 
   <arg name="take_off_height" default="0.5" />
   <arg name="gnd_height" default="0.0" />
@@ -40,7 +40,7 @@
 
 
   <!-- Launch server -->
-  <group unless="$(arg to_sim)">
+  <group unless="$(arg sim)">
     <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
     </include>
   </group>
@@ -53,7 +53,7 @@
   <!-- Map controller to services -->
   <node name="joystick_controller" pkg="swarm_manager" type="joy_controller.py" output="screen">
     <param name="joy_topic" value="/joy" />
-    <param name="to_sim" value="$(arg to_sim)"/>
+    <param name="sim" value="$(arg sim)"/>
 
     <!-- Axis number, start at 0 -->
     <param name="x_axis" value="1"/>
@@ -75,7 +75,7 @@
   <!-- Launch swarm manager-->
   <node name="swarm_controller" pkg="swarm_manager" type="swarm_controller.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
-    <param name="to_sim" value="$(arg to_sim)"/>
+    <param name="sim" value="$(arg sim)"/>
 
     <param name="take_off_height" value="$(arg take_off_height)"/>
     <param name="gnd_height" value="$(arg gnd_height)"/>
@@ -121,7 +121,7 @@
   <!-- Launch flight recorder -->
   <node name="flight_recorder" pkg="swarm_manager" type="flight_recorder.py" output="screen">
     <rosparam param="cf_list" subst_value="True">$(arg cf_list) </rosparam>
-    <param name="to_save" value="$(arg to_save)"/>
+    <param name="save" value="$(arg save)"/>
   </node>
 
   <!-- Rviz markers -->

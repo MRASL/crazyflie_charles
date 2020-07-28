@@ -58,7 +58,7 @@ Parameters
 ^^^^^^^^^^
 ~cf_name(str, default: cf_default)
 
-~to_sim(bool, default: False)
+~sim(bool, default: False)
 
 ~take_off_height(float)
 

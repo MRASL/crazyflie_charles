@@ -87,32 +87,28 @@ High level controller exemple
    +----------+----------+
 
 
-Getting Started
-===============
+.. Getting started
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Getting started
 
+   getting_started/installation
+   getting_started/usage
+   getting_started/tutorials
+   getting_started/ressources
 
-See :doc:`this page</getting_started/installation>` for a guide on how to install the package.
+Python API
+==========
 
-
-
-If you are a developper, :doc:`look here</getting_started/tutorials>` for some basic tutorials. At the end of the tutorials, you should be able to:
-
-* Create new formation
-* Customize controller mapping
-* ...
-
-
-Additonal ressources about crazyflie, trajectory planning and uav can be found :doc:`here<getting_started/ressources>`
+:doc:`/python_api`
 
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: First steps
+   :caption: Python API
 
-   getting_started/installation
-   getting_started/tutorials
-   getting_started/ressources
+   python_api
 
 ROS Architecture
 ================
@@ -134,13 +130,6 @@ The general architecture can be found here :doc:`/ros_architecture/general_archi
    ros_architecture/formation_manager
    ros_architecture/trajectory_planner
    ros_architecture/topics
-
-User Guide
-==========
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: User Guide
 
 Package Description
 ===================

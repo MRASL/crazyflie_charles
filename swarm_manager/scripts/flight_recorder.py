@@ -33,7 +33,7 @@ Parameters
 ^^^^^^^^^^
 ~cf_list(list of str)
 
-~to_save(bool, false)
+~save(bool, false)
 
 ``Recorder`` Class
 ------------------
@@ -129,7 +129,7 @@ if __name__ == '__main__':
         except KeyError:
             pass
 
-    TO_SAVE = rospy.get_param("~to_save", "False")
+    TO_SAVE = rospy.get_param("~save", "False")
 
     REC = Recorder(CF_LIST, TO_SAVE)
     rospy.on_shutdown(REC.on_shutdown)
