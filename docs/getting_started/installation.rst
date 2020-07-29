@@ -26,12 +26,20 @@ Package installation
 
     $ git clone https://github.com/MRASL/crazyflie_charles.git
 
-3 - Install and build package using build script. ::
+3 - Install python dependencies and build package using build script. ::
 
     $ cd crazyflie_charles
     $ ./build.sh
 
-4 - Test installation. ::
+4 - Modify pythonpath so venv can run ::
+
+    $ echo "export PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages" >> ~/.bashrc
+    $ source ~/.bashrc
+
+.. warning:: When ``/usr/lib/python2.7/dist-packages`` is in ``PYTHONPATH``, you won't be able
+             to download packages through ``pip``
+
+5 - Test installation. ::
 
     $ source ros_ws/devel/setup.sh
     $ roslaunch swarm_manager launch_swarm.launch
@@ -40,7 +48,7 @@ Package installation
 .. warning:: Make sure your ros environment has been source and roscore is running
     before testing this exemple. `See section 1.5 <http://wiki.ros.org/melodic/Installation/Ubuntu>`_.
 
-5 - (optional) Automaticaly source ros workspace by adding it to .bashrc ::
+6 - (optional) Automaticaly source ros workspace by adding it to .bashrc ::
 
     $ echo "source <path_to_crazyflie_charles>/ros_ws/devel/setup.bash" >> ~/.bashrc
     $ source ~/.bashrc

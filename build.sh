@@ -5,6 +5,19 @@ ROOT=$PWD
 
 echo "Starting package installation"
 
+echo "Installing venv"
+pip install virtualenv
+
+# Create virtual env
+cd $ROOT
+virtualenv .venv
+source .venv/bin/activate
+
+# Upgrade pip and install packages
+pip install -U pip
+pip install git+https://github.com/rmcgibbo/quadprog.git#egg=quadprog
+pip install -r requirements.txt
+
 # Install crazyflie ros
 echo "Installing crazyflie ros"
 cd ros_ws/src/
