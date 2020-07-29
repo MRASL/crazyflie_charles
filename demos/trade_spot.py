@@ -4,11 +4,15 @@
 
 Press 'O' in case of emergency
 """
+# pylint: disable=invalid-name
 
 import rospy
 
-# pylint: disable=invalid-name
-from swarm_manager.api import SwarmAPI
+# pylint: disable=no-name-in-module
+# pylint: disable=import-error
+from swarm_api.api import SwarmAPI
+# pylint: enable=no-name-in-module
+# pylint: enable=import-error
 
 
 def init_joystick():

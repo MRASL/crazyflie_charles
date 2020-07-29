@@ -36,3 +36,14 @@ Package installation
     $ source ros_ws/devel/setup.sh
     $ roslaunch swarm_manager launch_swarm.launch
     $ python demos/trade_spots.python
+
+.. warning:: Make sure your ros environment has been source before running this exemple.
+    `See section 1.5 <http://wiki.ros.org/melodic/Installation/Ubuntu>`_.
+
+5 - (optional) Automaticaly source ros workspace by adding it to .bashrc ::
+
+    $ echo "source <path_to_crazyflie_charles>/ros_ws/devel/setup.bash" >> ~/.bashrc
+    $ source ~/.bashrc
+
+.. note::   | Replace ``<path_to_crazyflie_charles>`` with your installation path.
+            | i.e: ``~/projects/crazyflie_charles``
