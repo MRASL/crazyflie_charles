@@ -5,11 +5,6 @@ ROOT=$PWD
 
 echo "Starting package installation"
 
-# Create virtual env
-pip install virtualenv
-cd $ROOT
-virtualenv .venv
-
 # Install crazyflie ros
 echo "Installing crazyflie ros"
 cd ros_ws/src/
