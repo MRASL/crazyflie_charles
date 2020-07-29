@@ -27,9 +27,8 @@ class DataAnalyser(object):
     """
     To analyse data
     """
-    def __init__(self, data_name, to_plot):
+    def __init__(self, data_name):
         self.data_name = data_name
-        self.to_plot = to_plot
         self.data_path = None
         self.data_base_name = 'flight_data_'
         self.crazyflies = None
@@ -554,13 +553,11 @@ if __name__ == '__main__':
     # pylint: disable=invalid-name
     parser = argparse.ArgumentParser(description='Analyse flight data')
     parser.add_argument('-d', '--data-name', type=str, help='Name of data', default='')
-    parser.add_argument('-p', '--plot', action='store_true', help='To plot data', default=False)
 
     parsed_args = parser.parse_args()
     d_name = parsed_args.data_name
-    plot = parsed_args.plot
 
-    analyser = DataAnalyser(d_name, plot)
+    analyser = DataAnalyser(d_name)
     # pylint: enable=invalid-name
 
     while True:

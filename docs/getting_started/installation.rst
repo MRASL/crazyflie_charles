@@ -53,3 +53,7 @@ Package installation
 
 .. note::   | Replace ``<path_to_crazyflie_charles>`` with your installation path.
             | i.e: ``~/projects/crazyflie_charles``
+
+7 - Modify PC permissions
+
+    $ ./pc_permissions.sh
