@@ -7,7 +7,7 @@
   <arg name="frame" default="crazyflie/crazyflie" />
   <arg name="sim" default="False"/>
 
-  <rosparam command="load" file="$(find swarm_manager)/launch/swarm_conf.yaml" />
+  <rosparam command="load" file="$(find swarm_manager)/conf/swarm_conf.yaml" />
 
   <!-- Create crazyflie -->
   <group ns="$(arg cf_name)">

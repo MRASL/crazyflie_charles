@@ -4,7 +4,7 @@
     <arg name="joy_dev" default="/dev/input/js0" />
     <arg name="joy_type" default="ds4" />
 
-    <rosparam command="load" file="$(find swarm_manager)/launch/joy_conf.yaml" />
+    <rosparam command="load" file="$(find swarm_manager)/conf/joy_conf.yaml" />
 
 
     <!-- Initiate joystick -->

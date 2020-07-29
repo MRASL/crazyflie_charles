@@ -10,7 +10,7 @@ from std_srvs.srv import Empty
 from swarm_manager.srv import JoyButton, SetGoals, GetPositions, SetMode
 from formation_manager.srv import SetFormation
 
-from launch_file_api import launch_joystick
+from swarm_api.launch_file_api import launch_joystick
 
 class SwarmAPI(object):
     """API class to control the swarm

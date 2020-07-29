@@ -4,19 +4,15 @@ Press 'O' in case of emergency.
 
 Move formation with joystick sticks
 """
+# pylint: disable=invalid-name
 
-import os
 import rospy
 
-# pylint: disable=invalid-name
-# pylint: disable=wrong-import-position
+# pylint: disable=no-name-in-module
 # pylint: disable=import-error
-
-parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-api_path = os.path.join(parentdir, 'scripts')
-os.sys.path.insert(0, api_path)
-
-from swarm_api import SwarmAPI
+from swarm_api.api import SwarmAPI
+# pylint: enable=no-name-in-module
+# pylint: enable=import-error
 
 def init_joystick():
     """Start joystick and link buttons
@@ -37,6 +33,7 @@ def init_joystick():
 
 if __name__ == "__main__":
     swarm = SwarmAPI()
+
 
     init_joystick()
 

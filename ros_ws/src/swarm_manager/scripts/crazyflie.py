@@ -14,14 +14,16 @@ import rospy
 import numpy as np
 
 from crazyflie_driver.msg import Hover, Position
-from crazyflie_driver.srv import UpdateParams
 from std_msgs.msg import Empty as Empty_msg
 from std_msgs.msg import String
-from std_srvs.srv import Empty as Empty_srv
 from geometry_msgs.msg import Twist, PoseStamped, Pose, Quaternion
+
+from crazyflie_driver.srv import UpdateParams
+from std_srvs.srv import Empty as Empty_srv
+from swarm_manager.srv import SetParam
+
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from state_machine import StateMachine
-from swarm_manager.srv import SetParam
 
 class Crazyflie(object):
     """Controller of a single crazyflie.

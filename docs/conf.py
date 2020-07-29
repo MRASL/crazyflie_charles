@@ -26,9 +26,9 @@
 import os
 import sys
 import sphinx_rtd_theme
-sys.path.insert(0, os.path.abspath('../swarm_manager/scripts'))
-sys.path.insert(0, os.path.abspath('../trajectory_planner/scripts'))
-sys.path.insert(0, os.path.abspath('../formation_manager/scripts'))
+sys.path.insert(0, os.path.abspath('../ros_ws/src/swarm_manager/scripts'))
+sys.path.insert(0, os.path.abspath('../ros_ws/src/trajectory_planner/scripts'))
+sys.path.insert(0, os.path.abspath('../ros_ws/src/formation_manager/scripts'))
 
 # -- General configuration ------------------------------------------------
 

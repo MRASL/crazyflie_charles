@@ -3,7 +3,7 @@
     <arg name="sim" default="True" />
     <arg name="save" default="False" />
 
-    <rosparam command="load" file="$(find swarm_manager)/launch/swarm_conf.yaml" />
+    <rosparam command="load" file="$(find swarm_manager)/conf/swarm_conf.yaml" />
 
     <!-- Launch server -->
     <group unless="$(arg sim)">
@@ -30,6 +30,6 @@
     <!-- rviz -->
     <node name="rviz_markers" pkg="swarm_manager" type="rviz_markers.py" output="screen" />
     <param name="cf_description" command="$(find xacro)/xacro $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find swarm_manager)/launch/crazyflie_pos.rviz" required="true" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find swarm_manager)/conf/crazyflie_pos.rviz" required="true" />
 
 </launch>

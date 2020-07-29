@@ -67,7 +67,10 @@ class Recorder(object):
 
     def _find_id(self):
         # List all data files
-        parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # Find package folder
+        parentdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(\
+                    os.path.dirname(os.path.abspath(__file__))))))
         self.data_path = os.path.join(parentdir, 'flight_data')
         data_list = [f for f in os.listdir(self.data_path) if isfile(join(self.data_path, f))]
 

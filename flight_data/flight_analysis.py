@@ -116,8 +116,7 @@ class DataAnalyser(object):
 
         If data_name is empty, load latest data set
         """
-        parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.data_path = os.path.join(parentdir, 'flight_data')
+        self.data_path = os.path.dirname(os.path.abspath(__file__))
 
         if data_name == "":
             self.data_name = self._find_latest_data()
