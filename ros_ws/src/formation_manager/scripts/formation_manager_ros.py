@@ -40,6 +40,7 @@ from line_formation import LineFormation
 from circle_formation import CircleFormation
 from pyramid_formation import PyramidFormation
 from v_formation import VFormation
+from sin_formation import SinFormation
 
 class FormationManager(object):
     """To change between formations and associate agents and CFs
@@ -81,7 +82,8 @@ class FormationManager(object):
                             "v": VFormation(self._min_dist),
                             "pyramid": PyramidFormation(self._min_dist),
                             "circle": CircleFormation(self._min_dist),
-                            "line": LineFormation(self._min_dist),}
+                            "line": LineFormation(self._min_dist),
+                            "sin": SinFormation(self._min_dist),}
 
 
         # Publisher
