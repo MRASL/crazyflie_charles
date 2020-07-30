@@ -17,7 +17,7 @@ class Controller(object):
 
         Args:
             joy_topic (str): Topic with joystick values
-            teleop (bool): True if CF is to be controlled directly /w controller
+            joy_type (str): Name of controller
         """
         # Attributes
         self._buttons = None  #: list: previous state of the buttons

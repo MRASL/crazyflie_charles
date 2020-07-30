@@ -61,14 +61,14 @@ class SwarmAPI(object):
         self._services[service_name] = rospy.ServiceProxy('/%s' % service_name, service_type)
 
     # Joystick
-    def start_joystick(self, joy_type="ds4"):
+    def start_joystick(self, joy_type=""):
         """Initialize joystick node
 
         Possible types are:
             - ds4
 
         Args:
-            joy_type (str, optional): Controller type. Defaults to "ds4".
+            joy_type (str, optional): Controller type.
         """
         self.joy_type = joy_type
 
