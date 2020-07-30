@@ -1,5 +1,5 @@
 swarm:
-  n_cf: 9
+  n_cf: 1
   take_off_height: 0.5
   gnd_height: 0.0
   min_dist: 0.40  # Absolute min distance between CFs
