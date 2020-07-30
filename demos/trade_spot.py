@@ -18,7 +18,7 @@ from swarm_api.api import SwarmAPI
 def init_joystick():
     """Start joystick and link buttons
     """
-    swarm.start_joystick()
+    swarm.start_joystick("ds4")
 
     swarm.link_joy_button("O", swarm.emergency)
 
