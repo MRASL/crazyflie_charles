@@ -82,7 +82,7 @@ joy_conf
 ^^^^^^^^
 
 File used to map your controller buttons. To learn how to setup a new a new controller, see this
-:ref:`tutorial <tuto-controller-setup>`.
+:doc:`tutorial <tutorials/controller_setup>`.
 
 .. note:: If you are using a ps4 controller (dualshock), you will need to download `this driver <https://github.com/chrippa/ds4drv>`_.
 
