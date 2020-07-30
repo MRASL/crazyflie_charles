@@ -60,7 +60,8 @@ class CircleFormation(FormationClass):
             self._min_scale = self._min_dist/(2*sin(self.angle_between_agents/2))
 
             # Scale set to smallest radius if theta is to big
-            self._min_scale = self._min_dist if self._min_scale < self._min_dist else self._min_scale
+            self._min_scale = self._min_dist if self._min_scale < self._min_dist\
+                              else self._min_scale
 
     def compute_formation_positions(self):
         for i in range(self._n_agents):

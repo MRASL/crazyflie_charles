@@ -25,6 +25,8 @@ class SwarmAPI(object):
         self.joy_type = None
         self.joy_buttons = None
 
+        self.current_mode = ""
+
     def _init_services(self):
         # Subscribe to srvs
         rospy.loginfo("API: waiting for services")
@@ -43,7 +45,6 @@ class SwarmAPI(object):
         self._link_service('inc_swarm_scale', Empty)
         self._link_service('dec_swarm_scale', Empty)
         self._link_service('toggle_ctrl_mode', Empty)
-
 
         rospy.loginfo("API: services found")
 
@@ -170,6 +171,7 @@ class SwarmAPI(object):
             rospy.logerr("%s is not an avaible mode" % new_mode)
         else:
             rospy.loginfo("Mode set to: %s" % new_mode.lower())
+            self.current_mode = new_mode.lower()
 
     def set_formation(self, formation_name):
         """Set formation
