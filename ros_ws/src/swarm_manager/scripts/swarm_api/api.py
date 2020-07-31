@@ -2,7 +2,34 @@
 
 """Python API to control the swarm.
 
-This class is needed since the `SwarmController` needs to constantly publish each CF goal.
+This module maked it possible to easily send command to the swarm through a Python script.
+
+Example
+-------
+::
+
+   # Formation exemple
+   swarm = SwarmAPI()
+
+   # Link joystick buttons to commands
+   swarm.start_joystick("ds4")
+   swarm.link_joy_button("S", swarm.take_off)
+   swarm.link_joy_button("X", swarm.land)
+   swarm.link_joy_button("O", swarm.emergency)
+   swarm.link_joy_button("T", swarm.toggle_ctrl_mode)
+
+   # Start swarm
+   swarm.set_mode("formation")
+   swarm.set_formation("v")
+
+   swarm.take_off()
+   rospy.sleep(10)
+
+   # Change formation
+   swarm.set_formation("pyramid")
+
+``SwarmAPI`` class
+------------------
 """
 import ast
 import rospy
@@ -13,7 +40,7 @@ from formation_manager.srv import SetFormation
 from swarm_api.launch_file_api import launch_joystick
 
 class SwarmAPI(object):
-    """API class to control the swarm
+    """Python API class
     """
     # Initialization
     def __init__(self):
@@ -22,10 +49,10 @@ class SwarmAPI(object):
         self._services = {}
         self._init_services()
 
-        self.joy_type = None
-        self.joy_buttons = None
+        self._joy_type = None
+        self._joy_buttons = None
 
-        self.current_mode = ""
+        self._current_mode = ""
 
     def _init_services(self):
         # Subscribe to srvs
@@ -62,40 +89,48 @@ class SwarmAPI(object):
         self._services[service_name] = rospy.ServiceProxy('/%s' % service_name, service_type)
 
     # Joystick
-    def start_joystick(self, joy_type=""):
-        """Initialize joystick node
+    def start_joystick(self, joy_type):
+        """Initialize joystick node. See :doc:`here </getting_started/tutorials/controller_setup>`
+        for a tutorial on how to add new joystick types.
 
-        Possible types are:
-            - ds4
+        Possible types:
+
+            * ds4
 
         Args:
-            joy_type (str, optional): Controller type.
+            joy_type (:obj:`str`): Controller type.
         """
-        self.joy_type = joy_type
+        self._joy_type = joy_type
 
         launch_joystick(joy_type)
 
-        self.joy_buttons = {}
+        self._joy_buttons = {}
 
         # Add buttons
         for _, button in rospy.get_param(joy_type)["buttons"].items():
-            self.joy_buttons[button] = [None, None, None]
+            self._joy_buttons[button] = [None, None, None]
 
         # Add buttons on a axis
         for _, button in rospy.get_param(joy_type)["buttons_axes"].items():
-            self.joy_buttons[button] = [None, None, None]
+            self._joy_buttons[button] = [None, None, None]
 
     def link_joy_button(self, button_name, func, args=None, kwargs=None):
         """Link a button to a function call
 
         Args:
-            button_name (str): Name of button
-            func (Callable): Function to call
+            button_name (:obj:`str`): Name of button, as written in ``joy_conf.yaml``.
+            func (:obj:`Callable`): Function to call
             args (optional): Function args. Defaults to None. Can be a single arg or a list of args
-            kwargs (dict, optional): Function kwargs. Defaults to None.
+            kwargs (:obj:`dict`, optional): Function kwargs. Defaults to None.
 
         Raises:
             KeyError: Invalid button name
+
+        Example::
+
+            swarm.start_joystick("ds4")
+            swarm.link_joy_button("S", swarm.take_off)
+            swarm.link_joy_button("X", swarm.land)
         """
 
         if args is None:
@@ -105,18 +140,18 @@ class SwarmAPI(object):
         if kwargs is None:
             kwargs = {}
 
-        if button_name not in self.joy_buttons.keys():
-            raise KeyError("Invalid button name %s for controller %s"%(button_name, self.joy_type))
+        if button_name not in self._joy_buttons.keys():
+            raise KeyError("Invalid button name %s for controller %s"%(button_name, self._joy_type))
 
         else:
-            self.joy_buttons[button_name] = [func, args, kwargs]
+            self._joy_buttons[button_name] = [func, args, kwargs]
 
     def _button_srv(self, srv_req):
         print "Button pressed: %s" % srv_req.button
 
-        func = self.joy_buttons[srv_req.button][0]
-        args = self.joy_buttons[srv_req.button][1]
-        kwargs = self.joy_buttons[srv_req.button][2]
+        func = self._joy_buttons[srv_req.button][0]
+        args = self._joy_buttons[srv_req.button][1]
+        kwargs = self._joy_buttons[srv_req.button][2]
 
         if func is not None:
             func(*args, **kwargs)
@@ -125,7 +160,10 @@ class SwarmAPI(object):
 
     # Methods
     def take_off(self):
-        """ Take off all CFs
+        """ Take off all landed CFs.
+
+        Modify ``take_off_height`` in ``swarm_conf.yaml`` to change
+        take off height
 
         .. note::
             Will only take off landed CFs
@@ -144,26 +182,26 @@ class SwarmAPI(object):
         self._services["swarm_emergency"]()
 
     def land(self):
-        """Land all CFs
+        """Land all CFs at their starting position.
         """
         self._services["land_swarm"]()
 
     def set_mode(self, new_mode):
-        """Set `SwarmController` control mode.
+        """Set ``SwarmController`` control mode.
 
         Possible modes are:
-            - Automatic: CF will plot trajectory to new goals. go_to commands from script
-            - Formation: Swarm moves in formation. Formation position changed /w joystick
+            - Automatic: CF will plot trajectory to new goals. Send ``go_to commands``
+              from python script
+            - Formation: Swarm moves in formation. Formation position can be moved /w joystick.
 
         Not implemented:
             - Pilot: Like CF client. No formation
-            - Assisted: Control change of position /w joystick. No formation
+            - Assisted: Control change of position /w joystick. No formation.
 
-
-        * Modes are not case sensitive
+        .. note:: Modes are not case sensitive
 
         Args:
-            new_mode (str): New control mode
+            new_mode (:obj:`str`): New control mode
         """
         res = self._services["set_mode"](new_mode)
 
@@ -171,13 +209,13 @@ class SwarmAPI(object):
             rospy.logerr("%s is not an avaible mode" % new_mode)
         else:
             rospy.loginfo("Mode set to: %s" % new_mode.lower())
-            self.current_mode = new_mode.lower()
+            self._current_mode = new_mode.lower()
 
     def set_formation(self, formation_name):
-        """Set formation
+        """Set swarn formation
 
         Args:
-            formation_name (str): Formation name
+            formation_name (:obj:`str`): New formation name
         """
         self._services["set_swarm_formation"](formation=formation_name)
 
@@ -213,24 +251,24 @@ class SwarmAPI(object):
     def go_to(self, goals):
         """Move formation and/or cf to a position using the trajectory planner.
 
-        Dict format: `"goal_name": [x, y, z, yaw]` where `"goal_name"` is either
-        `"formation" or "cf_x"`
+        Dict format: ``"goal_name": [x, y, z, yaw]`` where ``"goal_name"`` is either
+        ``"formation"`` or ``"cf_x"``
 
         Args:
-            goals (dict):
+            goals (:obj:`dict`): New goals
         """
         self._services["go_to"](goals=str(goals))
 
     def get_positions(self, cf_list=None):
         """Get current position of crazyflies
 
-        If `cf_list` is None, will return position of all Cfs.
+        If ``cf_list`` is ``None``, will return position of all Cfs.
 
         Args:
-            cf_list (list, optional): List of cf to read positions. Defaults to None.
+            cf_list (:obj:`list`, optional): List of cf to read positions. Defaults to None.
 
         Returns:
-            dict: Positions (`[x, y, z, yaw]`) of CF to read
+            :obj:`dict`: Positions of CFs read. ``"{cf_id": [x, y, z, yaw], ...}``
         """
         if cf_list is None:
             cf_list = []

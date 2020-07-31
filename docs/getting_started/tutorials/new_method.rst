@@ -121,51 +121,67 @@ This architecture was used to simplify each package.
 
     3.1 Subscribe to new service
 
-    .. code-block:: python
+        .. code-block:: python
+
+                # .../crazyflie_charles/ros_ws/src/swarm_manager/swarm_api/api.py``
+                ...
+                from swarm_manager.srv import CircleCf
+                ...
+                class SwarmAPI(object):
+                    ...
+
+                    def _init_services(self):
+                        # Subscribe to srvs
+                        rospy.loginfo("API: waiting for services")
+                        ...
+                        self._link_service('circle_cf', CircleCf)
+                        ...
+                    ...
+
+    3.2 Write method
+
+        .. code-block:: python
 
             # .../crazyflie_charles/ros_ws/src/swarm_manager/swarm_api/api.py``
-            ...
-            from swarm_manager.srv import CircleCf
             ...
             class SwarmAPI(object):
                 ...
 
-                def _init_services(self):
-                    # Subscribe to srvs
-                    rospy.loginfo("API: waiting for services")
-                    ...
-                    self._link_service('circle_cf', CircleCf)
-                    ...
+                def circle_cf(self, cf_id):
+                    """Circle specified crazyflie around a 0.5m radius
+
+                    Note:
+                        This method only works in 'Automatic' mode
+
+                    Args:
+                        cf_id (str): Id of crazyflie
+                    """
+                    if self.current_mode != "automatic":
+                        rospy.logerr("Swarm needs to be in automatic mode")
+
+                    else:
+                        srv_res = self._services["circle_cf"](cf_name=str(cf_id))
+                        valid_cf = srv_res.valid_cf
+
+                    if not valid_cf:
+                        rospy.logerr("%s is an invalid crazyflie name" % cf_id)
                 ...
 
-    3.2 Write method
 
-    .. code-block:: python
+    3.3 Add method to documentation
 
-        # .../crazyflie_charles/ros_ws/src/swarm_manager/swarm_api/api.py``
-        ...
-        class SwarmAPI(object):
+        .. code-block:: rst
+
+            .. .../crazyflie_charles/docs/python_api.rst
+
             ...
 
-            def circle_cf(self, cf_id):
-                """Circle specified crazyflie around a 0.5m radius
+            .. autosummary::
+                ...
+                circle_cf
 
-                Note:
-                    This method only works in 'Automatic' mode
-
-                Args:
-                    cf_id (str): Id of crazyflie
-                """
-                if self.current_mode != "automatic":
-                    rospy.logerr("Swarm needs to be in automatic mode")
-
-                else:
-                    srv_res = self._services["circle_cf"](cf_name=str(cf_id))
-                    valid_cf = srv_res.valid_cf
-
-                if not valid_cf:
-                    rospy.logerr("%s is an invalid crazyflie name" % cf_id)
             ...
+
 
 4. Test  new method
 
