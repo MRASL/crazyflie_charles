@@ -1014,3 +1014,7 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         SWARM.control_swarm()
+
+    rospy.delete_param("cf_list")
+    for each_cf in CF_LIST:
+        rospy.delete_param(each_cf)
