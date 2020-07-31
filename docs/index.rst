@@ -97,7 +97,6 @@ High level controller exemple
    getting_started/installation
    getting_started/usage
    getting_started/tutorials
-   getting_started/ressources
 
 Python API
 ==========
@@ -171,17 +170,21 @@ In-depth description of each package
    package_description/formation_manager
    package_description/trajectory_planner
 
-Glossary, Indices and tables
-============================
+References
+==========
 
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Glossary
+   :caption: References
 
    glossary
+   ressources
+   bibliography
 
 * :doc:`glossary`
+* :doc:`ressources`
+* :doc:`bibliography`
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
@@ -189,7 +192,3 @@ Glossary, Indices and tables
 
 
 .. _crazyflie ros stack: https://github.com/whoenig/crazyflie_ros
-
-.. [CIT1] C. E. Luis and A. P. Schoellig,
-   "Trajectory Generation for Multiagent Point-To-Point Transitions via Distributed Model Predictive Control,"
-   in IEEE Robotics and Automation Letters, vol. 4, no. 2, pp. 375-382, April 2019, doi: 10.1109/LRA.2018.2890572.

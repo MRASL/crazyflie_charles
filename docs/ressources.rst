@@ -9,6 +9,7 @@ Coding
 * `Git tutorial <https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository>`_
 * `Google docstring <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html>`_
 * `Python Style Guide <https://www.python.org/dev/peps/pep-0008/#naming-conventions>`_
+* `Sphinx and RTD tutorial <https://docs.readthedocs.io/en/stable/intro/getting-started-with-sphinx.html>`_
 
 Other Research with Crazyflie
 -----------------------------

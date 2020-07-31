@@ -13,5 +13,7 @@ Update Project Documentation
 
 .. note::
 
-    All documentation is written in reStructuredText.
-    A good guide can be found `here <https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html>`_.
+    All documentation is written in reStructuredText:
+
+    * `Rst tutorial <https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html>`_
+    * `Sphinx and rtd tutorial <https://docs.readthedocs.io/en/stable/intro/getting-started-with-sphinx.html>`_.
