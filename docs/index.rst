@@ -25,50 +25,51 @@ Exemple
 
 Formation Exemple
 ^^^^^^^^^^^^^^^^^
-::
+   ::
 
-   # Formation exemple
-   swarm = SwarmAPI()
+      # Formation exemple
+      swarm = SwarmAPI()
 
-   # Link joystick buttons to commands
-   swarm.link_joy_button("S", swarm.take_off)
-   swarm.link_joy_button("X", swarm.land)
-   swarm.link_joy_button("O", swarm.emergency)
-   swarm.link_joy_button("T", swarm.toggle_ctrl_mode)
+      # Link joystick buttons to commands
+      swarm.start_joystick("ds4")
+      swarm.link_joy_button("S", swarm.take_off)
+      swarm.link_joy_button("X", swarm.land)
+      swarm.link_joy_button("O", swarm.emergency)
+      swarm.link_joy_button("T", swarm.toggle_ctrl_mode)
 
-   # Start swarm
-   swarm.set_mode("formation")
-   swarm.set_formation("line")
+      # Start swarm
+      swarm.set_mode("formation")
+      swarm.set_formation("v")
 
-   swarm.take_off()
-   rospy.sleep(10)
+      swarm.take_off()
+      rospy.sleep(10)
 
-   # Change formation
-   swarm.set_formation("pyramid")
+      # Change formation
+      swarm.set_formation("pyramid")
 
 
 High level controller exemple
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-::
+   ::
 
-   # Trade spots demo
-   swarm = SwarmAPI()
-   swarm.set_mode("automatic")
+      # Trade spots demo
+      swarm = SwarmAPI()
+      swarm.set_mode("automatic")
 
-   # Take off
-   swarm.take_off()
+      # Take off
+      swarm.take_off()
 
-   # Switch positions
-   pose = swarm.get_positions()
-   goals = {}
-   goals["cf_0"] = pose["cf_1"]
-   goals["cf_1"] = pose["cf_0"]
-   swarm.go_to(goals)
+      # Switch positions
+      pose = swarm.get_positions()
+      goals = {}
+      goals["cf_0"] = pose["cf_1"]
+      goals["cf_1"] = pose["cf_0"]
+      swarm.go_to(goals)
 
-   rospy.sleep(10)
+      rospy.sleep(10)
 
-   # Land
-   swarm.land()
+      # Land
+      swarm.land()
 
 
 .. |video1| image:: /images/formation-demo.gif
@@ -96,7 +97,6 @@ High level controller exemple
    getting_started/installation
    getting_started/usage
    getting_started/tutorials
-   getting_started/ressources
 
 Python API
 ==========
@@ -109,6 +109,33 @@ Python API
    :caption: Python API
 
    python_api
+
+Files Tree
+==========
+
+.. code-block:: none
+
+   |-- README.md
+   |-- build.sh: Project build script
+   |-- pc_persmissions.sh
+   |-- requirements.txt
+   |-- docs: Folder with all thing related to documentation
+   |-- demos: Example scripts
+   |
+   |-- flight_data
+       |-- flight_analysis.py: Script to analyse flight flight data
+       |-- user_command.py: Script to read user input
+       |-- all flight data...
+   |
+   |-- ros_ws
+       |-- build
+       |-- devel
+       |-- src
+           |-- CMakeLists.txt
+           |-- crazyflie_ros
+           |-- formation_manager
+           |-- swarm_manager
+           |-- trajectory_planner
 
 ROS Architecture
 ================
@@ -143,17 +170,21 @@ In-depth description of each package
    package_description/formation_manager
    package_description/trajectory_planner
 
-Glossary, Indices and tables
-============================
+References
+==========
 
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Glossary
+   :caption: References
 
    glossary
+   ressources
+   bibliography
 
 * :doc:`glossary`
+* :doc:`ressources`
+* :doc:`bibliography`
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
@@ -161,7 +192,3 @@ Glossary, Indices and tables
 
 
 .. _crazyflie ros stack: https://github.com/whoenig/crazyflie_ros
-
-.. [CIT1] C. E. Luis and A. P. Schoellig,
-   "Trajectory Generation for Multiagent Point-To-Point Transitions via Distributed Model Predictive Control,"
-   in IEEE Robotics and Automation Letters, vol. 4, no. 2, pp. 375-382, April 2019, doi: 10.1109/LRA.2018.2890572.

@@ -1,10 +1,10 @@
 Glossary
 ========
 
-agent
+Crazyflie: Bitcraze nan quadcopter
 
-crazyflie
+Swarm: Group of all the crazyflies
 
-swarm
+Formation: Arrangment of agents in certain patern
 
-formation
+Agent: Position in a formation
