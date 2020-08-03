@@ -42,12 +42,12 @@ def demo():
 
     # agents = demo_two_agents()
     # agents = demo_two_agents_vert()
-    agents, obstacles = demo_wall([(2.0, -1.0, 0.), (2.0, 2.5, 0.0)])
+    # agents, obstacles = demo_wall([(2.0, -1.0, 0.), (2.0, 2.5, 0.0)])
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
     # agents = corners_2_2()
-    # agents = corners_4()
+    agents = corners_4()
     # agents = corners_6()
 
     # agents = seven_agents()
