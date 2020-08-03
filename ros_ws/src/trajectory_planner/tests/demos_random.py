@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-"""Generate random start and goal
+"""Generate random start and goal for each CF
 """
+
 # pylint: disable=wildcard-import
 # pylint: disable=unused-wildcard-import
 
@@ -27,7 +28,7 @@ from agent import Agent
 
 # Read arguments from yaml file
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+FILE_PATH = os.path.join(PARENT_DIR, 'swarm_manager/conf/swarm_conf.yaml')
 
 with open(FILE_PATH) as f:
     YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)

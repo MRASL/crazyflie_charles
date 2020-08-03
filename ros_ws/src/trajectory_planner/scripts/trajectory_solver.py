@@ -24,6 +24,31 @@ Exemple
 
     solver.solve_trajectories()
 
+Run Demo Scripts
+----------------
+It's possible to test the trajectory algorithm by running demo scripts
+(``.../trajectory_planner/tests``.)
+
+To execute  a demo, simply uncomment the desired demonstration in ``demos.py`` -> ``demo`` and run
+the script (``demo.py``).
+
+It's possible to add new demonstrations by adding them in either: ``demos_formation.py``,
+``demos_positions.py`` or ``demos_random.py``.
+
+Benchmark Algo Performances
+---------------------------
+The algorithm benchmarks can be calculated using ``.../trajectory_planner/tests/performance.py``.
+The script will output:
+
+* The success rate (%)
+* Total compute time (sec)
+* Total travel time (sec)
+
+Those statistics are always calculated by running the same 9 demos.
+
+.. todo:: Script to compare and analyse results of different configurations (issue #86). With a
+          graphic interface?
+
 Solver Class
 ------------
 """

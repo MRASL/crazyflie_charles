@@ -2,6 +2,8 @@
 
 """Script to test path planning algorithm
 """
+
+
 # pylint: disable=wildcard-import
 # pylint: disable=unused-wildcard-import
 
@@ -33,10 +35,14 @@ def demo():
     obstacles = []
     arena_max = 5
 
-    # Choose demo to execute
-    agents = demo_two_agents()
+
+    """
+    Uncomment demo to execute
+    """
+
+    # agents = demo_two_agents()
     # agents = demo_two_agents_vert()
-    # agents, obstacles = demo_wall()
+    agents, obstacles = demo_wall([(2.0, -1.0, 0.), (2.0, 2.5, 0.0)])
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
@@ -66,7 +72,7 @@ def demo():
 if __name__ == '__main__':
     # Read arguments from yaml file
     PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+    FILE_PATH = os.path.join(PARENT_DIR, 'swarm_manager/conf/swarm_conf.yaml')
 
     with open(FILE_PATH) as f:
         YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)
