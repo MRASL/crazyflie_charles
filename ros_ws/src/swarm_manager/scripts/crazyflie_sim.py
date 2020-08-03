@@ -64,7 +64,8 @@ class CrazyflieSim(object):
         self.cf_id = '/' + cf_id
 
         self.world_frame = rospy.get_param("~worldFrame", "/world")
-        self.rate = rospy.Rate(10)
+        self._rate = rospy.Rate(10)
+        self._in_emergency = False
 
         # Declare publishers
         self.position_pub = rospy.Publisher(self.cf_id + '/pose', PoseStamped, queue_size=1)
@@ -90,17 +91,20 @@ class CrazyflieSim(object):
         """Publish current pose of CF
         """
         while not rospy.is_shutdown():
-            self.position.header.seq += 1
-            self.position.header.stamp = rospy.Time.now()
+            if not self._in_emergency:
+                self.position.header.seq += 1
+                self.position.header.stamp = rospy.Time.now()
 
-            self.position_pub.publish(self.position)
+                self.position_pub.publish(self.position)
 
-            self.rate.sleep()
+                self._rate.sleep()
 
     def emergency(self, _):
         """Sim emergency service
         """
         rospy.logerr("%s: Emergency service called" % self.cf_id)
+        self._in_emergency = True
+
         return {}
 
     def _cmd_vel_handler(self, _):
