@@ -33,6 +33,7 @@ Package installation
 
 4 - Install python dependencies ::
 
+    $ sudo apt install python-pip
     $ pip install -U pip
     $ pip install git+https://github.com/rmcgibbo/quadprog.git#egg=quadprog
     $ pip install -r requirements.txt
