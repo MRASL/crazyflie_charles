@@ -172,7 +172,7 @@ class Agent(object):
                 3 - If collision: Find all close agents
 
         Returns:
-            (int, int): Time step of the collision, -1 if no collision; Index of collision object
+            (bool): True if agent is in collision
         """
         collision_detected = False
         n_agents = self.all_agents_traj.shape[1]
