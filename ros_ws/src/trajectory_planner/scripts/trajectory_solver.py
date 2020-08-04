@@ -499,14 +499,21 @@ class TrajectorySolver(object):
 
             # Compute new accel input
             accel_dict = {}
+            agent_list = [agt.agent_idx for agt in self.agents]
+
             if not USE_MP:
                 for agent in self.agents:
                     accel_input = self._solve_accel(agent)
+                    if accel_input is None:
+                        self.in_collision = True
+
                     accel_dict[agent.agent_idx] = accel_input
 
             elif USE_MP:
-                pool = Pool(processes=2)
-                pool.map(self._solve_accel, self.agents)
+                pool = Pool(2)
+                pool.map(self._solve_accel, agent_list)
+                pool.close()
+                pool.join()
 
 
             # Update agents trajectories
@@ -567,13 +574,12 @@ class TrajectorySolver(object):
         """
 
         # print "Starting", current_process().name
-        # print "SOLVING for agent %i" % agent.agent_idx
+        # print "SOLVING for agent %i" % agent
 
         # Check if there is a collision
         coll_info = list(agent.check_collisions())  #: True if trajectory in collision
         avoid_collision = (coll_info[0] != -1)
         coll_info.append(avoid_collision)
-
 
         if avoid_collision and IN_DEBUG:
             print "\nTime %.2f at step %i: Agent %i" % (self.k_t*self.step_interval,\
@@ -581,7 +587,7 @@ class TrajectorySolver(object):
 
         # Build optimization problem: 1/2 x.T * p_mat * x + q_mat.T * x  s.t. g_mat*x <= h_mat
         try:
-            p_mat, q_mat, g_mat, h_mat = self.build_optimization_matrices(agent, coll_info)
+            p_mat, q_mat, g_mat, h_mat = self._build_optimization_matrices(agent, coll_info)
         except TypeError:
             if self.verbose:
                 print ''
@@ -591,7 +597,7 @@ class TrajectorySolver(object):
         # Solve optimization problem, increase max relaxation if no solution is found
         accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
 
-        # cur_relaxation = self.relaxation_min_bound  # To locally increase relaxation bound
+        #! cur_relaxation = self.relaxation_min_bound  # To locally increase relaxation bound
             # find_solution = True
             # while find_solution:
             #     try:
@@ -626,7 +632,7 @@ class TrajectorySolver(object):
 
         return accel_input
 
-    def build_optimization_matrices(self, agent, coll_info):
+    def _build_optimization_matrices(self, agent, coll_info):
         """Build optimization matrices depending on collision state
 
         1/2 x.T * p_mat * x + q_mat.T * x  s.t. g_mat*x <= h_mat
@@ -640,19 +646,20 @@ class TrajectorySolver(object):
         """
         avoid_collision = coll_info[2]
 
-        if not avoid_collision:
-            p_mat, q_mat, g_mat, h_mat = self.solve_accel_no_coll(agent)
+        try:
+            if not avoid_collision:
+                p_mat, q_mat, g_mat, h_mat = self._solve_accel_no_coll(agent)
 
-        else:
-            p_mat, q_mat, g_mat, h_mat = self.solve_accel_coll(agent, coll_info)
+            else:
+                p_mat, q_mat, g_mat, h_mat = self._solve_accel_coll(agent, coll_info)
 
         # If two agents are in collision
-        if self.in_collision:
+        except TypeError:
             return None
 
         return p_mat, q_mat, g_mat, h_mat
 
-    def solve_accel_no_coll(self, agent, agent_goal=None):
+    def _solve_accel_no_coll(self, agent, agent_goal=None):
         """Compute acceleration over horizon when no collision are detected
 
         Args:
@@ -687,10 +694,11 @@ class TrajectorySolver(object):
         q_effort = 0
 
         # 3 - Input Variaton penalty
-        self.prev_input_mat[0:3, 0] = prev_input
+        prev_input_mat = self.prev_input_mat
+        prev_input_mat[0:3, 0] = prev_input
 
         p_input = dot(self.delta.T, dot(self.s_tilde, self.delta))
-        q_input = -2*dot(self.prev_input_mat.T, dot(self.s_tilde, self.delta))
+        q_input = -2*dot(prev_input_mat.T, dot(self.s_tilde, self.delta))
 
         # Position constraints
         g_matrix = self.g_constraint
@@ -711,7 +719,7 @@ class TrajectorySolver(object):
 
         return p_tot, q_tot, g_matrix, h_matrix
 
-    def solve_accel_coll(self, agent, coll_info):
+    def _solve_accel_coll(self, agent, coll_info):
         """Compute acceleration over horizon when a collision is detected
 
         Args:
@@ -734,13 +742,11 @@ class TrajectorySolver(object):
             print "\t\t At step of horizon:  %i" % coll_step
 
         # Collision at step 0 mean two agents collided
-        # TODO
         if coll_step == 0:
             if self.verbose:
                 print "Agent %i in collision" % agent.agent_idx
                 print "Min Distance: %.2f" % min([dist for _, dist in close_agents.items()])
-            self.in_collision = True
-            return 0, 0, 0, 0
+            return None
 
         # Agent start_position at collision time step
         agent_goal = np.copy(agent.goal)
@@ -768,8 +774,8 @@ class TrajectorySolver(object):
                     agent_goal[0, 0] += 0.5 if agent_dy > 0 else -0.5
 
         # Get no collision problem
-        p_no_coll, q_no_coll, g_no_coll, h_no_coll = self.solve_accel_no_coll(agent,
-                                                                              agent_goal=agent_goal)
+        p_no_coll, q_no_coll, g_no_coll, h_no_coll =\
+            self._solve_accel_no_coll(agent, agent_goal=agent_goal)
 
         # Augment matrices
         g_coll = np.c_[g_no_coll, np.zeros((g_no_coll.shape[0], n_collisions))]
