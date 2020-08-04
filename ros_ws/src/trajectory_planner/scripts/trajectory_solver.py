@@ -27,7 +27,7 @@ Exemple
 Run Demo Scripts
 ----------------
 It's possible to test the trajectory algorithm by running demo scripts
-(``.../trajectory_planner/tests``.)
+(``.../trajectory_planner/demos``.)
 
 To execute  a demo, simply uncomment the desired demonstration in ``demos.py`` -> ``demo`` and run
 the script (``demo.py``).
@@ -37,7 +37,7 @@ It's possible to add new demonstrations by adding them in either: ``demos_format
 
 Benchmark Algo Performances
 ---------------------------
-The algorithm benchmarks can be calculated using ``.../trajectory_planner/tests/performance.py``.
+The algorithm benchmarks can be calculated using ``.../trajectory_planner/demos/performance.py``.
 The script will output:
 
 * The success rate (%)
@@ -49,12 +49,27 @@ Those statistics are always calculated by running the same 9 demos.
 .. todo:: Script to compare and analyse results of different configurations (issue #86). With a
           graphic interface?
 
+Profile algorithm
+-----------------
+
+To find hotspots in the algorithm::
+
+    $ cd .../trajectory_planner/demos
+    $ python -m cProfile -o perfo.prof performance.py
+    $ snakeviz perfo.prof
+
+.. note:: Snakeviz is required to visualize results: ``pip install snakeviz``
+
 Solver Class
 ------------
 """
 import copy_reg
 import types
+import multiprocessing
 from multiprocessing import Pool, current_process
+
+import pathos.pools as pp
+
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv, matrix_power
@@ -63,20 +78,15 @@ from qpsolvers import solve_qp
 from trajectory_plotting import TrajPlot
 
 IN_DEBUG = False
+USE_MP = False  # To use multiprocessing
 
-# Global attributes
+# def _pickle_method(m):
+#     if m.im_self is None:
+#         return getattr, (m.im_class, m.im_func.func_name)
+#     else:
+#         return getattr, (m.im_self, m.im_func.func_name)
 
-GOAL_THRES = 0.01 # 5 cm
-R_MIN = 0.45
-COLL_RADIUS = 2*R_MIN
-
-def _pickle_method(m):
-    if m.im_self is None:
-        return getattr, (m.im_class, m.im_func.func_name)
-    else:
-        return getattr, (m.im_self, m.im_func.func_name)
-
-copy_reg.pickle(types.MethodType, _pickle_method)
+# copy_reg.pickle(types.MethodType, _pickle_method)
 
 class TrajectorySolver(object):
     """To solve trajectories of all agents
@@ -488,26 +498,32 @@ class TrajectorySolver(object):
         # For each time step
         while not self.at_goal and self.k_t < self.k_max and not self.in_collision:
             # New trajectories
-
             self._new_agents_traj = np.copy(self.all_agents_traj)
 
             # No mp
-            # # For each agent
+            for agent in self.agents:
+                try:
+                    agent_idx, agent_traj = self._solve_agent(agent)
+                    self._new_agents_traj[:, agent_idx] = agent_traj
+                except TypeError:
+                    pass
+
+            # # With process list
+            # q = multiprocessing.Queue()
+            # processes = []
+
             # for agent in self.agents:
-            #     agent_idx, agent_traj = self._solve_agent(agent)
+            #     p = multiprocessing.Process(target=self._solve_agent, args=(agent, q,))
+            #     processes.append(p)
+
+            # [p.start() for p in processes]
+
+            # [p.join() for p in processes]
+
+            # for _ in processes:
+            #     agent_idx, agent_traj = q.get()
             #     self._new_agents_traj[:, agent_idx] = agent_traj
 
-            # With mp
-            try:
-                pool = Pool(processes=2)
-                agents_id_list = [agt_idx for agt_idx, _ in enumerate(self.agents)]
-
-                print "STARTING MP"
-                result = pool.map(self._solve_agent, agents_id_list)
-
-            finally:
-                pool.close()
-                pool.join()
 
             self.check_goals()
             self.all_agents_traj[:, :] = self._new_agents_traj[:, :] #Update all agents trajectories
@@ -523,7 +539,7 @@ class TrajectorySolver(object):
 
         return self.at_goal, (self.k_t*self.step_interval)
 
-    def _solve_agent(self, agent_id):
+    def _solve_agent(self, agent):
         """To solve current time step of an agent.
 
         This function is made to be run in different threads.
@@ -531,10 +547,8 @@ class TrajectorySolver(object):
         Args:
             agent (:obj:`Agent`): Agent to solve trajectory
         """
-        print "Starting", current_process().name
-        print "SOLVING for agent %i" % agent_id
-
-        agent = self.agents[agent_id]
+        # print "Starting", current_process().name
+        # print "SOLVING for agent %i" % agent.agent_idx
 
         # Determine acceleration input
         current_state = agent.states[0:6, -1].reshape(6, 1)
@@ -559,8 +573,13 @@ class TrajectorySolver(object):
 
             agent.add_state(x_pred)
 
-        print "RETURNING %i" % agent_idx
-        return agent_idx, agent_traj
+            # print "RETURNING %i" % agent_idx
+            # print agent_traj
+
+            return agent_idx, agent_traj
+
+        else:
+            return None
 
     def solve_accel(self, agent, initial_state):
         """Optimize acceleration input for the horizon

@@ -53,6 +53,7 @@ def demo():
     # agents = seven_agents()
 
     # agents, arena_max = random_pos(9, 1, seed=None)
+    # agents, arena_max = random_pos(50, 1, seed=3963364070630474782L)
     # agents = formation_demo(9, "v")
 
     start_time = time.time()
