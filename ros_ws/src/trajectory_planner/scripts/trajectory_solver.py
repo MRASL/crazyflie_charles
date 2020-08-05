@@ -63,11 +63,7 @@ To find hotspots in the algorithm::
 Solver Class
 ------------
 """
-import copy_reg
-import types
-import multiprocessing
-from multiprocessing import Pool, current_process
-
+from math import sqrt
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv, matrix_power
@@ -664,7 +660,6 @@ class TrajectorySolver(object):
 
         # P_e = Lambda.T * Q_tilde * Lambda
         p_error = 2 * dot(self.lambda_accel.T, dot(self.q_tilde, self.lambda_accel))
-        # p_error = csc_matrix(p_error)
 
         q_error = -2*(dot(goal_matrix.T, dot(self.q_tilde, self.lambda_accel))-
                       dot(dot(self.a0_accel, initial_state).T,
@@ -861,24 +856,18 @@ class TrajectorySolver(object):
         scaling_matrix = np.diag([1, 1, 2])
         scaling_matrix_inv = inv(scaling_matrix)
 
-        # if IN_DEBUG:
-        #     print "\n\t Distances between agents"
-
         for i in range(self.all_agents_traj.shape[1]):
-            # if IN_DEBUG:
-            #     print "\t Agent %i" % i
-
             pos_agent = self.all_agents_traj[0:3, i]
 
             for j in range(self.n_agents):
                 if j != i:
                     pos_col = self.all_agents_traj[0:3, j]
 
-                    dist = norm(dot(scaling_matrix_inv, pos_agent - pos_col))
-                    self.agents_distances.append(dist)
+                    scaled = dot(scaling_matrix_inv, pos_agent - pos_col)
+                    # dist = norm(scaled)
+                    dist = sqrt(scaled[0]**2 + scaled[1]**2 + scaled[2]**2)
 
-                    # if IN_DEBUG:
-                    #     print "\t\t From agent %i: %.2f" % (j, dist)
+                    self.agents_distances.append(dist)
 
     # UI and printing methods
     def print_final_positions(self):
