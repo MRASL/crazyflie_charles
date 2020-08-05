@@ -654,16 +654,21 @@ class TrajectorySolver(object):
 
         # 1 - Trajectory error penalty
         # Goal
-        goal_matrix = agent_goal
-        for _ in range(1, self.steps_in_horizon):
-            goal_matrix = vstack((goal_matrix, agent_goal))
+        agent_goal = agent_goal.reshape(3)
+        goal_matrix = np.zeros((self.steps_in_horizon*3, 1))
+        for i in range(0, self.steps_in_horizon):
+            slc = slice(i*3, i*3+3)
+            goal_matrix[slc, 0] = agent_goal
+
 
         # P_e = Lambda.T * Q_tilde * Lambda
-        p_error = 2 * dot(self.lambda_accel.T, dot(self.q_tilde, self.lambda_accel))
+        q_lam_prod = dot(self.q_tilde, self.lambda_accel)
 
-        q_error = -2*(dot(goal_matrix.T, dot(self.q_tilde, self.lambda_accel))-
+        p_error = 2 * dot(self.lambda_accel.T, q_lam_prod)
+
+        q_error = -2*(dot(goal_matrix.T, q_lam_prod)-
                       dot(dot(self.a0_accel, initial_state).T,
-                          dot(self.q_tilde, self.lambda_accel)))
+                          q_lam_prod))
 
         # 2 - Control Effort penalty
         p_effort = self.r_tilde
