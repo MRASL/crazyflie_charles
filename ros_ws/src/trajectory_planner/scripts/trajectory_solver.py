@@ -530,12 +530,11 @@ class TrajectorySolver(object):
         agent.prev_input = accel_input[0:3, 0]
 
         # Extract predicted positions
-        slc = slice(0, 3)
-        p_pred = x_pred[slc, 0].reshape(3, 1)
-        for n_dim in range(1, self. steps_in_horizon):
-            slc = slice(n_dim*6, n_dim*6+3)
-            x_k = x_pred[slc, 0].reshape(3, 1)
-            p_pred = vstack((p_pred, x_k))
+        p_pred = np.zeros((self. steps_in_horizon*3, 1))
+        for n_dim in range(0, self. steps_in_horizon):
+            slc_x = slice(n_dim*6, n_dim*6+3)
+            slc_p = slice(n_dim*3, n_dim*3+3)
+            p_pred[slc_p, 0] = x_pred[slc_x, 0]
 
         # Update trajectory of current agent
         agent_idx = self.agents.index(agent)

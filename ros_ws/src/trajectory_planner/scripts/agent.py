@@ -3,6 +3,7 @@ Agent Class
 -----------
 """
 
+from math import sqrt
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv
@@ -195,7 +196,13 @@ class Agent(object):
                 if j != self.agent_idx:
                     # Position of the other agent at time step
                     other_agent_pos = self.all_agents_traj[rows, j]
-                    dist = norm(dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos))
+
+
+                    # Faster than norm
+                    scaled = dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos)
+                    dist = sqrt(scaled[0]**2 + scaled[1]**2 + scaled[2]**2)
+                    # dist = norm(scaled)
+
                     agents_dist[j] = dist
 
                     if dist < self.r_min and not collision_detected:
