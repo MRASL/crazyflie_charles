@@ -76,16 +76,6 @@ from qpsolvers import solve_qp
 from trajectory_plotting import TrajPlot
 
 IN_DEBUG = False
-USE_MP = False  # To use multiprocessing
-
-# To use mp in class
-def _pickle_method(m_type):
-    if m_type.im_self is None:
-        return getattr, (m_type.im_class, m_type.im_func.func_name)
-    else:
-        return getattr, (m_type.im_self, m_type.im_func.func_name)
-
-copy_reg.pickle(types.MethodType, _pickle_method)
 
 class TrajectorySolver(object):
     """To solve trajectories of all agents
@@ -501,20 +491,12 @@ class TrajectorySolver(object):
             accel_dict = {}
             agent_list = [agt.agent_idx for agt in self.agents]
 
-            if not USE_MP:
-                for agent in self.agents:
-                    accel_input = self._solve_accel(agent)
-                    if accel_input is None:
-                        self.in_collision = True
+            for agent in self.agents:
+                accel_input = self._solve_accel(agent)
+                if accel_input is None:
+                    self.in_collision = True
 
-                    accel_dict[agent.agent_idx] = accel_input
-
-            elif USE_MP:
-                pool = Pool(2)
-                pool.map(self._solve_accel, agent_list)
-                pool.close()
-                pool.join()
-
+                accel_dict[agent.agent_idx] = accel_input
 
             # Update agents trajectories
             if not self.in_collision:
