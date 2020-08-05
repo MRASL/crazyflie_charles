@@ -3,6 +3,7 @@ Agent Class
 -----------
 """
 
+from math import sqrt
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv
@@ -172,12 +173,16 @@ class Agent(object):
                 3 - If collision: Find all close agents
 
         Returns:
-            (int, int): Time step of the collision, -1 if no collision; Index of collision object
+            (int): Step of collision (-1 if no collision)
+            (dict of float): Close agents and their distance at collision step
         """
         collision_detected = False
         n_agents = self.all_agents_traj.shape[1]
 
-        self.close_agents = {}
+        close_agents = {}
+        collision_step = -1
+
+        agents_dist = {}
 
         # Find time step of collision
         for each_step in range(self.n_steps):
@@ -191,38 +196,38 @@ class Agent(object):
                 if j != self.agent_idx:
                     # Position of the other agent at time step
                     other_agent_pos = self.all_agents_traj[rows, j]
-                    dist = norm(dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos))
 
+
+                    # Faster than norm
+                    scaled = dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos)
+                    dist = sqrt(scaled[0]**2 + scaled[1]**2 + scaled[2]**2)
+                    # dist = norm(scaled)
+
+                    agents_dist[j] = dist
 
                     if dist < self.r_min and not collision_detected:
                         # For step 0, check a smaller radius
                         if each_step == 0 and dist > self.r_min - 0.05:
                             break
 
-                        self.collision_step = each_step
+                        collision_step = each_step
                         collision_detected = True
-                        break
+                        # break
 
             if collision_detected:
                 break
 
         # Find all close agents at collision
         if collision_detected:
-            # Predicted position of agent at time_step
-            coll_rows = slice(3*self.collision_step, 3*(self.collision_step+1))
-            coll_pos = self.all_agents_traj[coll_rows, self.agent_idx]
-
             # At collision, check distance of other agents
             for j in range(n_agents):
                 if j != self.agent_idx:
-                    # Position of the other agent at collision
-                    other_agent_pos = self.all_agents_traj[coll_rows, j]
-                    dist = norm(dot(self.scaling_matrix_inv, coll_pos - other_agent_pos))
+                    dist = agents_dist[j]
 
                     if dist < self.collision_check_radius:
-                        self.close_agents[j] = dist  # Set agent distance at collision
+                        close_agents[j] = dist  # Set agent distance at collision
 
-        return collision_detected
+        return collision_step, close_agents
 
     def interpolate_traj(self, time_step_initial, time_step_interp):
         """Interpolate the trajectory for smoother paths

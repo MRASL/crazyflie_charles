@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""General tests /w set start and goal
+"""General demonstrations /w set start and goal
 """
 import os
 import numpy as np
@@ -21,7 +21,7 @@ from agent import Agent
 
 # Read arguments from yaml file
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+FILE_PATH = os.path.join(PARENT_DIR, 'swarm_manager/conf/swarm_conf.yaml')
 
 with open(FILE_PATH) as f:
     YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)
@@ -50,11 +50,18 @@ def demo_two_agents_vert():
 
     return [a_1, a_2]
 
-def demo_wall():
-    """Wall"""
+def demo_wall(wall_coords=None):
+    """Demo with a wall
+
+    Args:
+        wall_coords (list of tuple): [(x, y, z), (x, y, z)]
+
+    Returns:
+        list: [[agent_list], [wall_coords]]
+    """
     a_1 = Agent(AGENT_ARGS, start_pos=[0.0, 2.0, 0.0], goal=[4.0, 2.0, 0.0])
 
-    obs_coords = compute_obstacle([[(2.0, -1.0, 0.), (2.0, 2.5, 0.0)]], 15)
+    obs_coords = compute_obstacle([wall_coords], 15)
 
     return [a_1], obs_coords
 
