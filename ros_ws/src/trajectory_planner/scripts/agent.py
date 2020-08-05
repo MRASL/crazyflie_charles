@@ -181,6 +181,8 @@ class Agent(object):
         close_agents = {}
         collision_step = -1
 
+        agents_dist = {}
+
         # Find time step of collision
         for each_step in range(self.n_steps):
 
@@ -194,7 +196,7 @@ class Agent(object):
                     # Position of the other agent at time step
                     other_agent_pos = self.all_agents_traj[rows, j]
                     dist = norm(dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos))
-
+                    agents_dist[j] = dist
 
                     if dist < self.r_min and not collision_detected:
                         # For step 0, check a smaller radius
@@ -203,23 +205,17 @@ class Agent(object):
 
                         collision_step = each_step
                         collision_detected = True
-                        break
+                        # break
 
             if collision_detected:
                 break
 
         # Find all close agents at collision
         if collision_detected:
-            # Predicted position of agent at time_step
-            coll_rows = slice(3*collision_step, 3*(collision_step+1))
-            coll_pos = self.all_agents_traj[coll_rows, self.agent_idx]
-
             # At collision, check distance of other agents
             for j in range(n_agents):
                 if j != self.agent_idx:
-                    # Position of the other agent at collision
-                    other_agent_pos = self.all_agents_traj[coll_rows, j]
-                    dist = norm(dot(self.scaling_matrix_inv, coll_pos - other_agent_pos))
+                    dist = agents_dist[j]
 
                     if dist < self.collision_check_radius:
                         close_agents[j] = dist  # Set agent distance at collision
