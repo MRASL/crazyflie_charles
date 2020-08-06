@@ -87,7 +87,8 @@ class TrajectoryPlanner(object):
 
         agents_args = {'r_min': solver_args['r_min'],
                        'col_radius_ratio': solver_args['col_radius_ratio'],
-                       'goal_thres': solver_args['goal_thres']}
+                       'goal_dist_thres': solver_args['goal_dist_thres'],
+                       'goal_speed_thres': solver_args['goal_speed_thres']}
 
         for each_cf in cf_list:
             self.agents_dict[each_cf] = {}
@@ -118,7 +119,7 @@ class TrajectoryPlanner(object):
         self.traj_done = rospy.ServiceProxy("/traj_done", Empty)
         rospy.loginfo("Planner: swarm manager services found")
 
-        self._rate = rospy.get_param("trajectory_solver")["interp_step"]
+        self._rate = rospy.Rate(1/rospy.get_param("trajectory_solver")["interp_step"])
 
     # Services
     def set_positions(self, srv_req):

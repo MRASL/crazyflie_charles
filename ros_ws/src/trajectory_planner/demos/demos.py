@@ -55,14 +55,14 @@ def demo():
     # agents, arena_max = random_pos(9, 1, seed=None)
 
     #! Perfo tests
-    # agents = corners_4()
+    agents = corners_4()
     # agents, obstacles = demo_wall([(2.0, -1.0, 0.), (2.0, 2.5, 0.0)])
     # agents = seven_agents()
     # agents, arena_max = random_pos(9, 1, seed=6441753598703859782L)
     # agents, arena_max = random_pos(15, 1, seed=7125329410299779625L)
     # agents, arena_max = random_pos(25, 1, seed=8430841635042043371L)
     # agents, arena_max = random_pos(50, 1, seed=3963364070630474782L)
-    # agents = formation_demo(9, "square")
+    # agents = formation_demo(9, "line")
     # agents = formation_demo(9, "v")
 
     start_time = time.time()
