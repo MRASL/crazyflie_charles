@@ -27,7 +27,9 @@ class Agent(object):
 
         self.r_min = agent_args['r_min']
         self.collision_check_radius = self.r_min * agent_args['col_radius_ratio']
-        self.goal_thres = agent_args['goal_thres']
+        self.goal_dist_thres = agent_args['goal_dist_thres']
+        self.goal_speed_thres = agent_args['goal_speed_thres']
+
         self.at_goal = False
         self.agent_idx = 0 #: Index of agent in positions
         self.n_steps = 0 #: int: Number of steps in horizon
@@ -92,14 +94,6 @@ class Agent(object):
         """
         self.states = hstack((self.states, new_state))
 
-    def get_final_traj(self):
-        """Get trajectory of agent to goal
-
-        Returns:
-            3x(n time steps): Position trajectory
-        """
-        return self.states[0:3, :]
-
     # Initialization
     def initialize_position(self, n_steps, all_agents_traj):
         """Initialize position of the agent.
@@ -154,16 +148,23 @@ class Agent(object):
 
     # Compute methods
     def check_goal(self):
-        """Check if agent is in a small radius around his goal
+        """Check if agent reached it's goal.
+
+        Goal is considered reach when the agent is in a radius smaller than ``goal_dist_thres`` at
+        a speed lower than ``goal_speed_thres``.
+
 
         Returns:
             bool: True if goal reached
         """
         current_position = self.states[0:3, -1]
+        current_speed = self.states[3:6, -1]
         goal = self.goal.reshape(3)
-        dist = norm(goal - current_position)
 
-        if dist < self.goal_thres:
+        dist = norm(goal - current_position)
+        speed = norm(current_speed)
+
+        if dist < self.goal_dist_thres and speed < self.goal_speed_thres:
             self.at_goal = True
 
         return self.at_goal
@@ -254,5 +255,3 @@ class Agent(object):
             self.final_traj +=\
                 binom(n_sample, i) * (1 - (traj_times/end_time))**(n_sample - i) *\
                     (traj_times/end_time)**i * point
-
-        pass
