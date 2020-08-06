@@ -485,7 +485,6 @@ class TrajectorySolver(object):
 
             # Compute new accel input
             accel_dict = {}
-            agent_list = [agt.agent_idx for agt in self.agents]
 
             for agent in self.agents:
                 accel_input = self._solve_accel(agent)

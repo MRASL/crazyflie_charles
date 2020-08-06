@@ -118,6 +118,8 @@ class TrajectoryPlanner(object):
         self.traj_done = rospy.ServiceProxy("/traj_done", Empty)
         rospy.loginfo("Planner: swarm manager services found")
 
+        self._rate = rospy.get_param("trajectory_solver")["interp_step"]
+
     # Services
     def set_positions(self, srv_req):
         """Set start position or goal of each agent
@@ -185,16 +187,15 @@ class TrajectoryPlanner(object):
         # Set swarm manager to follow trajectory
 
         rospy.loginfo("Planner: Publishing trajectories...")
-        rate = rospy.Rate(10)
         time_step = 0
 
-        max_time_step = self.agents_dict[self.agents_dict.keys()[0]]['agent'].states.shape[1]
+        max_time_step = self.agents_dict[self.agents_dict.keys()[0]]['agent'].final_traj.shape[1]
         while time_step < max_time_step:
             if rospy.is_shutdown():
                 break
 
             for _, agent_dict in self.agents_dict.items():
-                agent_pos = agent_dict["agent"].states[0:3, time_step]
+                agent_pos = agent_dict["agent"].final_traj[:, time_step]
                 goal_msg = Position()
 
                 goal_msg.x = agent_pos[0]
@@ -205,7 +206,7 @@ class TrajectoryPlanner(object):
                 agent_dict['trajectory_pub'].publish(goal_msg)
 
             time_step += 1
-            rate.sleep()
+            self._rate.sleep()
 
         rospy.loginfo("Planner: Trajectory completed")
 
