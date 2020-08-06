@@ -65,8 +65,8 @@ def benchmark_algo():
         success, travel_time, compute_time = run_test(each_test)
 
         print "\tSucces: %s" % success
-        print "\tTravel Time: %.2f sec" % travel_time
         print "\tCompute time: %.2f sec" % compute_time
+        print "\tTravel Time: %.2f sec" % travel_time
         print "\n"
 
         tests_data[test_name] = {"success": success,
