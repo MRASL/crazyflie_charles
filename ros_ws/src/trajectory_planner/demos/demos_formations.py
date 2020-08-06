@@ -38,7 +38,9 @@ SOLVER_ARGS = YAML_CONF['trajectory_solver']
 
 AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
               'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
-              'goal_thres': SOLVER_ARGS['goal_thres']}
+              'goal_dist_thres': SOLVER_ARGS['goal_dist_thres'],
+              'goal_speed_thres': SOLVER_ARGS['goal_speed_thres'],
+             }
 
 def formation_demo(n_agents, formation_type):
     """Formation demo

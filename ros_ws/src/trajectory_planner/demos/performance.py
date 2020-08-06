@@ -65,8 +65,8 @@ def benchmark_algo():
         success, travel_time, compute_time = run_test(each_test)
 
         print "\tSucces: %s" % success
-        print "\tTravel Time: %.2f sec" % travel_time
         print "\tCompute time: %.2f sec" % compute_time
+        print "\tTravel Time: %.2f sec" % travel_time
         print "\n"
 
         tests_data[test_name] = {"success": success,
@@ -116,9 +116,10 @@ def run_test(test_info):
     solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=False)
     solver.set_obstacles(obstacles)
 
-    solver.wait_for_input(False)
-    solver.set_slow_rate(1.0)
-    solver.set_arena_max(arena_max)
+    solver.trajectory_plotter.set_wait_for_input(False)
+    solver.trajectory_plotter.set_dot_plotting(False)
+    solver.trajectory_plotter.set_slow_rate(1.0)
+    solver.trajectory_plotter.set_axes_limits(arena_max, arena_max)
 
     success, travel_time = solver.solve_trajectories()
 
@@ -166,7 +167,9 @@ if __name__ == '__main__':
 
     AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
                   'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
-                  'goal_thres': SOLVER_ARGS['goal_thres']}
+                  'goal_dist_thres': SOLVER_ARGS['goal_dist_thres'],
+                  'goal_speed_thres': SOLVER_ARGS['goal_speed_thres'],
+                 }
 
 
     benchmark_algo()

@@ -42,9 +42,25 @@ if __name__ == "__main__":
     swarm.set_formation("line")
 
     swarm.take_off()
-    rospy.sleep(7)
+    rospy.sleep(10)
 
-    print "Moving formation to (2, 2, 0.5)"
-    swarm.go_to({'formation': [2, 2, 0.5, 0]})
+    print "Next formation"
+    swarm.set_formation("v")
+    rospy.sleep(10)
+
+    print "Next formation"
+    swarm.set_formation("pyramid")
+    rospy.sleep(10)
+
+    print "Next formation"
+    swarm.set_formation("circle")
+    rospy.sleep(10)
+
+    print "Next formation"
+    swarm.set_formation("square")
+    rospy.sleep(10)
+
+    # print "Moving formation to (2, 2, 0.5)"
+    # swarm.go_to({'formation': [2, 2, 0.5, 0]})
 
     rospy.spin()
