@@ -205,7 +205,7 @@ class TrajectorySolver(object):
         self.initialize_matrices()
 
         # Graph parameters
-        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval)
+        self.trajectory_plotter = TrajPlot(self.agents, self.step_interval, self.interp_time_step)
 
         if self.verbose:
             print "Solver ready"
@@ -468,7 +468,7 @@ class TrajectorySolver(object):
 
     # Trajectory solvers
     def solve_trajectories(self):
-        """Compute trajectories and acceleration of each agent for the current time step
+        """Compute a collision free trajectory for each agent.
 
         Core of the algorithm.
 
@@ -500,16 +500,14 @@ class TrajectorySolver(object):
                     agent_idx, agent_traj = self._solve_agent(agent, accel_dict[agent.agent_idx])
                     self.all_agents_traj[:, agent_idx] = agent_traj
 
-            self.check_goals()
+            self._check_goals()
 
-            self.compute_agents_dist()
+            self._compute_agents_dist()
             self.k_t += 1
 
         self.print_final_positions()
 
-        if self.at_goal:
-            for each_agent in self.agents:
-                each_agent.interpolate_traj(self.step_interval, self.interp_time_step)
+        self._interpolate_agents_traj()
 
         return self.at_goal, (self.k_t*self.step_interval)
 
@@ -522,7 +520,7 @@ class TrajectorySolver(object):
         """
         # If new acceleration feasible
         current_state = agent.states[0:6, -1].reshape(6, 1)
-        x_pred = self.predict_trajectory(current_state, accel_input) # Find new state
+        x_pred = self._predict_trajectory(current_state, accel_input) # Find new state
         agent.prev_input = accel_input[0:3, 0]
 
         # Extract predicted positions
@@ -829,7 +827,7 @@ class TrajectorySolver(object):
 
         return p_coll, q_coll, g_coll, h_coll
 
-    def predict_trajectory(self, current_state, accel):
+    def _predict_trajectory(self, current_state, accel):
         """Predict an agent trajectory based on it's position and acceleration
 
         Args:
@@ -844,7 +842,7 @@ class TrajectorySolver(object):
 
         return x_pred
 
-    def check_goals(self):
+    def _check_goals(self):
         """Verify if all agents are in a small radius around their goal
         """
         all_goal_reached = True
@@ -854,7 +852,7 @@ class TrajectorySolver(object):
 
         self.at_goal = all_goal_reached
 
-    def compute_agents_dist(self):
+    def _compute_agents_dist(self):
         """Print distance of each agent at new position
         """
 
@@ -873,6 +871,12 @@ class TrajectorySolver(object):
                     dist = sqrt(scaled[0]**2 + scaled[1]**2 + scaled[2]**2)
 
                     self.agents_distances.append(dist)
+
+    def _interpolate_agents_traj(self):
+        """Interpolate trajectory of all agents using bezier curves
+        """
+        for each_agent in self.agents:
+            each_agent.interpolate_traj(self.step_interval, self.interp_time_step)
 
     # UI and printing methods
     def print_final_positions(self):

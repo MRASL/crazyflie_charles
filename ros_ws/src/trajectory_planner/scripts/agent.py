@@ -7,6 +7,7 @@ from math import sqrt
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv
+from scipy.special import binom
 
 class Agent(object):
     """Represents a single agent
@@ -37,6 +38,8 @@ class Agent(object):
         #: np.array of (6*k)x(Kmax): Position and speed trajectory at each time step.
         #  Columns: predicted [p, v], Rows: Each k
         self.states = None
+
+        self.final_traj = None #: Agent final trajectory
 
         self.prev_input = [0, 0, 0]
 
@@ -230,24 +233,26 @@ class Agent(object):
         return collision_step, close_agents
 
     def interpolate_traj(self, time_step_initial, time_step_interp):
-        """Interpolate the trajectory for smoother paths
-
-        Not yet implemeted.
+        """Interpolate agent's trajectory using a Bezier curbe.
 
         Args:
             time_step_initial (float): Period between samples
             time_step_interp (float): Period between interpolation samples
         """
+        # 1 - Trajectory parameters
+        n_sample = self.states.shape[1] - 1
+        n_sample_interp = int(n_sample*time_step_initial/time_step_interp)
+        end_time = n_sample*time_step_initial
+        traj_times = np.linspace(0, end_time, n_sample_interp, endpoint=False)
+
+        # 2 - Build bezier curve
+        self.final_traj = np.zeros((3, n_sample_interp))
+
+        for i in range(n_sample + 1):
+            point = self.states[0:3, i].reshape(3, 1)
+
+            self.final_traj +=\
+                binom(n_sample, i) * (1 - (traj_times/end_time))**(n_sample - i) *\
+                    (traj_times/end_time)**i * point
+
         pass
-        # n_sample = self.states.shape[1]
-        # n_sample_interp = n_sample*time_step_initial/time_step_interp
-
-
-        # end_time = n_sample*time_step_initial
-
-        # traj_time = np.linspace(0, end_time, n_sample, endpoint=False)
-        # traj_time_interp = np.linspace(0, end_time, n_sample_interp, endpoint=False)
-
-        # traj_x = self.states[0, :]
-        # traj_y = self.states[1, :]
-        # traj_z = self.states[2, :]
