@@ -25,7 +25,8 @@ class TrajPlot(object):
     # pylint: disable=too-many-instance-attributes
     # 11 is reasonable in this case.
 
-    def __init__(self, agent_list, time_step, interp_time_step, wait_for_input=False):
+    def __init__(self, agent_list, time_step, interp_time_step, wait_for_input=False,
+                 plot_dots=False):
         """Init
 
         Args:
@@ -37,6 +38,7 @@ class TrajPlot(object):
         self.time_step = time_step # Time step
         self.interp_time_step = interp_time_step # Interpolation time step
         self.wait_for_input = wait_for_input
+        self.plot_dots = plot_dots # To plot each position in predicted trajectory
 
         self.slow_rate = 1  #: int: To slow animation
 
@@ -74,15 +76,23 @@ class TrajPlot(object):
         """
         self.slow_rate = slow_rate
 
-    def set_axes_limits(self, xlim, ylim):
-        """Set x and y axes limits
+    def set_axes_limits(self, xmax, ymax):
+        """Set x and y axes max limits
 
         Args:
-            xlim (tuple): (xmin, xmax)
-            ylim (tuple): (ymin, ymax)
+            xmax (float)
+            ymax (float)
         """
-        self.axes.set_xlim(xlim)
-        self.axes.set_ylim(ylim)
+        self.axes.set_xlim((-0.2, xmax))
+        self.axes.set_ylim((-0.2, ymax))
+
+    def set_dot_plotting(self, to_plot):
+        """To plot or not agent's predicted trajectory over horizon as dots
+
+        Args:
+            to_wait (bool): To plot dots
+        """
+        self.plot_dots = to_plot
 
     # Animation
     def update_objects(self, agent_list):
@@ -115,7 +125,11 @@ class TrajPlot(object):
         for each_agent in self.agents:
             color = self.color_list[color_idx%len(self.color_list)]
             circle = Circle((0, 0), 0.1, alpha=0.8, fc=color)
-            line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
+
+            if not self.plot_dots:
+                line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)
+            else:
+                line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color, marker='o')
 
             col_circle = Circle((0, 0), 0.45, alpha=0.2, fc=color)
 

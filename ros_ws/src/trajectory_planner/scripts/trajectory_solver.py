@@ -66,7 +66,7 @@ Solver Class
 from math import sqrt
 import numpy as np
 from numpy import array, dot, hstack, vstack
-from numpy.linalg import norm, inv, matrix_power
+from numpy.linalg import inv, matrix_power
 from qpsolvers import solve_qp
 
 from trajectory_plotting import TrajPlot
@@ -211,30 +211,6 @@ class TrajectorySolver(object):
             print "Solver ready"
 
     # Setters methods
-    def wait_for_input(self, to_wait):
-        """Wait for input before next frame
-
-        Args:
-            to_wait (:obj:`bool`): If True, when for input in terminal before next frame
-        """
-        self.trajectory_plotter.set_wait_for_input(to_wait)
-
-    def set_slow_rate(self, slow_rate):
-        """To change rate of animation
-
-        Args:
-            slow_rate (:obj:`float`): Change rate of animation
-        """
-        self.trajectory_plotter.set_slow_rate(slow_rate)
-
-    def set_arena_max(self, max_val):
-        """Set x and y axes limits
-
-        Args:
-            max_val(:obj:`int`): Maximum arena value, same for x and y
-        """
-        self.trajectory_plotter.set_axes_limits((-0.2, max_val), (-0.2, max_val))
-
     def set_obstacles(self, obstacle_positions):
         """Add obstacle has an agent with a cst position
 
@@ -479,7 +455,6 @@ class TrajectorySolver(object):
         if self.verbose:
             print "Solving trajectories..."
 
-
         # For each time step
         while not self.at_goal and self.k_t < self.k_max and not self.in_collision:
 
@@ -546,10 +521,6 @@ class TrajectorySolver(object):
         Returns:
             array 3*hor_steps x 1: Acceleration over the trajectory
         """
-
-        # print "Starting", current_process().name
-        # print "SOLVING for agent %i" % agent
-
         # Check if there is a collision
         coll_info = list(agent.check_collisions())  #: True if trajectory in collision
         avoid_collision = (coll_info[0] != -1)
@@ -568,43 +539,71 @@ class TrajectorySolver(object):
                 print "ERROR: In collision"
             return None
 
-        # Solve optimization problem, increase max relaxation if no solution is found
-        accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
-
-        #! cur_relaxation = self.relaxation_min_bound  # To locally increase relaxation bound
-            # find_solution = True
-            # while find_solution:
-            #     try:
-            #         accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat[:, 0], solver='quadprog')
-            #         find_solution = False
-            #     except ValueError:
-            #         if cur_relaxation > 2*self.relaxation_min_bound and avoid_collision:
-            #             cur_relaxation -= self.relaxation_inc
-            #             print "No solution, relaxing constraints: %.2f" % cur_relaxation
-            #             n_collision = len(agent.close_agents.keys())
-
-            #             for i in range(n_collision):
-            #                 h_mat[(-1 - i*3), 0] = -cur_relaxation
-
-            #         else:
-            #             self.in_collision = True
-            #             find_solution = False
-            #             if self.verbose:
-            #                 print ''
-            #                 err_msg = ", Check max space"
-            #                 if cur_relaxation < -10:
-            #                     err_msg = ", Max relaxation reached"
-            #                 print "ERROR: No solution in constraints %s" % err_msg
-            #             return None
+        # Solve optimization problem
+        accel_input, relax_vals = self._solve_optimization(agent, avoid_collision,
+                                                           p_mat, q_mat, g_mat, h_mat[:, 0])
 
         if IN_DEBUG and avoid_collision:
-            print "\t\t Relaxation: {}".format(accel_input[3*self.steps_in_horizon:])
-
-        # Return acceleration
-        accel_input = accel_input[0:3*self.steps_in_horizon]
-        accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
+            print "\t\t Relaxation: {}".format(relax_vals)
 
         return accel_input
+
+    def _solve_optimization(self, agent, avoid_collision, p_mat, q_mat, g_mat, h_mat):
+        """To find acceleration input by solvin the qp problem.
+
+        If no solution is found whithin constraints, will try to lower relaxation.
+
+        1/2 x.T * p * x + q.T * x  s.t. g*x <= h
+
+        Args:
+            agent (:obj:`Agent`): Current agent
+            avoid_collisiont (:obj:`bool`): If solving for collision or not
+            p_mat (:obj:`np.Array`)
+            q_mat (:obj:`np.Array`)
+            g_mat (:obj:`np.Array`)
+            h_mat (:obj:`np.Array`)
+
+        Returns:
+            :obj:`np.Array`: Acceleration input
+        """
+        cur_relaxation = self.relaxation_max_bound  # To locally increase relaxation bound
+        find_solution = True
+
+        accel_input = None
+        relax_vals = None
+
+        while find_solution:
+            try:
+                accel_input = solve_qp(p_mat, q_mat, G=g_mat, h=h_mat, solver='quadprog')
+                relax_vals = accel_input[3*self.steps_in_horizon:]
+
+                accel_input = accel_input[0:3*self.steps_in_horizon]
+                accel_input = accel_input.reshape(3*self.steps_in_horizon, 1)
+
+                find_solution = False
+
+            # No solution whithin constraints
+            except ValueError:
+                cur_relaxation -= self.relaxation_inc
+
+                # Relax until 2*min is reached
+                if cur_relaxation > self.relaxation_min_bound*2 and avoid_collision:
+                    print "No solution, relaxing constraints: %.2f" % cur_relaxation
+
+                    # Update constraint in h matrix
+                    n_collision = len(agent.close_agents.keys())
+                    for i in range(n_collision):
+                        h_mat[(-1 - i*3), 0] = -cur_relaxation
+
+                # Max relaxation reached
+                else:
+                    self.in_collision = True
+                    find_solution = False
+
+                    if self.verbose:
+                        print "ERROR: No solution in constraints, Check max space"
+
+        return accel_input, relax_vals
 
     def _build_optimization_matrices(self, agent, coll_info):
         """Build optimization matrices depending on collision state
@@ -781,11 +780,10 @@ class TrajectorySolver(object):
             rho_constraint = self.r_min*dist - dist**2 + dot(v_matrix.T, agent_position_coll)
 
             #: 3k x 1 array
-            mu_matrix = np.zeros((3*(coll_step), 1))
-            mu_matrix = vstack((mu_matrix, v_matrix.reshape(3, 1)))
-            mu_matrix = vstack((mu_matrix,
-                                np.zeros((3*(self.steps_in_horizon - coll_step - 1),
-                                          1))))
+            slc = slice((coll_step)*3, (coll_step + 1)*3)
+            mu_matrix = np.zeros((3*self.steps_in_horizon, 1))
+            mu_matrix[slc] = v_matrix.reshape(3, 1)
+
 
             # Contraintes
             accel_constraint = dot(mu_matrix.T, self.lambda_accel)[0]
