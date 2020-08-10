@@ -59,7 +59,7 @@ def formation_demo(n_agents, formation_type):
     formation.compute_formation_positions()
     formation.update_agents_positions(formation_goal)
 
-    start_positions = compute_start_positions(n_agents)
+    start_positions = read_start_positions(n_agents)
     goals = {ag_id: [goal.x, goal.y, goal.z] for ag_id, goal in formation._agents_goals.items()}
 
     agent_list = []
@@ -219,6 +219,28 @@ def compute_start_positions(n_agents):
     for i in range(n_extra):
         start_positions[current_pos] = [i*START_DIST, sq_length*START_DIST, 0.0]
         current_pos += 1
+
+
+    return start_positions
+
+def read_start_positions(n_agents):
+    """Read start positions from conf file
+
+    Args:
+        n_agents (int): Number of agents
+
+    Returns:
+        list of list: Position of each agent
+    """
+    all_positions = YAML_CONF['starting_positions']
+    start_positions = {}
+    current_pos = 0
+
+    agt_idx = 0
+
+    for _, start_pose in all_positions.items():
+        start_positions[agt_idx] = start_pose
+        agt_idx += 1
 
 
     return start_positions

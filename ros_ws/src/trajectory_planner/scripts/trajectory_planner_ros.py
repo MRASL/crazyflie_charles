@@ -98,7 +98,7 @@ class TrajectoryPlanner(object):
             self.agents_dict[each_cf]['start_yaw'] = 0
 
         agent_list = [agent_dict['agent'] for (_, agent_dict) in self.agents_dict.items()]
-        self.solver = TrajectorySolver(agent_list, solver_args, verbose=False)
+        self.solver = TrajectorySolver(agent_list, solver_args, verbose=True)
 
         #: bool: True if a trajectories are to be planned
         self.to_plan_trajectories = False
@@ -228,7 +228,7 @@ class TrajectoryPlanner(object):
             else:
                 self.trajectory_found = False
                 rospy.logerr("Planner: No trajectory found")
-                self.solver.plot_trajectories()
+                # self.solver.plot_trajectories()
 
             self.send_result(self.trajectory_found)
 

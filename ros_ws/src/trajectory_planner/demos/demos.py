@@ -33,7 +33,7 @@ def demo():
 
     agents = []
     obstacles = []
-    arena_max = 5
+    arena_max = 3
 
 
     """
@@ -52,10 +52,12 @@ def demo():
 
     # agents = seven_agents()
 
+    agents = formation_demo(4, "square")
+
     # agents, arena_max = random_pos(9, 1, seed=None)
 
     #! Perfo tests
-    agents = corners_4()
+    # agents = corners_4()
     # agents, obstacles = demo_wall([(2.0, -1.0, 0.), (2.0, 2.5, 0.0)])
     # agents = seven_agents()
     # agents, arena_max = random_pos(9, 1, seed=6441753598703859782L)

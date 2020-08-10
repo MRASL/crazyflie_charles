@@ -170,7 +170,7 @@ class TrajectorySolver(object):
         self.a_min = solver_args['min_acc']
         p_min = solver_args['min_pos']
         p_max = solver_args['max_pos']
-        self.p_min = [p_min, p_min, 0.0]
+        self.p_min = [p_min, p_min, p_min]
         self.p_max = [p_max, p_max, p_max]
 
         self.obstacle_positions = []
@@ -482,6 +482,11 @@ class TrajectorySolver(object):
         self.print_final_positions()
 
         self._interpolate_agents_traj()
+
+        if not self.at_goal:
+            print "Solver failed with starting positions:"
+            print [agt.start_position for agt in self.agents]
+            print "at time step: %i" % self.k_t
 
         return self.at_goal, (self.k_t*self.step_interval)
 

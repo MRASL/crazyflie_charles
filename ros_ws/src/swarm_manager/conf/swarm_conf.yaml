@@ -1,13 +1,13 @@
 swarm:
-  n_cf: 9
-  take_off_height: 0.5
+  n_cf: 8
+  take_off_height: 0.7
   gnd_height: 0.0
   min_dist: 0.40  # Absolute min distance between CFs
   min_goal_dist: 0.40 # Absolute min distance between CFs goals
 
 formation:
-  formation_min_dist: 0.6 # Min distance between agents in formation
-  formation_start_pos: [0.5, 0.5, 0.5, 0.0] # [x, y, z, yaw]
+  formation_min_dist: 1.0 # Min distance between agents in formation
+  formation_start_pos: [0.0, 0.0, 0.0, 0.0] # [x, y, z, yaw]
   # formation_start_pos: [2.1, 2.1, 0.9, 0.0] # [x, y, z, yaw]
 
 trajectory_solver:
@@ -20,7 +20,7 @@ trajectory_solver:
   goal_dist_thres: 0.05 # Distance when goal is reached [m]
   goal_speed_thres: 0.5 # Max speed to be considered at goal [m/s]
 
-  r_min: 0.45 # Min radius between agents during trajectories [m]
+  r_min: 0.60 # Min radius between agents during trajectories [m]
   step_interval: 0.2 # Time between each time step [sec]
   interp_step: 0.1 # Time betwen time step for interpolation [sec]
   horizon_time: 2.0 # Predict trajectories for this time [sec]
@@ -43,6 +43,7 @@ starting_positions:
 
   # cf_0: [-0.5, -0.5, 0.0]
   # cf_1: [0.5, 0.5, 0.0]
+
 
   cf_0: [0.0, 0.0, 0.0]
   cf_1: [0.0, 0.5, 0.0]

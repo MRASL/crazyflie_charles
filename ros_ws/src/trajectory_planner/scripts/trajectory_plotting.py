@@ -83,8 +83,8 @@ class TrajPlot(object):
             xmax (float)
             ymax (float)
         """
-        self.axes.set_xlim((-0.2, xmax))
-        self.axes.set_ylim((-0.2, ymax))
+        self.axes.set_xlim((-3, xmax))
+        self.axes.set_ylim((-3, ymax))
 
     def set_dot_plotting(self, to_plot):
         """To plot or not agent's predicted trajectory over horizon as dots
@@ -220,6 +220,7 @@ class TrajPlot(object):
         """Start animation
         """
         n_frame = self.agents[-1].final_traj.shape[1]
+
         self.init_animated_objects()
 
         anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
