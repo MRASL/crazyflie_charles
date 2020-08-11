@@ -14,11 +14,11 @@ import rospy
 import numpy as np
 
 from crazyflie_driver.msg import Hover, Position
+from crazyflie_driver.srv import UpdateParams
 from std_msgs.msg import Empty as Empty_msg
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist, PoseStamped, Pose, Quaternion
 
-from crazyflie_driver.srv import UpdateParams
 from std_srvs.srv import Empty as Empty_srv
 from swarm_manager.srv import SetParam
 
