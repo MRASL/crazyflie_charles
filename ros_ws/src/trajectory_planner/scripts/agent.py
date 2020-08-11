@@ -247,11 +247,16 @@ class Agent(object):
         traj_times = np.linspace(0, end_time, n_sample_interp, endpoint=False)
 
         # 2 - Build bezier curve
-        self.final_traj = np.zeros((3, n_sample_interp))
+        if n_sample != 0:
+            self.final_traj = np.zeros((3, n_sample_interp))
 
-        for i in range(n_sample + 1):
-            point = self.states[0:3, i].reshape(3, 1)
+            for i in range(n_sample + 1):
+                point = self.states[0:3, i].reshape(3, 1)
 
-            self.final_traj +=\
-                binom(n_sample, i) * (1 - (traj_times/end_time))**(n_sample - i) *\
-                    (traj_times/end_time)**i * point
+                self.final_traj +=\
+                    binom(n_sample, i) * (1 - (traj_times/end_time))**(n_sample - i) *\
+                        (traj_times/end_time)**i * point
+
+        else:
+            self.final_traj = self.states[0:3, 0]
+            self.final_traj = self.final_traj.reshape(3, 1)

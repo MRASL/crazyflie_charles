@@ -109,8 +109,6 @@ class Controller(object):
         self.goal_vel_msg.linear.z = get_axis(data.axes, self.axes.z_axis, False)
         self.goal_vel_msg.angular.z = get_axis(data.axes, self.axes.yaw_axis, False)
 
-        rospy.sleep(0.01)
-
     def _get_buttons(self, buttons_data):
         """Find pressed buttons
 
