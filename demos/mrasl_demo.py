@@ -27,25 +27,20 @@ if __name__ == "__main__":
 
     print "MRASL demo"
     swarm.set_mode("formation")
-    swarm.set_formation("line")
-
-    rospy.sleep(2)
-    print "Taking off"
-    print "Formation: Line"
-    swarm.take_off()
-    rospy.sleep(10)
-
-    print "Formation: V"
     swarm.set_formation("v")
+
+    rospy.sleep(5)
+    print "Taking off"
+    print "Formation: v"
+    swarm.take_off()
     rospy.sleep(10)
 
     print "Formation: Circle"
     swarm.set_formation("circle")
     rospy.sleep(10)
 
-    print "Turning"
-    rospy.sleep(10)
-
+    # print "Turning"
+    # rospy.sleep(10)
 
     print "Formation: Pyramid"
     swarm.set_formation("pyramid")

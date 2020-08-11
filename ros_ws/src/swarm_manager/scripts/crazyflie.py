@@ -262,7 +262,7 @@ class Crazyflie(object):
 
         z_dist = z_start - GND_HEIGHT
 
-        time_range = 2*10
+        time_range = 4*10
 
         z_dec = z_dist/time_range
 
