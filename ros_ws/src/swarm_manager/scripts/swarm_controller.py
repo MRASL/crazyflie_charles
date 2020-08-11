@@ -43,7 +43,7 @@ class SwarmController(object):
         for each_cf in self._cf_list:
             self._crazyflies[each_cf] = CrazyfliePy(each_cf)
 
-        self._init_params()
+        # self._init_params()
         self._stabilize_position()
 
         # Init services
@@ -390,7 +390,7 @@ class SwarmController(object):
 
                 cf_vals.goals["goal"].x = cf_pose.position.x
                 cf_vals.goals["goal"].y = cf_pose.position.y
-                cf_vals.goals["goal"].z = cf_pose.position.z + TAKE_OFF_HEIGHT
+                cf_vals.goals["goal"].z = GND_HEIGHT + TAKE_OFF_HEIGHT
 
             # If CF is landed and in extra
             elif cf_vals.state in ["stop", "landed", "land"] and cf_id in self._extra_cf_list:
@@ -522,7 +522,7 @@ class SwarmController(object):
 
                 cf_vals.goals["goal"].x = cf_initial_pose.position.x
                 cf_vals.goals["goal"].y = cf_initial_pose.position.y
-                cf_vals.goals["goal"].z = cf_initial_pose.position.z
+                cf_vals.goals["goal"].z = GND_HEIGHT
                 # cf_vals["goal_msg"].yaw = yaw_from_quat(cf_initial_pose.orientation)
 
     # States
@@ -1024,5 +1024,5 @@ if __name__ == '__main__':
         SWARM.control_swarm()
 
     rospy.delete_param("cf_list")
-    for each_cf in CF_LIST:
-        rospy.delete_param(each_cf)
+    for cf_to_del in CF_LIST:
+        rospy.delete_param(cf_to_del)
