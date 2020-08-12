@@ -50,7 +50,7 @@ class DataAnalyser(object):
         # Plot data
         self.ui_cmd.add_cmd('plot_traj', self.plot_data, "To plot a CF trajectory")
         self.ui_cmd.add_arg('plot_traj', 'cf_id', "Id of crazyflie",
-                            arg_type=str, optional=False)
+                            arg_type=str, optional=True)
         self.ui_cmd.add_arg('plot_traj', 'plot2d', "To plot in 2d",
                             arg_type=bool, optional=True)
         self.ui_cmd.add_arg('plot_traj', 'axes', "Specify axes of 2d plot. i.e: 'xz'",
@@ -158,7 +158,7 @@ class DataAnalyser(object):
         for cf_id in sorted(self.crazyflies.keys()):
             print "\t%s" % cf_id
 
-    def plot_data(self, cf_id, axes='xy', plot2d=False):
+    def plot_data(self, cf_id=None, axes='xy', plot2d=False):
         """Plot flight of specified crazyflie.
 
         Plot axis can be specified
@@ -168,7 +168,13 @@ class DataAnalyser(object):
             axis (str, optional): Axes to plot data. Defaults to 'xy'.
             plot2d (bool, optiona;): To plot in 2d or not. Defaults to False.
         """
-        flight_data = self.crazyflies[cf_id]
+        flight_data = {}
+
+        if cf_id is not None:
+            flight_data[cf_id] = self.crazyflies[cf_id]
+
+        else:
+            flight_data = self.crazyflies
 
         if not plot2d:
             plotter = DataPlotter3d(flight_data)
@@ -254,6 +260,8 @@ class DataPlotter3d(object):
     """
     def __init__(self, flight_data, anim_rate=1.0):
         self.flight_data = flight_data
+
+        self.n_frame = 0
         self._sync_data()
 
         self.data_freq = 10.0 # Hz
@@ -264,10 +272,10 @@ class DataPlotter3d(object):
 
         self.axes = p3.Axes3D(self.fig)
         self.axes.set_xlabel('x (m)')
-        self.axes.set_xlim(0, 5)
+        self.axes.set_xlim(-2, 2)
 
         self.axes.set_ylabel('y (m)')
-        self.axes.set_ylim(0, 5)
+        self.axes.set_ylim(-2, 2)
 
         self.axes.set_zlabel('z (m)')
         self.axes.set_zlim(0, 2.5)
@@ -281,61 +289,76 @@ class DataPlotter3d(object):
 
         self._init_animated_objects()
 
-        self.cf_data = {'pose':[[], []], 'goal': [[], []]} #: Each data, [[axis_0], [axis_1]]
+        self.cf_data = {}
+        for cf_id, _ in self.flight_data.items():
+            self.cf_data[cf_id] = {'pose':[[], [], []], 'goal': [[], [], []]} #: [[x], [y], [z]]
 
     def __del__(self):
         plt.close()
 
     def _sync_data(self):
-        # Sync data so they start at the sime time
+        # Sync data so they start at the same time
         # Remove data in extra (received at the beginning)
-        extra_data = len(self.flight_data['pose']) - len(self.flight_data['goal'])
+        n_extra_data = 0
 
-        if extra_data > 0:
-            self.flight_data['pose'] = self.flight_data['pose'][extra_data::]
+        for _, data in self.flight_data.items():
+            n_extra = len(data['pose']) - len(data['goal'])
+            n_extra_data = n_extra if abs(n_extra) > abs(n_extra_data) else n_extra_data
 
-        else:
-            self.flight_data['goal'] = self.flight_data['goal'][-extra_data::]
+        for cf_id, data in self.flight_data.items():
+            if n_extra_data > 0:
+                self.flight_data[cf_id]['pose'] = data['pose'][n_extra_data::]
+                self.n_frame = len(self.flight_data[cf_id]['pose'])
+
+            else:
+                self.flight_data[cf_id]['goal'] = data['goal'][-n_extra_data::]
+                self.n_frame = len(self.flight_data[cf_id]['goal'])
 
     def _init_animated_objects(self):
         """Creates all objects to animate.
         """
-        # CF pose
-        line = self.axes.plot([], [], [], lw=2, color='b', marker='o')[0]
-        self.animated_objects.append(line)
+        for _ in self.flight_data:
+            # CF pose
+            line = self.axes.plot([], [], [], lw=2, color='b', marker='o')[0]
+            self.animated_objects.append(line)
 
-        line = self.axes.plot([], [], [], lw=2, color='b')[0]
-        self.animated_objects.append(line)
+            line = self.axes.plot([], [], [], lw=2, color='b')[0]
+            self.animated_objects.append(line)
 
-        # CF goal
-        line = self.axes.plot([], [], [], lw=1, alpha=0.8, color='r', marker='o')[0]
-        self.animated_objects.append(line)
+            # CF goal
+            line = self.axes.plot([], [], [], lw=1, alpha=0.8, color='r', marker='o')[0]
+            self.animated_objects.append(line)
 
-        line = self.axes.plot([], [], [], lw=1, color='r')[0]
-        self.animated_objects.append(line)
+            line = self.axes.plot([], [], [], lw=1, color='r')[0]
+            self.animated_objects.append(line)
 
         # Add time_text
         self.time_text = self.axes.text2D(0.02, 0.95, '', transform=self.axes.transAxes)
         self.animated_objects.append(self.time_text)
 
     def _init_animation(self):
-        # Pose circle
-        start_pose = self.flight_data['pose'][0].pose.position
+        object_count = 0
 
-        self.animated_objects[0].set_data(start_pose.x, start_pose.y)
-        self.animated_objects[0].set_3d_properties(start_pose.z)
+        for _, data in self.flight_data.items():
+            # Pose circle
+            start_pose = data['pose'][0].pose.position
 
-        self.animated_objects[1].set_data([], [])
-        self.animated_objects[1].set_3d_properties([])
+            self.animated_objects[object_count*4 + 0].set_data(start_pose.x, start_pose.y)
+            self.animated_objects[object_count*4 + 0].set_3d_properties(start_pose.z)
 
-        # Goal circle
-        start_goal = self.flight_data['goal'][0]
+            self.animated_objects[object_count*4 + 1].set_data([], [])
+            self.animated_objects[object_count*4 + 1].set_3d_properties([])
 
-        self.animated_objects[2].set_data(start_goal.x, start_goal.y)
-        self.animated_objects[2].set_3d_properties(start_goal.z)
+            # Goal circle
+            start_goal = data['goal'][0]
 
-        self.animated_objects[3].set_data([], [])
-        self.animated_objects[3].set_3d_properties([])
+            self.animated_objects[object_count*4 + 2].set_data(start_goal.x, start_goal.y)
+            self.animated_objects[object_count*4 + 2].set_3d_properties(start_goal.z)
+
+            self.animated_objects[object_count*4 + 3].set_data([], [])
+            self.animated_objects[object_count*4 + 3].set_3d_properties([])
+
+            object_count += 1
 
 
         # Set text
@@ -350,43 +373,45 @@ class DataPlotter3d(object):
             frame (int): Current frame
         """
         if frame == 0:
-            self.cf_data = {'pose':[[], [], []], 'goal': [[], [], []]}
+            self.cf_data = {}
+            for cf_id, data in self.flight_data.items():
+                self.cf_data[cf_id] = {'pose':[[], [], []], 'goal': [[], [], []]}
 
-        # CF pose
-        cf_pose = self.flight_data['pose'][frame].pose.position
-        self.cf_data['pose'][0].append(cf_pose.x)
-        self.cf_data['pose'][1].append(cf_pose.y)
-        self.cf_data['pose'][2].append(cf_pose.z)
-
-
-        self.animated_objects[0].set_data(cf_pose.x, cf_pose.y)
-        self.animated_objects[0].set_3d_properties(cf_pose.z)
-
-        self.animated_objects[1].set_data(self.cf_data['pose'][0:2])
-        self.animated_objects[1].set_3d_properties(self.cf_data['pose'][2])
+        object_count = 0
+        for cf_id, data in self.flight_data.items():
+            # CF pose
+            cf_pose = data['pose'][frame].pose.position
+            self.cf_data[cf_id]['pose'][0].append(cf_pose.x)
+            self.cf_data[cf_id]['pose'][1].append(cf_pose.y)
+            self.cf_data[cf_id]['pose'][2].append(cf_pose.z)
 
 
-        # CF goal
-        cf_goal = self.flight_data['goal'][frame]
-        self.cf_data['goal'][0].append(cf_goal.x)
-        self.cf_data['goal'][1].append(cf_goal.y)
-        self.cf_data['goal'][2].append(cf_goal.z)
+            self.animated_objects[object_count*4 + 0].set_data(cf_pose.x, cf_pose.y)
+            self.animated_objects[object_count*4 + 0].set_3d_properties(cf_pose.z)
+
+            self.animated_objects[object_count*4 + 1].set_data(self.cf_data[cf_id]['pose'][0:2])
+            self.animated_objects[object_count*4 + 1].\
+                set_3d_properties(self.cf_data[cf_id]['pose'][2])
 
 
-        self.animated_objects[2].set_data(cf_goal.x, cf_goal.y)
-        self.animated_objects[2].set_3d_properties(cf_goal.z)
+            # CF goal
+            cf_goal = data['goal'][frame]
+            self.cf_data[cf_id]['goal'][0].append(cf_goal.x)
+            self.cf_data[cf_id]['goal'][1].append(cf_goal.y)
+            self.cf_data[cf_id]['goal'][2].append(cf_goal.z)
 
-        self.animated_objects[3].set_data(self.cf_data['goal'][0:2])
-        self.animated_objects[3].set_3d_properties(self.cf_data['goal'][2])
+
+            self.animated_objects[object_count*4 + 2].set_data(cf_goal.x, cf_goal.y)
+            self.animated_objects[object_count*4 + 2].set_3d_properties(cf_goal.z)
+
+            self.animated_objects[object_count*4 + 3].set_data(self.cf_data[cf_id]['goal'][0:2])
+            self.animated_objects[object_count*4 + 3].\
+                set_3d_properties(self.cf_data[cf_id]['goal'][2])
+
+            object_count += 1
 
         time = frame/self.data_freq
         self.time_text.set_text("Time (sec): %.1f" % time)
-
-        # print "Pose time: sec: %i \t nsec: %i\t Goal time: sec: %i \t nsec: %i" %\
-        #     (self.flight_data['pose'][frame].header.stamp.secs,
-        #      self.flight_data['pose'][frame].header.stamp.nsecs,
-        #      self.flight_data['goal'][frame].header.stamp.secs,
-        #      self.flight_data['goal'][frame].header.stamp.nsecs,)
 
         return self.animated_objects
 
@@ -395,14 +420,13 @@ class DataPlotter3d(object):
         """
         self._init_animation()
 
-        n_frame = np.min([len(self.flight_data['pose']), len(self.flight_data['goal'])])
-
         _ = FuncAnimation(self.fig, self._animate, init_func=self._init_animation,
-                          frames=n_frame, interval=(1000/(self.data_freq*self.anim_rate)),
+                          frames=self.n_frame, interval=(1000/(self.data_freq*self.anim_rate)),
                           blit=False)
 
         plt.show()
 
+#TODO: Adapt to work with a dict
 class DataPlotter2d(object):
     """To plot flight data
     """

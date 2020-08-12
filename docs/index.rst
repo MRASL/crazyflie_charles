@@ -20,6 +20,13 @@ Main features:
 * Simulation
 * Easy control with a joystick
 
+This project was developped with the **Mobile Robotics and Autonomous Systems Laboratory** at
+**Polytechnique Montréal**.
+
+To cite this project:
+
+.. todo:: CITATION
+
 Exemple
 -------
 
@@ -97,6 +104,7 @@ High level controller exemple
    getting_started/installation
    getting_started/usage
    getting_started/tutorials
+   getting_started/mrasl_demo
 
 Python API
 ==========

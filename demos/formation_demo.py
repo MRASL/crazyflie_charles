@@ -17,7 +17,8 @@ from swarm_api.api import SwarmAPI
 def init_joystick():
     """Start joystick and link buttons
     """
-    swarm.start_joystick("ds4")
+    swarm.start_joystick("ds4", joy_dev='js1')
+    swarm.set_joy_control(True)  # To control formation position with joystick
 
     swarm.link_joy_button("S", swarm.take_off)
     swarm.link_joy_button("X", swarm.land)
@@ -29,38 +30,20 @@ def init_joystick():
     swarm.link_joy_button("DU", swarm.inc_scale)
     swarm.link_joy_button("DD", swarm.dec_scale)
 
-    # swarm.link_joy_button("L2", swarm.set_formation, "v")
+    swarm.link_joy_button("L2", go_to_origin)
+
+def go_to_origin():
+    """Move formation to 0, 0, 0
+    """
+    swarm.go_to({'formation': [0, 0, 1.0, 0]})
 
 if __name__ == "__main__":
     swarm = SwarmAPI()
-
 
     init_joystick()
 
     print "Formation demo"
     swarm.set_mode("formation")
     swarm.set_formation("line")
-
-    # # swarm.take_off()
-    # # # rospy.sleep(10)
-
-    # # # print "Next formation"
-    # # # swarm.set_formation("v")
-    # # # rospy.sleep(10)
-
-    # # # print "Next formation"
-    # # # swarm.set_formation("pyramid")
-    # # # rospy.sleep(10)
-
-    # # # print "Next formation"
-    # # # swarm.set_formation("circle")
-    # # # rospy.sleep(10)
-
-    # # # print "Next formation"
-    # # # swarm.set_formation("square")
-    # # # rospy.sleep(10)
-
-    # print "Moving formation to (2, 2, 0.5)"
-    # swarm.go_to({'formation': [2, 2, 0.5, 0]})
 
     rospy.spin()

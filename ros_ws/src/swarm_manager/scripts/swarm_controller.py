@@ -43,7 +43,7 @@ class SwarmController(object):
         for each_cf in self._cf_list:
             self._crazyflies[each_cf] = CrazyfliePy(each_cf)
 
-        # self._init_params()
+        self._init_params()
         self._stabilize_position()
 
         # Init services
@@ -56,7 +56,8 @@ class SwarmController(object):
         self.traj_services = {}
         self.traj_services = {"set_planner_positions": None,
                               "plan_trajectories": None,
-                              "pub_trajectories": None}
+                              "pub_trajectories": None,}
+        self.start_rec_service = None
         self._init_services()
 
         # Subscriber
@@ -87,8 +88,9 @@ class SwarmController(object):
         self._traj_found = False
         self._traj_successfull = False
         self._after_traj_state = "" # State to go once the trajectory is completed
-        rospy.loginfo("Swarm: Ready to start")
 
+        self.start_rec_service()
+        rospy.loginfo("Swarm: Ready to start")
 
     def _init_services(self):
         # Services
@@ -132,6 +134,12 @@ class SwarmController(object):
         self.traj_services["plan_trajectories"] = rospy.ServiceProxy("/plan_trajectories", Empty)
         self.traj_services["pub_trajectories"] = rospy.ServiceProxy("/pub_trajectories", Empty)
         rospy.loginfo("Swarm: trajectory planner services found")
+
+        # Flight recorder
+        rospy.loginfo("Swarm: waiting for recorder services")
+        rospy.wait_for_service("/start_recorder")
+        self.start_rec_service = rospy.ServiceProxy("/start_recorder", Empty)
+        rospy.loginfo("Swarm: recorder services found")
 
     def _init_params(self):
         self.update_swarm_param("commander/enHighLevel", 1)
@@ -449,7 +457,7 @@ class SwarmController(object):
                 cf_initial_pose = cf_vals.initial_pose
                 goals[cf_id] = [cf_initial_pose.position.x,
                                 cf_initial_pose.position.y,
-                                cf_initial_pose.position.z + TAKE_OFF_HEIGHT,
+                                GND_HEIGHT + TAKE_OFF_HEIGHT,
                                 yaw_from_quat(cf_initial_pose.orientation)]
 
             # Goal of CF in formation
@@ -470,7 +478,7 @@ class SwarmController(object):
                 cf_initial_pose = cf_vals.initial_pose
                 goals[cf_id] = [cf_initial_pose.position.x,
                                 cf_initial_pose.position.y,
-                                cf_initial_pose.position.z + 0.5,
+                                GND_HEIGHT + TAKE_OFF_HEIGHT,
                                 yaw_from_quat(cf_initial_pose.orientation),]
 
         self.traj_services["set_planner_positions"](position_type="goal", positions=str(goals))
