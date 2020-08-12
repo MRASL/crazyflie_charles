@@ -25,7 +25,7 @@ This project was developped with the **Mobile Robotics and Autonomous Systems La
 
 To cite this project:
 
-.. todo:: CITATION
+.. todo:: Add citation
 
 Exemple
 -------

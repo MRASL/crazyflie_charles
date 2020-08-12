@@ -216,4 +216,8 @@ autodoc_mock_imports = [
     'tf',
     'tf_conversions',
     'crazyflie_driver',
+    'geometry_msgs',
+    'swarm_manager',
+    'trajectory_planner',
+    'formation_manager'
 ]
