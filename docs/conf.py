@@ -219,5 +219,6 @@ autodoc_mock_imports = [
     'geometry_msgs',
     'swarm_manager',
     'trajectory_planner',
-    'formation_manager'
+    'formation_manager',
+    'roslaunch'
 ]
