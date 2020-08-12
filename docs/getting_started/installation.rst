@@ -18,35 +18,46 @@ The following links might be useful:
 Package installation
 --------------------
 
-1 - Verify Python version. Only **Python 2.7.17** was tested. ::
+1 - Verify Python version. Only **Python 2.7.17** was tested ::
 
     $ python --version
 
-2 - Clone package. ::
+2 - Clone package ::
 
     $ git clone https://github.com/MRASL/crazyflie_charles.git
 
-3 - Install and build package using build script. ::
+3 - Install and build package using build script ::
 
     $ cd crazyflie_charles
     $ ./build.sh
 
 4 - Install python dependencies ::
 
+    $ sudo apt install python-pip
     $ pip install -U pip
     $ pip install git+https://github.com/rmcgibbo/quadprog.git#egg=quadprog
     $ pip install -r requirements.txt
 
-5 - Test installation. ::
+5 - Install ros joystick driver ::
 
-    $ source ros_ws/devel/setup.sh
-    $ roslaunch swarm_manager launch_swarm.launch
-    $ python demos/trade_spots.python
+    $ sudo apt-get install ros-melodic-joy
+
+6 - Test installation
+
+    6.1 - Launch server ::
+
+        $ source ros_ws/devel/setup.sh
+        $ roslaunch swarm_manager launch_swarm.launch sim:=True
+
+    6.2 - In another terminal, start demo ::
+
+        $ source ros_ws/devel/setup.sh
+        $ python demos/trade_spots.python
 
 .. warning:: Make sure your ros environment has been source and roscore is running
     before testing this exemple. `See section 1.5 <http://wiki.ros.org/melodic/Installation/Ubuntu>`_.
 
-6 - (optional) Automaticaly source ros workspace by adding it to .bashrc ::
+7 - (optional) Automaticaly source ros workspace by adding it to ``.bashrc`` ::
 
     $ echo "source <path_to_crazyflie_charles>/ros_ws/devel/setup.bash" >> ~/.bashrc
     $ source ~/.bashrc
@@ -54,6 +65,6 @@ Package installation
 .. note::   | Replace ``<path_to_crazyflie_charles>`` with your installation path.
             | i.e: ``~/projects/crazyflie_charles``
 
-7 - Modify PC permissions
+8 - Modify PC permissions ::
 
     $ ./pc_permissions.sh
