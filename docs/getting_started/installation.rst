@@ -47,7 +47,7 @@ Package installation
     6.1 - Launch server ::
 
         $ source ros_ws/devel/setup.sh
-        $ roslaunch swarm_manager launch_swarm.launch
+        $ roslaunch swarm_manager launch_swarm.launch sim:=True
 
     6.2 - In another terminal, start demo ::
 
