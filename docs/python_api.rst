@@ -20,6 +20,7 @@ Python API
     toggle_ctrl_mode
     go_to
     get_positions
+    rotate_formation
 
-.. automodule:: swarm_api.api
+.. automodule:: swarm_api.api.SwarmAPI
     :members:
