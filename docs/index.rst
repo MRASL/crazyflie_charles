@@ -97,6 +97,7 @@ High level controller exemple
    getting_started/installation
    getting_started/usage
    getting_started/tutorials
+   getting_started/mrasl_demo
 
 Python API
 ==========
