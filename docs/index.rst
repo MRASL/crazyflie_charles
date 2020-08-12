@@ -20,6 +20,13 @@ Main features:
 * Simulation
 * Easy control with a joystick
 
+This project was developped with the **Mobile Robotics and Autonomous Systems Laboratory** at
+**Polytechnique Montréal**.
+
+To cite this project:
+
+.. todo:: CITATION
+
 Exemple
 -------
 
