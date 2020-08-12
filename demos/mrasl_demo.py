@@ -17,7 +17,9 @@ from swarm_api.api import SwarmAPI
 def init_joystick():
     """Start joystick and link buttons
     """
-    swarm.start_joystick("ds4")
+    swarm.start_joystick("ds4", joy_dev='js1')
+    swarm.set_joy_control(False)  # To control formation position with joystick
+
     swarm.link_joy_button("O", swarm.emergency)
 
 if __name__ == "__main__":
@@ -29,7 +31,7 @@ if __name__ == "__main__":
     swarm.set_mode("formation")
     swarm.set_formation("v")
 
-    rospy.sleep(5)
+    rospy.sleep(3)
     print "Taking off"
     print "Formation: v"
     swarm.take_off()
@@ -39,8 +41,14 @@ if __name__ == "__main__":
     swarm.set_formation("circle")
     rospy.sleep(10)
 
-    # print "Turning"
-    # rospy.sleep(10)
+    swarm.set_mode("formation")
+    swarm.set_formation("circle")
+    swarm.take_off()
+    rospy.sleep(10)
+
+    print "Turning"
+    swarm.rotate_formation(180, 5)
+    rospy.sleep(2)
 
     print "Formation: Pyramid"
     swarm.set_formation("pyramid")
@@ -48,6 +56,3 @@ if __name__ == "__main__":
 
     print "Landing to start positions"
     swarm.land()
-
-    # print "Moving formation to (2, 2, 0.5)"
-    # swarm.go_to({'formation': [2, 2, 0.5, 0]})

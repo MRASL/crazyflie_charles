@@ -8,6 +8,7 @@ import rospy
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist
 from swarm_manager.srv import JoyButton
+from std_srvs.srv import SetBool
 
 class Controller(object):
     """Interface with the joystick
@@ -23,7 +24,9 @@ class Controller(object):
         self._buttons = None  #: list: previous state of the buttons
         self._buttons_axes = None #: list: previous sate of the buttons on the axes
 
-        self.rate = rospy.Rate(10) #: rospy.Rate: Publishing rate
+        self._rate = rospy.Rate(10) #: rospy.Rate: Publishing rate
+
+        self._publish_vel = False #: To control formation with joystick
 
         # Init services
         self._init_services()
@@ -80,6 +83,9 @@ class Controller(object):
             - next_swarm_formation
             - prev_swarm_formation
         """
+        # Init own services
+        rospy.Service('/set_joy_control', SetBool, self._set_joy_control)
+
         # Find services
         rospy.loginfo("Joy: waiting for services...")
 
@@ -87,6 +93,11 @@ class Controller(object):
         self._button_pressed = rospy.ServiceProxy('/joy_button', JoyButton)
 
         rospy.loginfo("Joy: found services")
+
+    def _set_joy_control(self, srv_data):
+        self._publish_vel = srv_data.data
+
+        return {}
 
     def _joy_changed(self, data):
         """Called when data is received from the joystick
@@ -150,9 +161,10 @@ class Controller(object):
         """Loop as long as alive
         """
         while not rospy.is_shutdown():
-            self.goal_vel_publisher.publish(self.goal_vel_msg)
+            if self._publish_vel:
+                self.goal_vel_publisher.publish(self.goal_vel_msg)
 
-            self.rate.sleep()
+            self._rate.sleep()
 
 class Axis(object):
     """Represents an axis

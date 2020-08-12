@@ -31,11 +31,13 @@ Example
 ``SwarmAPI`` class
 ------------------
 """
+from math import pi
 import ast
 import rospy
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, SetBool
 from swarm_manager.srv import JoyButton, SetGoals, GetPositions, SetMode
 from formation_manager.srv import SetFormation
+from geometry_msgs.msg import Twist
 
 from swarm_api.launch_file_api import launch_joystick
 
@@ -46,6 +48,8 @@ class SwarmAPI(object):
     def __init__(self):
         rospy.init_node("SwarmAPI", anonymous=False)
 
+        self._rate = rospy.Rate(10)
+
         self._services = {}
         self._init_services()
 
@@ -54,7 +58,13 @@ class SwarmAPI(object):
 
         self._current_mode = ""
 
+        self._joy_vel_publisher = rospy.Publisher("/joy_swarm_vel", Twist, queue_size=1)
+        self._joy_vel = Twist()
+
     def _init_services(self):
+        # Start services
+        rospy.Service('/joy_button', JoyButton, self._button_srv)
+
         # Subscribe to srvs
         rospy.loginfo("API: waiting for services")
         self._link_service('swarm_emergency', Empty)
@@ -75,9 +85,6 @@ class SwarmAPI(object):
 
         rospy.loginfo("API: services found")
 
-        # Start services
-        rospy.Service('/joy_button', JoyButton, self._button_srv)
-
     def _link_service(self, service_name, service_type):
         """Link service
 
@@ -89,7 +96,7 @@ class SwarmAPI(object):
         self._services[service_name] = rospy.ServiceProxy('/%s' % service_name, service_type)
 
     # Joystick
-    def start_joystick(self, joy_type):
+    def start_joystick(self, joy_type, joy_dev='js0'):
         """Initialize joystick node. See :doc:`here </getting_started/tutorials/controller_setup>`
         for a tutorial on how to add new joystick types.
 
@@ -99,10 +106,14 @@ class SwarmAPI(object):
 
         Args:
             joy_type (:obj:`str`): Controller type.
+            joy_dev (:obj:`str`, Optional): Specify joystick port. Defaults to `js0`
         """
         self._joy_type = joy_type
 
-        launch_joystick(joy_type)
+        joy_dev = "/dev/input/" + joy_dev
+        print joy_dev
+
+        launch_joystick(joy_type, joy_dev)
 
         self._joy_buttons = {}
 
@@ -113,6 +124,17 @@ class SwarmAPI(object):
         # Add buttons on a axis
         for _, button in rospy.get_param(joy_type)["buttons_axes"].items():
             self._joy_buttons[button] = [None, None, None]
+
+        # Link service
+        self._link_service('set_joy_control', SetBool)
+
+    def set_joy_control(self, to_control):
+        """To enable/disable control of formation position with joystick axes.
+
+        Args:
+            to_control (bool): If True, formation will be moved by joystick axes
+        """
+        self._services["set_joy_control"](data=to_control)
 
     def link_joy_button(self, button_name, func, args=None, kwargs=None):
         """Link a button to a function call
@@ -254,6 +276,18 @@ class SwarmAPI(object):
         Dict format: ``"goal_name": [x, y, z, yaw]`` where ``"goal_name"`` is either
         ``"formation"`` or ``"cf_x"``
 
+        X, Y, Z in meters, Yaw in rad.
+
+        Example::
+            # To move formation to [2, 2, 0.5, 1.57]
+            swarm.go_to({'formation': [2, 2, 0.5, 1.57]})
+
+            # To move cf_0 to [0, 0, 0.5] and cf_1 to [1, 1, 1]
+            goals = {}
+            goals["cf_0"] = [0, 0, 0.5, 0]
+            goals["cf_1"] = [1, 1, 1, 0]
+            swarm.go_to(goals)
+
         Args:
             goals (:obj:`dict`): New goals
         """
@@ -275,3 +309,31 @@ class SwarmAPI(object):
         positions = self._services["get_positions"](cf_list=str(cf_list)).positions
 
         return ast.literal_eval(positions)
+
+    def rotate_formation(self, angle, duration):
+        """Rotate formation around it's center
+
+        .. note::
+            Formation control with joystick must be False to use this function
+            ``swarm.set_joy_control(False)``
+
+        Args:
+            angle (float): Angle to turn [deg]
+            duration (float): Rotation duration [sec]
+        """
+        # Convert angle to angular speed. At each publish, turns ``speed`` in rad
+        speed_rad = angle/duration*pi/180 #: [rad/sec]
+        delta_angle = speed_rad/10 #: [rad par 100ms]
+
+        self._joy_vel.angular.z = delta_angle
+
+        start_time = rospy.Time.now()
+        rotate_dur = rospy.Duration(duration)
+
+        while rospy.Time.now() - start_time < rotate_dur and not rospy.is_shutdown():
+            self._joy_vel_publisher.publish(self._joy_vel)
+            self._rate.sleep()
+
+        self._joy_vel.angular.z = 0
+        self._joy_vel_publisher.publish(self._joy_vel)
+        self._rate.sleep()
