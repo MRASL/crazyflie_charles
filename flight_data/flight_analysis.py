@@ -272,10 +272,10 @@ class DataPlotter3d(object):
 
         self.axes = p3.Axes3D(self.fig)
         self.axes.set_xlabel('x (m)')
-        self.axes.set_xlim(-5, 5)
+        self.axes.set_xlim(-2, 2)
 
         self.axes.set_ylabel('y (m)')
-        self.axes.set_ylim(-5, 5)
+        self.axes.set_ylim(-2, 2)
 
         self.axes.set_zlabel('z (m)')
         self.axes.set_zlim(0, 2.5)
@@ -291,7 +291,7 @@ class DataPlotter3d(object):
 
         self.cf_data = {}
         for cf_id, _ in self.flight_data.items():
-            self.cf_data[cf_id] = {'pose':[[], []], 'goal': [[], []]} #: [[axis_0], [axis_1]]
+            self.cf_data[cf_id] = {'pose':[[], [], []], 'goal': [[], [], []]} #: [[x], [y], [z]]
 
     def __del__(self):
         plt.close()
@@ -372,12 +372,10 @@ class DataPlotter3d(object):
         Args:
             frame (int): Current frame
         """
-        print frame
-
         if frame == 0:
             self.cf_data = {}
             for cf_id, data in self.flight_data.items():
-                self.cf_data[cf_id] = {'pose':[[], []], 'goal': [[], []]}
+                self.cf_data[cf_id] = {'pose':[[], [], []], 'goal': [[], [], []]}
 
         object_count = 0
         for cf_id, data in self.flight_data.items():
@@ -428,6 +426,7 @@ class DataPlotter3d(object):
 
         plt.show()
 
+#TODO: Adapt to work with a dict
 class DataPlotter2d(object):
     """To plot flight data
     """
