@@ -207,3 +207,13 @@ napoleon_use_admonition_for_references = False
 napoleon_use_ivar = True
 napoleon_use_param = True
 napoleon_use_rtype = True
+
+# Do not import ROS modules
+autodoc_mock_imports = [
+    'rospy',
+    'std_msgs',
+    'std_srvs',
+    'tf',
+    'tf_conversions',
+    'crazyflie_driver',
+]
