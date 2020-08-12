@@ -66,7 +66,7 @@ This architecture was used to simplify each package.
 
         ::
 
-            # .../crazyflie_charles/ros_ws/src/swarm_manager/swarm_controller.py
+            # .../crazyflie_charles/ros_ws/src/swarm_manager/swarm_controller_ros.py
             ...
             from math import sin, cos, pi
             from swarm_manager.srv import CircleCf
@@ -106,7 +106,7 @@ This architecture was used to simplify each package.
 
         .. code-block:: python
 
-            # .../crazyflie_charles/ros_ws/src/swarm_manager/swarm_controller.py``
+            # .../crazyflie_charles/ros_ws/src/swarm_manager/swarm_controller_ros.py``
             ...
             class SwarmController(object):
             ...
