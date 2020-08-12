@@ -2,6 +2,8 @@
 
 """Script to test path planning algorithm
 """
+
+
 # pylint: disable=wildcard-import
 # pylint: disable=unused-wildcard-import
 
@@ -31,12 +33,16 @@ def demo():
 
     agents = []
     obstacles = []
-    arena_max = 5
+    arena_max = 3
 
-    # Choose demo to execute
-    agents = demo_two_agents()
+
+    """
+    Uncomment demo to execute
+    """
+
+    # agents = demo_two_agents()
     # agents = demo_two_agents_vert()
-    # agents, obstacles = demo_wall()
+    # agents, obstacles = demo_wall([(2.0, -1.0, 0.), (2.0, 2.5, 0.0)])
     # agents, obstacles = through_wall()
 
     # agents = corners_2()
@@ -46,16 +52,29 @@ def demo():
 
     # agents = seven_agents()
 
+    agents = formation_demo(4, "square")
+
     # agents, arena_max = random_pos(9, 1, seed=None)
+
+    #! Perfo tests
+    # agents = corners_4()
+    # agents, obstacles = demo_wall([(2.0, -1.0, 0.), (2.0, 2.5, 0.0)])
+    # agents = seven_agents()
+    # agents, arena_max = random_pos(9, 1, seed=6441753598703859782L)
+    # agents, arena_max = random_pos(15, 1, seed=7125329410299779625L)
+    # agents, arena_max = random_pos(25, 1, seed=8430841635042043371L)
+    # agents, arena_max = random_pos(50, 1, seed=3963364070630474782L)
+    # agents = formation_demo(9, "line")
     # agents = formation_demo(9, "v")
 
     start_time = time.time()
     solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=True)
     solver.set_obstacles(obstacles)
 
-    solver.wait_for_input(False)
-    solver.set_slow_rate(1.0)
-    solver.set_arena_max(arena_max)
+    solver.trajectory_plotter.set_wait_for_input(False)
+    solver.trajectory_plotter.set_dot_plotting(True)
+    solver.trajectory_plotter.set_slow_rate(1.0)
+    solver.trajectory_plotter.set_axes_limits(arena_max, arena_max)
 
     solver.solve_trajectories()
 
@@ -66,7 +85,7 @@ def demo():
 if __name__ == '__main__':
     # Read arguments from yaml file
     PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+    FILE_PATH = os.path.join(PARENT_DIR, 'swarm_manager/conf/swarm_conf.yaml')
 
     with open(FILE_PATH) as f:
         YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)
@@ -75,6 +94,8 @@ if __name__ == '__main__':
 
     AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
                   'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
-                  'goal_thres': SOLVER_ARGS['goal_thres']}
+                  'goal_dist_thres': SOLVER_ARGS['goal_dist_thres'],
+                  'goal_speed_thres': SOLVER_ARGS['goal_speed_thres'],
+                 }
 
     demo()

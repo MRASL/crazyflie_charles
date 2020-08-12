@@ -43,7 +43,7 @@ class SwarmController(object):
         for each_cf in self._cf_list:
             self._crazyflies[each_cf] = CrazyfliePy(each_cf)
 
-        self._init_params()
+        # self._init_params()
         self._stabilize_position()
 
         # Init services
@@ -87,6 +87,8 @@ class SwarmController(object):
         self._traj_found = False
         self._traj_successfull = False
         self._after_traj_state = "" # State to go once the trajectory is completed
+        rospy.loginfo("Swarm: Ready to start")
+
 
     def _init_services(self):
         # Services
@@ -146,7 +148,10 @@ class SwarmController(object):
         The variance is calculated over the past 10 sec (10 data)
         """
         rospy.loginfo("Swarm: Waiting for position to stabilize...")
-        threshold = 0.1
+        # rospy.sleep(1.0)
+
+        threshold = 0.01
+        n_data = 50
 
         positions = {}
         var_list = {}
@@ -157,9 +162,9 @@ class SwarmController(object):
         # Initialize position history
         for cf_id in self._crazyflies:
             queue_dict = {}
-            queue_dict['x'] = Queue.Queue(10)
-            queue_dict['y'] = Queue.Queue(10)
-            queue_dict['z'] = Queue.Queue(10)
+            queue_dict['x'] = Queue.Queue(n_data)
+            queue_dict['y'] = Queue.Queue(n_data)
+            queue_dict['z'] = Queue.Queue(n_data)
 
             positions[cf_id] = queue_dict
 
@@ -178,14 +183,17 @@ class SwarmController(object):
                 positions[cf_id]['z'].put(cf_pose.position.z)
 
                 if queue_full:
-                    var_list[cf_id] = max([np.var(positions[cf_id]['x'].queue),
-                                           np.var(positions[cf_id]['y'].queue),
-                                           np.var(positions[cf_id]['z'].queue)])
+                    all_vars = [np.var(positions[cf_id]['x'].queue),
+                                np.var(positions[cf_id]['y'].queue),
+                                np.var(positions[cf_id]['z'].queue)]
+                    var_list[cf_id] = max(all_vars)
 
             if queue_full:
                 max_var = max([v for _, v in var_list.items()])
                 if max_var < threshold:
                     position_stable = True
+
+            self._rate.sleep()
 
         rospy.loginfo("Swarm: All CF position stable")
 
@@ -198,7 +206,7 @@ class SwarmController(object):
         state_function()
 
         if len(self._cf_list) > 1:
-            self.check_positions()
+            self.check_collisions()
 
         # Publish goal of each CF
         self._pub_cf_goals()
@@ -215,7 +223,7 @@ class SwarmController(object):
         rospy.loginfo("Swarm: Set %s param to %s" % (param, str(value)))
         self._call_all_cf_service("set_param", kwargs={'param': param, 'value': value})
 
-    def check_positions(self):
+    def check_collisions(self):
         """To check that the minimal distance between each CF is okay.
 
         If actual distance between CF is too small, calls emergency service.
@@ -324,7 +332,7 @@ class SwarmController(object):
 
         # If traj. planner fails
         else:
-            self._state_machine.set_state("hover")
+            self._swarm_emergency_srv(None)
 
     def _send_formation(self, formation_goal=None):
         """Send desired formation to formation manager.
@@ -382,7 +390,7 @@ class SwarmController(object):
 
                 cf_vals.goals["goal"].x = cf_pose.position.x
                 cf_vals.goals["goal"].y = cf_pose.position.y
-                cf_vals.goals["goal"].z = cf_pose.position.z + TAKE_OFF_HEIGHT
+                cf_vals.goals["goal"].z = GND_HEIGHT + TAKE_OFF_HEIGHT
 
             # If CF is landed and in extra
             elif cf_vals.state in ["stop", "landed", "land"] and cf_id in self._extra_cf_list:
@@ -514,7 +522,7 @@ class SwarmController(object):
 
                 cf_vals.goals["goal"].x = cf_initial_pose.position.x
                 cf_vals.goals["goal"].y = cf_initial_pose.position.y
-                cf_vals.goals["goal"].z = cf_initial_pose.position.z
+                cf_vals.goals["goal"].z = GND_HEIGHT
                 # cf_vals["goal_msg"].yaw = yaw_from_quat(cf_initial_pose.orientation)
 
     # States
@@ -1016,5 +1024,5 @@ if __name__ == '__main__':
         SWARM.control_swarm()
 
     rospy.delete_param("cf_list")
-    for each_cf in CF_LIST:
-        rospy.delete_param(each_cf)
+    for cf_to_del in CF_LIST:
+        rospy.delete_param(cf_to_del)

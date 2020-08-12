@@ -47,7 +47,7 @@ def benchmark_algo():
         - v formation, 9 agents
     """
     test_to_run = [(corners_4, (), {}, "corners_4"),
-                   (demo_wall, (), {}, "demo_wall"),
+                   (demo_wall, (), {'wall_coords':[(2.0, -1.0, 0.), (2.0, 2.5, 0.0)]}, "demo_wall"),
                    (seven_agents, (), {}, "seven_agents"),
                    (random_pos, (9, 1), {'seed':6441753598703859782L}, "random_pos_9"),
                    (random_pos, (15, 1), {'seed':7125329410299779625L}, "random_pos_15"),
@@ -65,8 +65,8 @@ def benchmark_algo():
         success, travel_time, compute_time = run_test(each_test)
 
         print "\tSucces: %s" % success
-        print "\tTravel Time: %.2f sec" % travel_time
         print "\tCompute time: %.2f sec" % compute_time
+        print "\tTravel Time: %.2f sec" % travel_time
         print "\n"
 
         tests_data[test_name] = {"success": success,
@@ -116,9 +116,10 @@ def run_test(test_info):
     solver = TrajectorySolver(agents, SOLVER_ARGS, verbose=False)
     solver.set_obstacles(obstacles)
 
-    solver.wait_for_input(False)
-    solver.set_slow_rate(1.0)
-    solver.set_arena_max(arena_max)
+    solver.trajectory_plotter.set_wait_for_input(False)
+    solver.trajectory_plotter.set_dot_plotting(False)
+    solver.trajectory_plotter.set_slow_rate(1.0)
+    solver.trajectory_plotter.set_axes_limits(arena_max, arena_max)
 
     success, travel_time = solver.solve_trajectories()
 
@@ -157,7 +158,7 @@ def compute_global_perfo(tests_data):
 if __name__ == '__main__':
     # Read arguments from yaml file
     PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+    FILE_PATH = os.path.join(PARENT_DIR, 'swarm_manager/conf/swarm_conf.yaml')
 
     with open(FILE_PATH) as f:
         YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)
@@ -166,7 +167,9 @@ if __name__ == '__main__':
 
     AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
                   'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
-                  'goal_thres': SOLVER_ARGS['goal_thres']}
+                  'goal_dist_thres': SOLVER_ARGS['goal_dist_thres'],
+                  'goal_speed_thres': SOLVER_ARGS['goal_speed_thres'],
+                 }
 
 
     benchmark_algo()

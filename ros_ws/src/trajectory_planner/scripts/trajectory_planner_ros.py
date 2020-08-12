@@ -87,7 +87,8 @@ class TrajectoryPlanner(object):
 
         agents_args = {'r_min': solver_args['r_min'],
                        'col_radius_ratio': solver_args['col_radius_ratio'],
-                       'goal_thres': solver_args['goal_thres']}
+                       'goal_dist_thres': solver_args['goal_dist_thres'],
+                       'goal_speed_thres': solver_args['goal_speed_thres']}
 
         for each_cf in cf_list:
             self.agents_dict[each_cf] = {}
@@ -97,7 +98,7 @@ class TrajectoryPlanner(object):
             self.agents_dict[each_cf]['start_yaw'] = 0
 
         agent_list = [agent_dict['agent'] for (_, agent_dict) in self.agents_dict.items()]
-        self.solver = TrajectorySolver(agent_list, solver_args, verbose=False)
+        self.solver = TrajectorySolver(agent_list, solver_args, verbose=True)
 
         #: bool: True if a trajectories are to be planned
         self.to_plan_trajectories = False
@@ -117,6 +118,8 @@ class TrajectoryPlanner(object):
         self.send_result = rospy.ServiceProxy("/traj_found", SetBool)
         self.traj_done = rospy.ServiceProxy("/traj_done", Empty)
         rospy.loginfo("Planner: swarm manager services found")
+
+        self._rate = rospy.Rate(1/rospy.get_param("trajectory_solver")["interp_step"])
 
     # Services
     def set_positions(self, srv_req):
@@ -185,16 +188,15 @@ class TrajectoryPlanner(object):
         # Set swarm manager to follow trajectory
 
         rospy.loginfo("Planner: Publishing trajectories...")
-        rate = rospy.Rate(10)
         time_step = 0
 
-        max_time_step = self.agents_dict[self.agents_dict.keys()[0]]['agent'].states.shape[1]
+        max_time_step = self.agents_dict[self.agents_dict.keys()[0]]['agent'].final_traj.shape[1]
         while time_step < max_time_step:
             if rospy.is_shutdown():
                 break
 
             for _, agent_dict in self.agents_dict.items():
-                agent_pos = agent_dict["agent"].states[0:3, time_step]
+                agent_pos = agent_dict["agent"].final_traj[:, time_step]
                 goal_msg = Position()
 
                 goal_msg.x = agent_pos[0]
@@ -205,7 +207,7 @@ class TrajectoryPlanner(object):
                 agent_dict['trajectory_pub'].publish(goal_msg)
 
             time_step += 1
-            rate.sleep()
+            self._rate.sleep()
 
         rospy.loginfo("Planner: Trajectory completed")
 
@@ -226,7 +228,7 @@ class TrajectoryPlanner(object):
             else:
                 self.trajectory_found = False
                 rospy.logerr("Planner: No trajectory found")
-                self.solver.plot_trajectories()
+                # self.solver.plot_trajectories()
 
             self.send_result(self.trajectory_found)
 

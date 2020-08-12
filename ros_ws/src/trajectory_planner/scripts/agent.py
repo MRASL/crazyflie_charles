@@ -3,9 +3,11 @@ Agent Class
 -----------
 """
 
+from math import sqrt
 import numpy as np
 from numpy import array, dot, hstack, vstack
 from numpy.linalg import norm, inv
+from scipy.special import binom
 
 class Agent(object):
     """Represents a single agent
@@ -25,7 +27,9 @@ class Agent(object):
 
         self.r_min = agent_args['r_min']
         self.collision_check_radius = self.r_min * agent_args['col_radius_ratio']
-        self.goal_thres = agent_args['goal_thres']
+        self.goal_dist_thres = agent_args['goal_dist_thres']
+        self.goal_speed_thres = agent_args['goal_speed_thres']
+
         self.at_goal = False
         self.agent_idx = 0 #: Index of agent in positions
         self.n_steps = 0 #: int: Number of steps in horizon
@@ -36,6 +40,8 @@ class Agent(object):
         #: np.array of (6*k)x(Kmax): Position and speed trajectory at each time step.
         #  Columns: predicted [p, v], Rows: Each k
         self.states = None
+
+        self.final_traj = None #: Agent final trajectory
 
         self.prev_input = [0, 0, 0]
 
@@ -87,14 +93,6 @@ class Agent(object):
             new_state (array): Trajectory at time step
         """
         self.states = hstack((self.states, new_state))
-
-    def get_final_traj(self):
-        """Get trajectory of agent to goal
-
-        Returns:
-            3x(n time steps): Position trajectory
-        """
-        return self.states[0:3, :]
 
     # Initialization
     def initialize_position(self, n_steps, all_agents_traj):
@@ -150,16 +148,23 @@ class Agent(object):
 
     # Compute methods
     def check_goal(self):
-        """Check if agent is in a small radius around his goal
+        """Check if agent reached it's goal.
+
+        Goal is considered reach when the agent is in a radius smaller than ``goal_dist_thres`` at
+        a speed lower than ``goal_speed_thres``.
+
 
         Returns:
             bool: True if goal reached
         """
         current_position = self.states[0:3, -1]
+        current_speed = self.states[3:6, -1]
         goal = self.goal.reshape(3)
-        dist = norm(goal - current_position)
 
-        if dist < self.goal_thres:
+        dist = norm(goal - current_position)
+        speed = norm(current_speed)
+
+        if dist < self.goal_dist_thres and speed < self.goal_speed_thres:
             self.at_goal = True
 
         return self.at_goal
@@ -172,12 +177,16 @@ class Agent(object):
                 3 - If collision: Find all close agents
 
         Returns:
-            (int, int): Time step of the collision, -1 if no collision; Index of collision object
+            (int): Step of collision (-1 if no collision)
+            (dict of float): Close agents and their distance at collision step
         """
         collision_detected = False
         n_agents = self.all_agents_traj.shape[1]
 
-        self.close_agents = {}
+        close_agents = {}
+        collision_step = -1
+
+        agents_dist = {}
 
         # Find time step of collision
         for each_step in range(self.n_steps):
@@ -191,58 +200,63 @@ class Agent(object):
                 if j != self.agent_idx:
                     # Position of the other agent at time step
                     other_agent_pos = self.all_agents_traj[rows, j]
-                    dist = norm(dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos))
 
+
+                    # Faster than norm
+                    scaled = dot(self.scaling_matrix_inv, predicted_pos - other_agent_pos)
+                    dist = sqrt(scaled[0]**2 + scaled[1]**2 + scaled[2]**2)
+                    # dist = norm(scaled)
+
+                    agents_dist[j] = dist
 
                     if dist < self.r_min and not collision_detected:
                         # For step 0, check a smaller radius
                         if each_step == 0 and dist > self.r_min - 0.05:
                             break
 
-                        self.collision_step = each_step
+                        collision_step = each_step
                         collision_detected = True
-                        break
+                        # break
 
             if collision_detected:
                 break
 
         # Find all close agents at collision
         if collision_detected:
-            # Predicted position of agent at time_step
-            coll_rows = slice(3*self.collision_step, 3*(self.collision_step+1))
-            coll_pos = self.all_agents_traj[coll_rows, self.agent_idx]
-
             # At collision, check distance of other agents
             for j in range(n_agents):
                 if j != self.agent_idx:
-                    # Position of the other agent at collision
-                    other_agent_pos = self.all_agents_traj[coll_rows, j]
-                    dist = norm(dot(self.scaling_matrix_inv, coll_pos - other_agent_pos))
+                    dist = agents_dist[j]
 
                     if dist < self.collision_check_radius:
-                        self.close_agents[j] = dist  # Set agent distance at collision
+                        close_agents[j] = dist  # Set agent distance at collision
 
-        return collision_detected
+        return collision_step, close_agents
 
     def interpolate_traj(self, time_step_initial, time_step_interp):
-        """Interpolate the trajectory for smoother paths
-
-        Not yet implemeted.
+        """Interpolate agent's trajectory using a Bezier curbe.
 
         Args:
             time_step_initial (float): Period between samples
             time_step_interp (float): Period between interpolation samples
         """
-        pass
-        # n_sample = self.states.shape[1]
-        # n_sample_interp = n_sample*time_step_initial/time_step_interp
+        # 1 - Trajectory parameters
+        n_sample = self.states.shape[1] - 1
+        n_sample_interp = int(n_sample*time_step_initial/time_step_interp)
+        end_time = n_sample*time_step_initial
+        traj_times = np.linspace(0, end_time, n_sample_interp, endpoint=False)
 
+        # 2 - Build bezier curve
+        if n_sample != 0:
+            self.final_traj = np.zeros((3, n_sample_interp))
 
-        # end_time = n_sample*time_step_initial
+            for i in range(n_sample + 1):
+                point = self.states[0:3, i].reshape(3, 1)
 
-        # traj_time = np.linspace(0, end_time, n_sample, endpoint=False)
-        # traj_time_interp = np.linspace(0, end_time, n_sample_interp, endpoint=False)
+                self.final_traj +=\
+                    binom(n_sample, i) * (1 - (traj_times/end_time))**(n_sample - i) *\
+                        (traj_times/end_time)**i * point
 
-        # traj_x = self.states[0, :]
-        # traj_y = self.states[1, :]
-        # traj_z = self.states[2, :]
+        else:
+            self.final_traj = self.states[0:3, 0]
+            self.final_traj = self.final_traj.reshape(3, 1)

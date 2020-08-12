@@ -219,11 +219,13 @@ class Crazyflie(object):
 
     # Methods depending on state
     def _take_off(self):
-        z_dist = TAKE_OFF_HEIGHT
         x_start = self.pose.position.x
         y_start = self.pose.position.y
         z_start = self.pose.position.z
         yaw_start = yaw_from_quat(self.pose.orientation)
+
+        z_goal =  TAKE_OFF_HEIGHT
+        z_dist = z_goal - z_start
 
         duration = 3.0 # in sec
         n_steps = int(10*duration) # Where 10 is the frequency

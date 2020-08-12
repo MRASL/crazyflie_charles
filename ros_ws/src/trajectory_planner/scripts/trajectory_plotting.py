@@ -25,7 +25,8 @@ class TrajPlot(object):
     # pylint: disable=too-many-instance-attributes
     # 11 is reasonable in this case.
 
-    def __init__(self, agent_list, time_step, wait_for_input=False):
+    def __init__(self, agent_list, time_step, interp_time_step, wait_for_input=False,
+                 plot_dots=False):
         """Init
 
         Args:
@@ -35,10 +36,10 @@ class TrajPlot(object):
         self.agents = agent_list # Position and acceleration at each time step
         self.n_agents = len(self.agents)
         self.time_step = time_step # Time step
+        self.interp_time_step = interp_time_step # Interpolation time step
         self.wait_for_input = wait_for_input
+        self.plot_dots = plot_dots # To plot each position in predicted trajectory
 
-        #: int: Number of frame, corresponds to number of column
-        self.n_frame = self.agents[-1].states.shape[1]
         self.slow_rate = 1  #: int: To slow animation
 
         self.fig = plt.figure()
@@ -75,15 +76,23 @@ class TrajPlot(object):
         """
         self.slow_rate = slow_rate
 
-    def set_axes_limits(self, xlim, ylim):
-        """Set x and y axes limits
+    def set_axes_limits(self, xmax, ymax):
+        """Set x and y axes max limits
 
         Args:
-            xlim (tuple): (xmin, xmax)
-            ylim (tuple): (ymin, ymax)
+            xmax (float)
+            ymax (float)
         """
-        self.axes.set_xlim(xlim)
-        self.axes.set_ylim(ylim)
+        self.axes.set_xlim((-3, xmax))
+        self.axes.set_ylim((-3, ymax))
+
+    def set_dot_plotting(self, to_plot):
+        """To plot or not agent's predicted trajectory over horizon as dots
+
+        Args:
+            to_wait (bool): To plot dots
+        """
+        self.plot_dots = to_plot
 
     # Animation
     def update_objects(self, agent_list):
@@ -116,7 +125,11 @@ class TrajPlot(object):
         for each_agent in self.agents:
             color = self.color_list[color_idx%len(self.color_list)]
             circle = Circle((0, 0), 0.1, alpha=0.8, fc=color)
-            line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)#, marker='o')
+
+            if not self.plot_dots:
+                line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color)
+            else:
+                line, = self.axes.plot([], [], lw=2, linestyle='dashed', color=color, marker='o')
 
             col_circle = Circle((0, 0), 0.45, alpha=0.2, fc=color)
 
@@ -133,8 +146,8 @@ class TrajPlot(object):
             self.axes.scatter(x_goal, y_goal, s=250, c=color, marker='X')
 
             # Draw start pos
-            x_start = each_agent.states[0, 0]
-            y_start = each_agent.states[1, 0]
+            x_start = each_agent.final_traj[0, 0]
+            y_start = each_agent.final_traj[1, 0]
 
             self.axes.scatter(x_start, y_start, s=100, c=color, marker='*')
 
@@ -151,12 +164,12 @@ class TrajPlot(object):
             agent = self.agents[i]
 
             # Circle
-            self.animated_objects[N_PER_AGENT*i].center = (agent.states[0, 0],
-                                                           agent.states[1, 0])
+            self.animated_objects[N_PER_AGENT*i].center = (agent.final_traj[0, 0],
+                                                           agent.final_traj[1, 0])
 
             # Col Circle
-            self.animated_objects[N_PER_AGENT*i].center = (agent.states[0, 0],
-                                                           agent.states[1, 0])
+            self.animated_objects[N_PER_AGENT*i].center = (agent.final_traj[0, 0],
+                                                           agent.final_traj[1, 0])
 
             # Line
             self.animated_objects[N_PER_AGENT*i+2].set_data([], [])
@@ -172,28 +185,30 @@ class TrajPlot(object):
         Args:
             frame (int): Current frame
         """
+        traj_frame = int(frame/(self.time_step/self.interp_time_step))
 
         for i in range(self.n_agents):
             agent = self.agents[i]
-            data = agent.states[:, frame]
+            position = agent.final_traj[:, frame]
+            traj_data = agent.states[:, traj_frame]
 
             # Circle
-            self.animated_objects[N_PER_AGENT*i].center = (data[0], data[1])
-            self.animated_objects[N_PER_AGENT*i + 1].center = (data[0], data[1])
+            self.animated_objects[N_PER_AGENT*i].center = (position[0], position[1])
+            self.animated_objects[N_PER_AGENT*i + 1].center = (position[0], position[1])
 
             # Prediction line
             x_data = []
             y_data = []
             z_data = []
 
-            for k in range(int(len(data)/6)):
-                x_data.append(data[6*k])
-                y_data.append(data[6*k + 1])
-                z_data.append(data[6*k + 2])
+            for k in range(int(len(traj_data)/6)):
+                x_data.append(traj_data[6*k])
+                y_data.append(traj_data[6*k + 1])
+                z_data.append(traj_data[6*k + 2])
 
             self.animated_objects[N_PER_AGENT*i + 2].set_data(x_data, y_data)
 
-        time = frame*self.time_step
+        time = frame*self.interp_time_step
         self.time_text.set_text("Time (sec): %.1f" % time)
 
         if self.wait_for_input:
@@ -204,11 +219,12 @@ class TrajPlot(object):
     def run(self):
         """Start animation
         """
-        self.n_frame = self.agents[-1].states.shape[1]
+        n_frame = self.agents[-1].final_traj.shape[1]
+
         self.init_animated_objects()
 
         anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation,
-                             frames=self.n_frame, interval=(self.time_step*1000*self.slow_rate),
+                             frames=n_frame, interval=(self.interp_time_step*1000*self.slow_rate),
                              blit=True)
 
         if SAVE_ANIMATION:

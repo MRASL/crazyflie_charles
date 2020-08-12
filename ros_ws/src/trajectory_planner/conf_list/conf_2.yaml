@@ -1,0 +1,54 @@
+swarm:
+  n_cf: 2
+  take_off_height: 0.5
+  gnd_height: 0.0
+  min_dist: 0.40  # Absolute min distance between CFs
+  min_goal_dist: 0.40 # Absolute min distance between CFs goals
+
+formation:
+  formation_min_dist: 0.6 # Min distance between agents in formation
+  formation_start_pos: [0.5, 0.5, 0.5, 0.0] # [x, y, z, yaw]
+  # formation_start_pos: [2.1, 2.1, 0.9, 0.0] # [x, y, z, yaw]
+
+trajectory_solver:
+  max_acc: 0.5
+  min_acc: -0.5
+  max_pos: 10.0
+  min_pos: -10.0
+
+  max_time: 15.0 # Max time to find trajectory [sec]
+  goal_dist_thres: 0.05 # Distance when goal is reached [m]
+  goal_speed_thres: 0.5 # Max speed to be considered at goal [m/s]
+
+  r_min: 0.45 # Min radius between agents during trajectories [m]
+  step_interval: 0.2 # Time between each time step [sec]
+  interp_step: 0.1 # Time betwen time step for interpolation [sec]
+  horizon_time: 2.0 # Predict trajectories for this time [sec]
+  col_radius_ratio: 2.0 # Radius of agents to avoid
+
+  goal_agg: 3 # Kappa, to be more aggressive towards goal
+  error_weight: 0.1
+  effort_weight: 0.001
+  input_weight: 0.001
+  relax_weight_sq: 10
+  relax_weight_lin: 0.001
+  relax_max: 0.00
+  relax_min: -0.45
+  relax_inc: 0.01
+
+# Starting positions in simulation
+starting_positions:
+  cf_1: [0.0, 0.5, 0.0]
+  cf_2: [0.0, 1.0, 0.0]
+  cf_3: [0.5, 0.0, 0.0]
+  cf_4: [0.5, 0.5, 0.0]
+  cf_5: [0.5, 1.0, 0.0]
+  cf_6: [1.0, 0.0, 0.0]
+  cf_7: [1.0, 0.5, 0.0]
+  cf_8: [1.0, 1.0, 0.0]
+  cf_9: [0.0, 1.5, 0.0]
+  cf_10: [0.0, 2.0, 0.0]
+  cf_11: [0.5, 1.5, 0.0]
+  cf_12: [0.5, 2.0, 0.0]
+  cf_13: [1.0, 1.5, 0.0]
+  cf_14: [1.0, 2.0, 0.0]

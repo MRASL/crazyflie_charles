@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-"""Generate random start and goal
+"""Generate random start and goal for each CF
 """
+
 # pylint: disable=wildcard-import
 # pylint: disable=unused-wildcard-import
 
@@ -27,7 +28,7 @@ from agent import Agent
 
 # Read arguments from yaml file
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FILE_PATH = os.path.join(PARENT_DIR, 'conf.yaml')
+FILE_PATH = os.path.join(PARENT_DIR, 'swarm_manager/conf/swarm_conf.yaml')
 
 with open(FILE_PATH) as f:
     YAML_CONF = yaml.load(f, Loader=yaml.FullLoader)
@@ -36,7 +37,9 @@ SOLVER_ARGS = YAML_CONF['trajectory_solver']
 
 AGENT_ARGS = {'r_min': SOLVER_ARGS['r_min'],
               'col_radius_ratio': SOLVER_ARGS['col_radius_ratio'],
-              'goal_thres': SOLVER_ARGS['goal_thres']}
+              'goal_dist_thres': SOLVER_ARGS['goal_dist_thres'],
+              'goal_speed_thres': SOLVER_ARGS['goal_speed_thres'],
+             }
 
 # Random positions
 def random_pos(n_agents, density, seed=None):
