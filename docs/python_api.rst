@@ -1,7 +1,7 @@
 Python API
 ==========
 
-.. currentmodule:: swarm_api.api.SwarmAPI
+.. currentmodule:: swarm_api.api
 
 .. autosummary::
 
@@ -22,4 +22,4 @@ Python API
     get_positions
     rotate_formation
 
-.. automodule:: swarm_api.api
+.. automodule:: swarm_api
