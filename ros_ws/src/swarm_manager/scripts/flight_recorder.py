@@ -47,6 +47,8 @@ from geometry_msgs.msg import PoseStamped
 from crazyflie_driver.msg import Position
 from std_srvs.srv import Empty
 
+import message_filters
+
 
 class Recorder(object):
     """To record flight data of all CFs
@@ -68,8 +70,12 @@ class Recorder(object):
         rospy.Service('/start_recorder', Empty, self._start_recorder)
 
         # Initialize each Crazyflie
+        self._all_cf_msgs = []
         for each_cf in cf_list:
             self._init_cf(each_cf)
+
+        time_sync = message_filters.ApproximateTimeSynchronizer(self._all_cf_msgs, 10, 0.2)
+        time_sync.registerCallback(self._ts_handler)
 
     def _find_id(self):
         # List all data files
@@ -96,33 +102,24 @@ class Recorder(object):
             cf_id (str): Name of the CF
         """
         self.crazyflies[cf_id] = {'pose': [], 'goal': []}
-        rospy.Subscriber("/%s/pose" % cf_id, PoseStamped, self._cf_pose_handler, cf_id)
-        rospy.Subscriber("/%s/goal" % cf_id, Position, self._cf_goal_handler, cf_id)
+        # rospy.Subscriber("/%s/pose" % cf_id, PoseStamped, self._cf_pose_handler, cf_id)
+        # rospy.Subscriber("/%s/goal" % cf_id, Position, self._cf_goal_handler, cf_id)
+
+        self._all_cf_msgs.append(message_filters.Subscriber("/%s/pose" % cf_id, PoseStamped))
+        self._all_cf_msgs.append(message_filters.Subscriber("/%s/goal" % cf_id, Position))
 
     def _start_recorder(self, _):
         self._to_record = True
 
         return {}
 
-    def _cf_pose_handler(self, pose_stamped, cf_id):
-        """Update current position of a cf
+    def _ts_handler(self, *args):
+        cf_count = 0
+        for cf_id in self.crazyflies:
+            self.crazyflies[cf_id]['pose'].append(args[cf_count*2])
+            self.crazyflies[cf_id]['goal'].append(args[cf_count*2 + 1])
 
-        Args:
-            pose_stamped (PoseStamped): New pose of CF
-            cf_id (int): Id of the CF
-        """
-        if self._to_record:
-            self.crazyflies[cf_id]['pose'].append(pose_stamped)
-
-    def _cf_goal_handler(self, goal, cf_id):
-        """Update current goal of a cf
-
-        Args:
-            goal (Position): New goal of CF
-            cf_id (int): Id of the CF
-        """
-        if self._to_record:
-            self.crazyflies[cf_id]['goal'].append(goal)
+            cf_count += 1
 
     def _save_data(self):
         file_path = join(self.data_path, self.data_base_name + self.data_id)

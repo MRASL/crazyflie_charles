@@ -41,11 +41,6 @@ if __name__ == "__main__":
     swarm.set_formation("circle")
     rospy.sleep(10)
 
-    swarm.set_mode("formation")
-    swarm.set_formation("circle")
-    swarm.take_off()
-    rospy.sleep(10)
-
     print "Turning"
     swarm.rotate_formation(180, 5)
     rospy.sleep(2)
