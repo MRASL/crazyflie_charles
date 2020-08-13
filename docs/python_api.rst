@@ -22,5 +22,9 @@ Python API
     get_positions
     rotate_formation
 
-.. automodule:: swarm_api.api
+.. automodule:: swarm_api
+    :members:
+
+
+.. autoclass:: swarm_api.SwarmAPI
     :members:

@@ -222,5 +222,6 @@ autodoc_mock_imports = [
     'swarm_manager',
     'trajectory_planner',
     'formation_manager',
-    'roslaunch'
+    'roslaunch',
+    'message_filters'
 ]
