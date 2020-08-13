@@ -262,7 +262,7 @@ class DataPlotter3d(object):
         self.flight_data = flight_data
 
         self.n_frame = 0
-        self._sync_data()
+        # self._sync_data()
 
         self.data_freq = 10.0 # Hz
 
@@ -418,6 +418,7 @@ class DataPlotter3d(object):
     def plot_traj(self):
         """To run animation
         """
+        self.n_frame = len(self.flight_data['cf_0']['pose'])
         self._init_animation()
 
         _ = FuncAnimation(self.fig, self._animate, init_func=self._init_animation,
