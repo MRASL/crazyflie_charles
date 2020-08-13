@@ -1,7 +1,17 @@
 Swarm Manager
 =============
 
-Package used to move the swarm
+Module to move the swarm and use ``TrajectoryPlanner`` and ``FormationManager`` packages.
 
-.. automodule:: swarm_controller
+``SwarmController`` class
+-------------------------
+
+.. autoclass:: swarm_controller.SwarmController
+    :members:
+
+
+``CrazyfliePy`` class
+-------------------------
+
+.. autoclass:: swarm_controller.CrazyfliePy
     :members:

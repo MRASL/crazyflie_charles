@@ -20,11 +20,11 @@ Swarm Setup
 
 .. note:: It's highly recommended to label each CF with it's number.
 
-2.  Set crazyflie channel. Each crazyradio can handle communication with up to ___ crazyflies.
+2.  Set crazyflie channel. Each crazyradio can handle communication with up to 15 crazyflies.
     If more crazyflies are in your swarm, you will need a different channel for each radio.
 
 3.  If not already done,
-    `update each crazyflie firmware <https://www.bitcraze.io/documentation/tutorials/getting-started-with-crazyflie-2-x/#config-client>`_
+    `update each crazyflie firmware <https://www.bitcraze.io/documentation/tutorials/getting-started-with-crazyflie-2-x/#config-client>`_.
 
 
 Positionning System
@@ -33,8 +33,7 @@ Positionning System
 For now, only the LPS (with 8 anchors) was tested for positionning. Follow `this guide <https://www.bitcraze.io/documentation/tutorials/getting-started-with-loco-positioning-system/>`_
 to setup your system.
 
-It's possible to test your setup by trying to fly with it: `here <https://www.bitcraze.io/documentation/tutorials/getting-started-with-flying-using-lps/>`_
-
+Test your setup by flying using `bitcraze client <https://www.bitcraze.io/documentation/tutorials/getting-started-with-flying-using-lps/>`_.
 
 Configuration Files
 -------------------

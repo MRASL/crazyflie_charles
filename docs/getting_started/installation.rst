@@ -52,7 +52,7 @@ Package installation
     6.2 - In another terminal, start demo ::
 
         $ source ros_ws/devel/setup.sh
-        $ python demos/trade_spots.python
+        $ python demos/trade_spots.py
 
 .. warning:: Make sure your ros environment has been source and roscore is running
     before testing this exemple. `See section 1.5 <http://wiki.ros.org/melodic/Installation/Ubuntu>`_.

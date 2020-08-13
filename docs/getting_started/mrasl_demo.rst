@@ -13,7 +13,17 @@ fonctionne aussi avec seulement 6.
 
 1 - Installer les ancres sur les 4 supports. L'ancre du bas devrait être à environ 20cm du sol et celle du haut à environ 2m.
 
-.. todo:: PHOTO
+.. figure:: /images/lps_setup_01.jpg
+
+    Vue de l'arène
+
+.. figure:: /images/lps_setup_02.jpg
+    :align: center
+    :height: 800px
+
+    Alimentation de deux ancres
+
+
 
 2 - Disposer les ancres aux 4 coins de l'arène
 
@@ -42,9 +52,10 @@ La démonstration a été testée et optimisée pour 5 drones. Cependant, elle d
 
 2 - Lancer le serveur
 
-    Le projet est installé sur l'ordi...
+    Le projet a été installé sur l'ordinateur à droite en entrant au labo. Il se trouve
+    à l'emplacement: ``~/crazyflie_ws/crazyflie_charles``.
 
-    .. todo:: ORDI DU LABO
+    Ne pas oublier de mettre à jour la branche ``master``.
 
     ::
 
