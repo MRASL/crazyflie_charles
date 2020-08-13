@@ -3,6 +3,6 @@ Swarm Manager
 
 Package used to move the swarm
 
-.. automodule:: swarm_controller
+.. automodule:: swarm_manager.swarm_controller
     :members:
     :no-private-members:
