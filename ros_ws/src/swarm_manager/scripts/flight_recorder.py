@@ -74,8 +74,8 @@ class Recorder(object):
         for each_cf in cf_list:
             self._init_cf(each_cf)
 
-        ts = message_filters.ApproximateTimeSynchronizer(self._all_cf_msgs, 10, 1)
-        ts.registerCallback(self._ts_handler)
+        time_sync = message_filters.ApproximateTimeSynchronizer(self._all_cf_msgs, 10, 0.2)
+        time_sync.registerCallback(self._ts_handler)
 
     def _find_id(self):
         # List all data files
@@ -112,26 +112,6 @@ class Recorder(object):
         self._to_record = True
 
         return {}
-
-    def _cf_pose_handler(self, pose_stamped, cf_id):
-        """Update current position of a cf
-
-        Args:
-            pose_stamped (PoseStamped): New pose of CF
-            cf_id (int): Id of the CF
-        """
-        if self._to_record:
-            self.crazyflies[cf_id]['pose'].append(pose_stamped)
-
-    def _cf_goal_handler(self, goal, cf_id):
-        """Update current goal of a cf
-
-        Args:
-            goal (Position): New goal of CF
-            cf_id (int): Id of the CF
-        """
-        if self._to_record:
-            self.crazyflies[cf_id]['goal'].append(goal)
 
     def _ts_handler(self, *args):
         cf_count = 0

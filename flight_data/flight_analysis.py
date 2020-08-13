@@ -297,6 +297,7 @@ class DataPlotter3d(object):
         plt.close()
 
     def _sync_data(self):
+        # Now useless with time_synchronization
         # Sync data so they start at the same time
         # Remove data in extra (received at the beginning)
         n_extra_data = 0

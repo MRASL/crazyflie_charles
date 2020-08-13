@@ -44,7 +44,7 @@ class SwarmController(object):
             self._crazyflies[each_cf] = CrazyfliePy(each_cf)
 
         self._init_params()
-        # self._stabilize_position()  # TODO Uncomment
+        self._stabilize_position()
 
         # Init services
         self.formation_services = {}
