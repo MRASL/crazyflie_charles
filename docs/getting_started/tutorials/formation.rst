@@ -16,7 +16,7 @@ We are going to add a formation shaped like a sinus.
 
     * Scale: Scale will be the length of the formation
 
-    * Agents repartition: Agents will be equally spaced on the axis axis. Y position will be :math:`A*sin(\omega*x)`.
+    * Agents repartition: Agents will be equally distant on the X axis. Y position will be :math:`A*sin(\omega*x)`.
 
 2. Create new formation file
 
