@@ -1,7 +1,7 @@
 Python API
 ==========
 
-.. currentmodule:: swarm_api.api
+.. currentmodule:: swarm_api
 
 .. autosummary::
 
@@ -23,3 +23,5 @@ Python API
     rotate_formation
 
 .. automodule:: swarm_api
+    :member:
+    :no-private-members:
