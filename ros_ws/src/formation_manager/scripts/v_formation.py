@@ -113,4 +113,8 @@ class VFormation(FormationClass):
             self._center_height[i] = center_height
 
     def update_formation_scale(self):
-        self.dist = self._scale/(self.agents_per_side[0]) # Space between agents
+        if self._n_agents > 1:
+            self.dist = self._scale/(self.agents_per_side[0]) # Space between agents
+
+        else:
+            self.dist = 0

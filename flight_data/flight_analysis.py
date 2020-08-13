@@ -262,7 +262,7 @@ class DataPlotter3d(object):
         self.flight_data = flight_data
 
         self.n_frame = 0
-        self._sync_data()
+        # self._sync_data()
 
         self.data_freq = 10.0 # Hz
 
@@ -297,6 +297,7 @@ class DataPlotter3d(object):
         plt.close()
 
     def _sync_data(self):
+        # Now useless with time_synchronization
         # Sync data so they start at the same time
         # Remove data in extra (received at the beginning)
         n_extra_data = 0
@@ -418,6 +419,7 @@ class DataPlotter3d(object):
     def plot_traj(self):
         """To run animation
         """
+        self.n_frame = len(self.flight_data['cf_0']['pose'])
         self._init_animation()
 
         _ = FuncAnimation(self.fig, self._animate, init_func=self._init_animation,
