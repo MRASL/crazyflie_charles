@@ -3,5 +3,5 @@ Swarm Manager
 
 Package used to move the swarm
 
-.. automodule:: swarm_controller.SwarmController
+.. automodule:: swarm_controller
     :members:
