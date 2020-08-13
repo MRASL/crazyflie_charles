@@ -195,7 +195,17 @@ autodoc_mock_imports = [
     'tf',
     'tf_conversions',
     'crazyflie_driver',
+    'geometry_msgs',
+    'swarm_manager',
+    'trajectory_planner',
+    'formation_manager',
+    'roslaunch',
+    'message_filters'
 ]
+
+autoclass_content = 'class'
+
+autodoc_default_flags = ['members']
 
 # -- Options for Napoleon -------------------------------------------
 napoleon_google_docstring = True
@@ -209,19 +219,3 @@ napoleon_use_admonition_for_references = False
 napoleon_use_ivar = True
 napoleon_use_param = True
 napoleon_use_rtype = True
-
-# Do not import ROS modules
-autodoc_mock_imports = [
-    'rospy',
-    'std_msgs',
-    'std_srvs',
-    'tf',
-    'tf_conversions',
-    'crazyflie_driver',
-    'geometry_msgs',
-    'swarm_manager',
-    'trajectory_planner',
-    'formation_manager',
-    'roslaunch',
-    'message_filters'
-]
