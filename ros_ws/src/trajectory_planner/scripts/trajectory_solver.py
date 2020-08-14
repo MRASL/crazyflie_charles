@@ -5,7 +5,7 @@ Package used to find a collision less trajectory between a number of agents.
 
 Algorithm
 ----------
-The algorithm used is the one presented in this paper: [CIT1]_
+The algorithm used is the one presented in this paper: [CIT3]_
 
 Exemple
 -------

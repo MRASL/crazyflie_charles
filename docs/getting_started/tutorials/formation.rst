@@ -1,7 +1,7 @@
 Add New Formation
 -----------------
 
-In this tutorial, you will learn how to create a **new formation** and update package **documentation**.
+In this tutorial, you will learn how to create a **new formation**.
 
 We are going to add a formation shaped like a sinus.
 
@@ -99,7 +99,7 @@ We are going to add a formation shaped like a sinus.
 
 7. Compute agents position from center
 
-    We have to compute each agent position in x, y, and z from formaiton center.
+    We have to compute each agent position in x, y, and z from formation center.
 
     * X position ::
 
@@ -165,7 +165,9 @@ We are going to add a formation shaped like a sinus.
                 ...
             ...
 
-9. Test new formation::
+9. Test new formation
+
+    .. code-block:: python
 
         swarm = SwarmAPI()
         swarm.set_mode("formation")
