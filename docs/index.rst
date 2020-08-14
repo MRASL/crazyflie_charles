@@ -27,10 +27,15 @@ To cite this project:
 
 .. todo:: Add citation
 
-Exemple
+Crazyflie Swarm Controller uses  `crazyflier_ros <https://github.com/whoenig/crazyflie_ros>`_  [CIT1]_ to send commands to the crazflies via ros.
+
+The architecture used was inspired by the `Crazyswarm project <https://crazyswarm.readthedocs.io/en/latest/>`_
+[CIT2]_.
+
+Example
 -------
 
-Formation Exemple
+Formation Example
 ^^^^^^^^^^^^^^^^^
    ::
 
@@ -55,7 +60,7 @@ Formation Exemple
       swarm.set_formation("pyramid")
 
 
-High level controller exemple
+High level controller example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    ::
 
@@ -166,9 +171,6 @@ The general architecture can be found here :doc:`/ros_architecture/general_archi
    ros_architecture/trajectory_planner
    ros_architecture/topics
 
-Package Description
-===================
-In-depth description of each package
 
 .. toctree::
    :maxdepth: 1

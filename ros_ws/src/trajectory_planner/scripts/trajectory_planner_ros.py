@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Package to compute collision free trajectories for each agent.
 
-The algorithm [CIT1]_ used is based on Distributed Model Predictive Control.
+The algorithm [CIT3]_ used is based on Distributed Model Predictive Control.
 
 Usage
 -----

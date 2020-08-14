@@ -68,16 +68,16 @@ This tutorial will show you how to find your controller layout and add it as a c
 
     3.3 Add axes to conf file
 
-        You have four control to map: *x position*, *y position*, *z position* and *yaw*.
+        You have four controls to map: *x position*, *y position*, *z position* and *yaw*.
 
-        Let's say you want to map the horizontal right stick to yaw control. You get this result when
+        Let's say you want to map the horizontal right stick to yaw control and get this result when
         moving the stick to the left.
 
         .. figure:: /images/tutorials/tuto_controller_axis.png
 
             Result of moving the right stick to the left.
 
-        With this we determine that the horizontal right stick axis number is 2. Also, since moving
+        Based on the picture, we can find that the horizontal right stick axis number is 2. Also, since moving
         it to the left gives a positive result, the axis number will be negative:
 
         .. code-block:: yaml

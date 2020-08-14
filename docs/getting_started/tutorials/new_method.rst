@@ -12,7 +12,7 @@ We are going to add a method that moves a single crazyflie in a **small circle**
 To know which files to modify, it's important to understand the package
 :doc:`ROS architecture </ros_architecture/general_architecture>`.
 
-There three main layers:
+There are three main layers:
 
 * crazyflie_ros: ROS stack to control the crazyflies with the crazyradio
 * swarm_manger: Package to compute swarm positions and command

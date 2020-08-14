@@ -1,4 +1,4 @@
-#  Contrôle d'un essaim de drône
+#  Crazyflie Swarm Controller
 
 Crazyflie Swarm Controller is a ROS package to fly a swarm of crazyflie in formation.
 
